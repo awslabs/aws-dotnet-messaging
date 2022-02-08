@@ -1,0 +1,46 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.32014.148
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AWS.Messaging.CLI", "src\AWS.Messaging.CLI\AWS.Messaging.CLI.csproj", "{5A1DE9E4-0418-4706-9303-0DD21AA39400}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{A9DD3239-E16A-4069-95C2-87B76C323924}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "test", "test", "{DC5E12D5-6151-40AF-A25B-0968AD3E4166}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AWS.Messaging.CLI.UnitTests", "test\AWS.Messaging.CLI.UnitTests\AWS.Messaging.CLI.UnitTests.csproj", "{DA3A16B0-67A1-4079-89FC-7CAB7DD199B4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AWS.Messaging.CLI.IntegrationTests", "test\AWS.Messaging.CLI.IntegrationTests\AWS.Messaging.CLI.IntegrationTests.csproj", "{4DA034B6-B107-44F9-B9A5-36C7DAAB5164}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{5A1DE9E4-0418-4706-9303-0DD21AA39400}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5A1DE9E4-0418-4706-9303-0DD21AA39400}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5A1DE9E4-0418-4706-9303-0DD21AA39400}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5A1DE9E4-0418-4706-9303-0DD21AA39400}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DA3A16B0-67A1-4079-89FC-7CAB7DD199B4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DA3A16B0-67A1-4079-89FC-7CAB7DD199B4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DA3A16B0-67A1-4079-89FC-7CAB7DD199B4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DA3A16B0-67A1-4079-89FC-7CAB7DD199B4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{4DA034B6-B107-44F9-B9A5-36C7DAAB5164}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4DA034B6-B107-44F9-B9A5-36C7DAAB5164}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4DA034B6-B107-44F9-B9A5-36C7DAAB5164}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4DA034B6-B107-44F9-B9A5-36C7DAAB5164}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{5A1DE9E4-0418-4706-9303-0DD21AA39400} = {A9DD3239-E16A-4069-95C2-87B76C323924}
+		{DA3A16B0-67A1-4079-89FC-7CAB7DD199B4} = {DC5E12D5-6151-40AF-A25B-0968AD3E4166}
+		{4DA034B6-B107-44F9-B9A5-36C7DAAB5164} = {DC5E12D5-6151-40AF-A25B-0968AD3E4166}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A0AE3181-2810-4413-BC12-103902D4D100}
+	EndGlobalSection
+EndGlobal
