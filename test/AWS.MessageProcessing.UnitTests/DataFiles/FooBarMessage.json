@@ -1,0 +1,10 @@
+{
+  "Id": "1234",
+  "Source": "TheSourceOfMessage",
+  "CreatedTimeStamp": "2022-02-04",
+  "MessageType": "AWS.MessageProcessing.UnitTests.FooBarMessage",
+  "Message": {
+    "Foo": "Luke",
+    "Bar": "Leia"
+  }
+}
