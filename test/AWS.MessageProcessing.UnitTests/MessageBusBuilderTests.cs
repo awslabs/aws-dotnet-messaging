@@ -28,10 +28,10 @@ namespace AWS.MessageProcessing.UnitTests
             var configuration = provider.GetService<IMessagingConfiguration>();
             Assert.NotNull(configuration);
 
-            Assert.Single(configuration.HandleMappings);
-            Assert.Equal(typeof(TestHandler), configuration.HandleMappings[0].HandlerType);
-            Assert.Equal(typeof(TestMessage), configuration.HandleMappings[0].MessageType);
-            Assert.Equal("AWS.MessageProcessing.UnitTests.MessageBusBuilderTests+TestMessage", configuration.HandleMappings[0].MessageTypeIdentifier);
+            Assert.Single(configuration.SubscriberMappings);
+            Assert.Equal(typeof(TestHandler), configuration.SubscriberMappings[0].HandlerType);
+            Assert.Equal(typeof(TestMessage), configuration.SubscriberMappings[0].MessageType);
+            Assert.Equal("AWS.MessageProcessing.UnitTests.MessageBusBuilderTests+TestMessage", configuration.SubscriberMappings[0].MessageTypeIdentifier);
 
             Assert.NotNull(provider.GetService<TestHandler>());
         }
@@ -49,10 +49,10 @@ namespace AWS.MessageProcessing.UnitTests
             var configuration = provider.GetService<IMessagingConfiguration>();
             Assert.NotNull(configuration);
 
-            Assert.Single(configuration.HandleMappings);
-            Assert.Equal(typeof(TestHandler), configuration.HandleMappings[0].HandlerType);
-            Assert.Equal(typeof(TestMessage), configuration.HandleMappings[0].MessageType);
-            Assert.Equal("TestMessage", configuration.HandleMappings[0].MessageTypeIdentifier);
+            Assert.Single(configuration.SubscriberMappings);
+            Assert.Equal(typeof(TestHandler), configuration.SubscriberMappings[0].HandlerType);
+            Assert.Equal(typeof(TestMessage), configuration.SubscriberMappings[0].MessageType);
+            Assert.Equal("TestMessage", configuration.SubscriberMappings[0].MessageTypeIdentifier);
 
             Assert.NotNull(provider.GetService<TestHandler>());
         }

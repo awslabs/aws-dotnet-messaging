@@ -25,12 +25,38 @@ namespace AWS.MessageProcessing.Configuration
         public MessageBusBuilder AddSubscriberHandler<THandler, TMessage>(string? messageTypeIdentifier = null)
             where THandler : IMessageHandler<TMessage>
         {
-            if(_configuration.HandleMappings == null)
+            if(_configuration.SubscriberMappings == null)
             {
-                _configuration.HandleMappings = new List<HandlerMapping>();
+                _configuration.SubscriberMappings = new List<SubscriberMapping>();
             }
 
-            _configuration.HandleMappings.Add(new HandlerMapping(typeof(THandler), typeof(TMessage), messageTypeIdentifier));
+            _configuration.SubscriberMappings.Add(new SubscriberMapping(typeof(THandler), typeof(TMessage), messageTypeIdentifier));
+            return this;
+        }
+
+        public MessageBusBuilder AddPublisherQueue<TMessage>(string publishTargetId, string? messageTypeIdentifier = null)
+        {
+            return AddPublisher<TMessage>(publishTargetId, PublisherMapping.TargetType.SQS, messageTypeIdentifier);
+        }
+
+        public MessageBusBuilder AddPublisherTopic<TMessage>(string publishTargetId, string? messageTypeIdentifier = null)
+        {
+            return AddPublisher<TMessage>(publishTargetId, PublisherMapping.TargetType.SNS, messageTypeIdentifier);
+        }
+
+        public MessageBusBuilder AddPublisherEventBridge<TMessage>(string publishTargetId, string? messageTypeIdentifier = null)
+        {
+            return AddPublisher<TMessage>(publishTargetId, PublisherMapping.TargetType.EventBridge, messageTypeIdentifier);
+        }
+
+        private MessageBusBuilder AddPublisher<TMessage>(string publishTargetId, PublisherMapping.TargetType publishingTargetType, string? messageTypeIdentifier = null)
+        {
+            if (_configuration.PublishingMappings == null)
+            {
+                _configuration.PublishingMappings = new List<PublisherMapping>();
+            }
+
+            _configuration.PublishingMappings.Add(new PublisherMapping(typeof(TMessage), publishTargetId, publishingTargetType, messageTypeIdentifier));
             return this;
         }
 
@@ -50,6 +76,8 @@ namespace AWS.MessageProcessing.Configuration
             return this;
         }
 
+
+
         /// <summary>
         /// The build method is called after all configuration has been made on the builder. This method adds the
         /// required services to the IServiceCollection so the rest of the framework can use the resulting IServiceProvider
@@ -61,18 +89,37 @@ namespace AWS.MessageProcessing.Configuration
             services.AddSingleton<IMessagingConfiguration>(_configuration);
             services.AddSingleton<IMessageSerialization, DefaultMessageSerialization>();
             services.AddSingleton<IEnvelopeSerialization, DefaultEnvelopeSerialization>();
-            services.AddHostedService<MessagePumpService>();
+            
 
             if(_configuration.SQSPollerConfigurations?.Any() == true)
             {
+                services.AddHostedService<MessagePumpService>();
                 services.TryAddAWSService<Amazon.SQS.IAmazonSQS>();
             }
 
-            if(_configuration.HandleMappings != null)
+            if(_configuration.SubscriberMappings != null)
             {
-                foreach(var handlerMapping in _configuration.HandleMappings)
+                foreach(var handlerMapping in _configuration.SubscriberMappings)
                 {
                     services.AddSingleton(handlerMapping.HandlerType);
+                }
+            }
+
+            if (_configuration.PublishingMappings?.Any() == true)
+            {
+                services.AddSingleton<IMessagePublisher, DefaultMessagePublisher>();
+
+                if(_configuration.PublishingMappings.Any(x => x.PublishTargetType == PublisherMapping.TargetType.SQS))
+                {
+                    services.TryAddAWSService<Amazon.SQS.IAmazonSQS>();
+                }
+                if (_configuration.PublishingMappings.Any(x => x.PublishTargetType == PublisherMapping.TargetType.SNS))
+                {
+                    services.TryAddAWSService<Amazon.SimpleNotificationService.IAmazonSimpleNotificationService>();
+                }
+                if (_configuration.PublishingMappings.Any(x => x.PublishTargetType == PublisherMapping.TargetType.EventBridge))
+                {
+                    services.TryAddAWSService<Amazon.EventBridge.IAmazonEventBridge>();
                 }
             }
         }

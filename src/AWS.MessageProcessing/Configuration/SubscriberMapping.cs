@@ -7,7 +7,7 @@ namespace AWS.MessageProcessing.Configuration
     /// <summary>
     /// Maps the IMessageHandler to the type of message being processed.
     /// </summary>
-    public class HandlerMapping
+    public class SubscriberMapping
     {
         /// <summary>
         /// The IMessageHandler that will process the message.
@@ -31,7 +31,7 @@ namespace AWS.MessageProcessing.Configuration
         /// <param name="handlerType"></param>
         /// <param name="messageType"></param>
         /// <param name="messageTypeIdentifier"></param>
-        public HandlerMapping(Type handlerType, Type messageType, string? messageTypeIdentifier = null)
+        public SubscriberMapping(Type handlerType, Type messageType, string? messageTypeIdentifier = null)
         {
             this.HandlerType = handlerType;
             this.MessageType = messageType;

@@ -32,6 +32,22 @@ namespace AWS.MessageProcessing.Serialization
             _messageConfiguration = messageConfiguration;
         }
 
+        public string Serialize(string messageTypeIdentifer, object message)
+        {
+            var messageSerialized = _messageSerializer.Serialize(message);
+
+            var flatMessageEnvelop = new FlatMessageEnvelope
+            {
+                CreatedTimeStamp = DateTime.UtcNow,
+                Id = Guid.NewGuid().ToString(),
+                MessageType = messageTypeIdentifer,
+                RawMessage = messageSerialized
+            };
+
+            var envelopSerialized = _envelopeSerializer.Serialize(flatMessageEnvelop);
+            return envelopSerialized;
+        }
+
         /// <summary>
         /// Converts the SQS message to MessageEnvelope<T>.
         /// </summary>
@@ -57,7 +73,7 @@ namespace AWS.MessageProcessing.Serialization
             }
 
             // Find the message type mapping for the message.
-            var mapping = _messageConfiguration.GetHandlerMapping(flatMessageEnvelope.MessageType);
+            var mapping = _messageConfiguration.GetSubscriberMapping(flatMessageEnvelope.MessageType);
             if (mapping == null)
             {
                 throw new InvalidMessageFormatException($"Failed to find message mapping for message type {flatMessageEnvelope.MessageType}", message.Body);
@@ -102,9 +118,9 @@ namespace AWS.MessageProcessing.Serialization
         public class ConvertResults
         {
             public MessageEnvelope MessageEnvelope { get; }
-            public HandlerMapping Mapping { get; }
+            public SubscriberMapping Mapping { get; }
 
-            public ConvertResults(MessageEnvelope messageEnvelope, HandlerMapping mapping)
+            public ConvertResults(MessageEnvelope messageEnvelope, SubscriberMapping mapping)
             {
                 this.MessageEnvelope = messageEnvelope;
                 this.Mapping = mapping;

@@ -11,16 +11,21 @@ namespace AWS.MessageProcessing.Configuration
     public interface IMessagingConfiguration
     {
         /// <summary>
-        /// This list of mappings from messages to IMessageHandlers
+        /// The list of mappings from messages to IMessageHandlers
         /// </summary>
-        IList<HandlerMapping>? HandleMappings { get; set; }
+        IList<SubscriberMapping>? SubscriberMappings { get; set; }
+
+        /// <summary>
+        /// The list of mappings of messages to publishing targets.
+        /// </summary>
+        IList<PublisherMapping>? PublishingMappings { get; set; }
 
         /// <summary>
         /// Returns back the handler for the given message type.
         /// </summary>
         /// <param name="messageType"></param>
         /// <returns></returns>
-        HandlerMapping? GetHandlerMapping(string messageType);
+        SubscriberMapping? GetSubscriberMapping(string messageType);
 
         /// <summary>
         /// List of configurations for SQS queues to poll.
@@ -34,15 +39,17 @@ namespace AWS.MessageProcessing.Configuration
     public class DefaultMessageConfiguration : IMessagingConfiguration
     {
         /// <inheritdoc/>
-        public IList<HandlerMapping>? HandleMappings { get; set; }
+        public IList<SubscriberMapping>? SubscriberMappings { get; set; }
+
+        public IList<PublisherMapping>? PublishingMappings { get; set; }
 
         /// <inheritdoc/>
-        public HandlerMapping? GetHandlerMapping(string messageType)
+        public SubscriberMapping? GetSubscriberMapping(string messageType)
         {
-            if (this.HandleMappings == null)
+            if (this.SubscriberMappings == null)
                 return null;
 
-            var handleMapping = this.HandleMappings.FirstOrDefault(x => string.Equals(messageType, x.MessageTypeIdentifier, StringComparison.InvariantCulture));
+            var handleMapping = this.SubscriberMappings.FirstOrDefault(x => string.Equals(messageType, x.MessageTypeIdentifier, StringComparison.InvariantCulture));
             return handleMapping;
         }
 

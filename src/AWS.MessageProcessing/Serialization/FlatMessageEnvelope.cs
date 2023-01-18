@@ -17,6 +17,7 @@ namespace AWS.MessageProcessing.Serialization
         /// <summary>
         /// Holder for the message content while the message type is being determined.
         /// </summary>
+        [System.Text.Json.Serialization.JsonPropertyName("Message")]
         public string RawMessage { get; set; }
 #pragma warning restore CS8618
 

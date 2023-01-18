@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using System.Text.Json;
 using Amazon.SQS.Model;
@@ -17,7 +18,7 @@ namespace AWS.MessageProcessing.Serialization
         /// <typeparam name="T"></typeparam>
         /// <param name="message"></param>
         /// <returns></returns>
-        Message Serialize<T>(MessageEnvelope<T> message);
+        string Serialize(FlatMessageEnvelope flatMessage);
 
         /// <summary>
         /// Deserialize the SQS message into the intermediate FlatMessageEnvelope type that framework will later use to determine the .NET type and convert to MessageEnvelope<T>.
@@ -77,7 +78,7 @@ namespace AWS.MessageProcessing.Serialization
             {
                 throw new InvalidMessageFormatException($"Envelope message missing {nameof(FlatMessageEnvelope.Id)} property", messageData);
             }
-            envelope.Id = id.GetString();
+            envelope.Id = id.GetString()!;
 
             if (jsonDoc.RootElement.TryGetProperty(nameof(FlatMessageEnvelope.Source), out var source))
             {
@@ -98,7 +99,7 @@ namespace AWS.MessageProcessing.Serialization
             {
                 throw new InvalidMessageFormatException($"Envelope message missing {nameof(FlatMessageEnvelope.MessageType)} property", messageData);
             }
-            envelope.MessageType = messageType.GetString();
+            envelope.MessageType = messageType.GetString()!;
 
 
             if (!jsonDoc.RootElement.TryGetProperty("Message", out var rawMessage))
@@ -111,9 +112,17 @@ namespace AWS.MessageProcessing.Serialization
         }
 
         /// <inheritdoc/>
-        public Message Serialize<T>(MessageEnvelope<T> message)
+        public string Serialize(FlatMessageEnvelope flatMessage)
         {
-            throw new NotImplementedException();
+            var rootObject = new System.Text.Json.Nodes.JsonObject();
+
+            rootObject[nameof(MessageEnvelope.Id)] = flatMessage.Id;
+            rootObject[nameof(MessageEnvelope.CreatedTimeStamp)] = flatMessage.CreatedTimeStamp;
+            rootObject[nameof(MessageEnvelope.MessageType)] = flatMessage.MessageType;
+            rootObject["Message"] = System.Text.Json.Nodes.JsonNode.Parse(flatMessage.RawMessage);
+
+            var messageBody = rootObject.ToJsonString();
+            return messageBody;
         }
     }
 }

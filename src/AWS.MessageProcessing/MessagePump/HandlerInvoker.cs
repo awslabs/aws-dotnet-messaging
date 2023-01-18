@@ -40,6 +40,11 @@ namespace AWS.MessageProcessing.MessagePump
         {
             var handler = _serviceProvider.GetService(handlerType);
 
+            if(handler == null)
+            {
+                throw new FatalErrorException($"Missing service registration for type {handlerType.FullName}");
+            }
+
             // TODO cache MethodInfo lookup per handerType. This will require a locking possibly with a reader writer lock since most request will only need a read lock.
             var methodInfo = typeof(IMessageHandler<>).MakeGenericType(messageType).GetMethod(nameof(IMessageHandler<object>.HandleAsync));
             if(methodInfo == null)

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -17,14 +18,15 @@ namespace AWS.MessageProcessing.MessagePump
     /// SQSPullMessagePump is used to pull messages from an SQS queue and dispatch the messages to the appropiate IMessageHandler.
     /// This class is intended to run for the length of the process polling an individual queue.
     /// </summary>
-    public class SQSPullMessagePump
+    public class SQSMessageReader : IMessageReader
     {
         IServiceProvider _serviceProvider;
         IAmazonSQS _sqsClient;
-        ILogger<SQSPullMessagePump> _logger;
+        ILogger<SQSMessageReader> _logger;
         SerializationUtilties _serializationUtilties;
         SQSPollerConfiguration _sqsPollerConfiguration;
         HandlerInvoker _handlerInvoker;
+        IMessageManager _messageManager;
 
         /// <summary>
         /// Constructs an instance of SQSPullMessagePump
@@ -33,7 +35,7 @@ namespace AWS.MessageProcessing.MessagePump
         /// <param name="logger"></param>
         /// <param name="sqsClient"></param>
         /// <param name="sqsPollerConfiguration"></param>
-        public SQSPullMessagePump(IServiceProvider serviceProvider, ILogger<SQSPullMessagePump> logger, IAmazonSQS sqsClient, SQSPollerConfiguration sqsPollerConfiguration)
+        public SQSMessageReader(IServiceProvider serviceProvider, ILogger<SQSMessageReader> logger, IMessageManagerFactory messageManagerFactory, IAmazonSQS sqsClient, SQSPollerConfiguration sqsPollerConfiguration)
         {
             _serviceProvider = serviceProvider;
             _logger = logger;
@@ -41,6 +43,7 @@ namespace AWS.MessageProcessing.MessagePump
             _sqsClient = sqsClient;
             _sqsPollerConfiguration = sqsPollerConfiguration;
 
+            _messageManager = messageManagerFactory.CreateMessageManager(this);
             _handlerInvoker = (HandlerInvoker)ActivatorUtilities.CreateInstance(_serviceProvider, typeof(HandlerInvoker));
         }
 
@@ -49,7 +52,7 @@ namespace AWS.MessageProcessing.MessagePump
         /// </summary>
         /// <param name="token"></param>
         /// <returns></returns>
-        public async Task RunAsync(CancellationToken token)
+        public async Task StartReaderAsync(CancellationToken token)
         {
             await PollQueue(_sqsPollerConfiguration.QueueUrl, token);
         }
@@ -165,6 +168,40 @@ namespace AWS.MessageProcessing.MessagePump
                     throw;
                 }
             }
+        }
+
+        public async Task DeleteMessagesAsync(IEnumerable<MessageEnvelope> messages)
+        {
+            var request = new DeleteMessageBatchRequest
+            {
+                QueueUrl = _sqsPollerConfiguration.QueueUrl
+            };
+            foreach(var message in messages)
+            {
+                request.Entries.Add(new DeleteMessageBatchRequestEntry
+                {
+                    // add receipt handle from mappnig of enveloped POCO instances to receipt handle.
+                });
+            }
+
+            await _sqsClient.DeleteMessageBatchAsync(request);
+        }
+
+        public async Task ExtendMessageVisiblityAsync(IEnumerable<MessageEnvelope> messages)
+        {
+            var request = new ChangeMessageVisibilityBatchRequest
+            {
+                QueueUrl = _sqsPollerConfiguration.QueueUrl
+            };
+            foreach (var message in messages)
+            {
+                request.Entries.Add(new ChangeMessageVisibilityBatchRequestEntry
+                {
+                    // add receipt handle from mappnig of enveloped POCO instances to receipt handle.
+                });
+            }
+
+            await _sqsClient.ChangeMessageVisibilityBatchAsync(request);
         }
     }
 }

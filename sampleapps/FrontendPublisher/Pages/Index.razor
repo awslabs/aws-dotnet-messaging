@@ -1,0 +1,44 @@
+﻿@using AWS.MessageProcessing;
+@using CommonModels;
+@page "/"
+@inject IMessagePublisher publisher;
+
+<PageTitle>Index</PageTitle>
+
+<h1>Test Publishing</h1>
+
+<h2>Example Order Info (SQS)</h2>
+
+<div>
+    <textarea @bind="OrderInfoText" @bind:event="oninput" />
+</div>
+
+@if (OrderInfoResponse != null)
+{
+    <p>@OrderInfoResponse</p>
+}
+
+<button class="btn btn-primary" @onclick="SendOrderInfo">Send OrderInfo</button>
+
+@code {
+    public string OrderInfoText { get; set; } = string.Empty;
+    public string? OrderInfoResponse { get; set; }
+
+    private async Task SendOrderInfo()
+    {
+        var info = new OrderInfo()
+        {
+            OrderId = Guid.NewGuid().ToString(),
+            UserId = "1"
+        };
+
+        foreach(var line in OrderInfoText.Split("\n"))
+        {
+            info.Items.Add(new OrderInfo.Item {Count =1, ProductId = line.Trim() });
+        }
+
+        await publisher.PublishAsync(info);
+
+        OrderInfoResponse = $"Order {info.OrderId} with {info.Items.Count} items has been submitted.";
+    }
+}

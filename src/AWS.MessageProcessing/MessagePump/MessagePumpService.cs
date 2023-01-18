@@ -18,6 +18,7 @@ namespace AWS.MessageProcessing.MessagePump
     {
         ILogger<MessagePumpService> _logger;
         IMessagingConfiguration _messageConfiguration;
+        private IMessageReaderFactory _messageReaderFactory;
         IServiceProvider _serviceProvider;
 
         /// <summary>
@@ -26,11 +27,12 @@ namespace AWS.MessageProcessing.MessagePump
         /// <param name="serviceProvider"></param>
         /// <param name="logger"></param>
         /// <param name="messagingConfiguration"></param>
-        public MessagePumpService(IServiceProvider serviceProvider, ILogger<MessagePumpService> logger, IMessagingConfiguration messagingConfiguration)
+        public MessagePumpService(IServiceProvider serviceProvider, ILogger<MessagePumpService> logger, IMessagingConfiguration messagingConfiguration, IMessageReaderFactory messageReaderFactory)
         {
             _serviceProvider = serviceProvider;
             _logger = logger;
             _messageConfiguration = messagingConfiguration;
+            _messageReaderFactory = messageReaderFactory;
         }
 
 
@@ -52,8 +54,8 @@ namespace AWS.MessageProcessing.MessagePump
             {
                 foreach (var sqsPollerConfiguration in _messageConfiguration.SQSPollerConfigurations)
                 {
-                    var poller = ActivatorUtilities.CreateInstance<SQSPullMessagePump>(_serviceProvider, sqsPollerConfiguration);
-                    tasks.Add(poller.RunAsync(stoppingToken));
+                    var reader = _messageReaderFactory.CreateMessageReader("SQS");
+                    tasks.Add(reader.StartReaderAsync(stoppingToken));
                 }
             }
 

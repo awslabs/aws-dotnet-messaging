@@ -21,6 +21,15 @@ namespace AWS.MessageProcessing
         public string InvalidMessageBody { get; private set; }
     }
 
+    public class MissingPublisherMappingException : Exception
+    {
+        public MissingPublisherMappingException(string message) : base(message)
+        {
+
+        }
+
+    }
+
     /// <summary>
     /// If a FatalErrorException occurs happens there is a coding issue within the application and framework will shutdown if an exception ocurrs.
     /// </summary>

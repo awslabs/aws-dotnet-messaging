@@ -51,7 +51,7 @@ namespace AWS.MessageProcessing.Serialization
         /// <inheritdoc/>
         public object Deserialize(string messageData, Type returnType)
         {
-            return JsonSerializer.Deserialize(messageData, returnType);
+            return JsonSerializer.Deserialize(messageData, returnType)!;
         }
     }
 }
