@@ -6,11 +6,11 @@ using System.Text.Json.Serialization;
 namespace AWS.Messaging;
 
 /// <summary>
-/// Generic class for MessageEnvelope objects.
+/// Abstract MessageEnvelope containing all of the envelope information without the specific message.
 /// This class adheres to the CloudEvents specification v1.0 and contains all the attributes that are marked as required by the spec.
 /// The CloudEvent spec can be found <see href="https://github.com/cloudevents/spec/blob/main/cloudevents/spec.md">here.</see>
 /// </summary>
-public class MessageEnvelope<T>
+public abstract class MessageEnvelope
 {
     /// <summary>
     /// Specifies the envelope ID
@@ -44,12 +44,6 @@ public class MessageEnvelope<T>
     public DateTime TimeStamp { get; set; }
 
     /// <summary>
-    /// The application message that will be processed.
-    /// </summary>
-    [JsonPropertyName("data")]
-    public T Message { get; set; }
-
-    /// <summary>
     /// This stores different metadata that is not modeled as a top-level property in MessageEnvelope class.
     /// </summary>
     [JsonExtensionData]
@@ -67,14 +61,40 @@ public class MessageEnvelope<T>
         Uri source,
         string version,
         string type,
-        DateTime timeStamp,
-        T message)
+        DateTime timeStamp)
     {
         Id = id;
         Source = source;
         Version = version;
         Type = type;
         TimeStamp = timeStamp;
+    }
+}
+
+/// <summary>
+/// Generic class for MessageEnvelope objects.
+/// This class adheres to the CloudEvents specification v1.0 and contains all the attributes that are marked as required by the spec.
+/// The CloudEvent spec can be found <see href="https://github.com/cloudevents/spec/blob/main/cloudevents/spec.md">here.</see>
+/// </summary>
+public class MessageEnvelope<T> : MessageEnvelope
+{
+    /// <summary>
+    /// Creates a MessageEnvelope object that is aligned with CloudEvents specification v1.0
+    /// </summary>
+    public MessageEnvelope(string id,
+        Uri source,
+        string version,
+        string type,
+        DateTime timeStamp,
+        T message)
+        : base(id, source, version, type, timeStamp)
+    {
         Message = message;
     }
+
+    /// <summary>
+    /// The application message that will be processed.
+    /// </summary>
+    [JsonPropertyName("data")]
+    public T Message { get; set; }
 }

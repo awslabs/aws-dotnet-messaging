@@ -11,6 +11,11 @@ namespace AWS.Messaging
     public class SQSMetadata
     {
         /// <summary>
+        /// The ReceiptHandle is returned when messages are receieved from SQS. The ReceiptHandle is required to delete messages or extend the message's visibility timeout.
+        /// </summary>
+        public string? ReceiptHandle { get; set; }
+
+        /// <summary>
         /// Specifies the token used for de-duplication of sent messages. This parameter applies only to FIFO (first-in-first-out) queues.
         /// </summary>
         public string? MessageDeduplicationId { get; set; }
