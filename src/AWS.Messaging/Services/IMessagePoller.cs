@@ -5,7 +5,7 @@ namespace AWS.Messaging.Services;
 
 /// <summary>
 /// Instances of <see cref="AWS.Messaging.Services.IMessagePoller" /> handle polling for messages from the underlying AWS service. Once
-/// messages are received from the underlying service they are deserialized into MessageEnvelop&lt;T&gt;
+/// messages are received from the underlying service they are deserialized into <see cref="AWS.Messaging.MessageEnvelope{T}"/>;
 /// and handed off to the IMessageManager for processing.
 ///
 /// The <see cref="AWS.Messaging.Services.IMessagePoller" /> abstracts around the underlying service and also provides the utility methods used
