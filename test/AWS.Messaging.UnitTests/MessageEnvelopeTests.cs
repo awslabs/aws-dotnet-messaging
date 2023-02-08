@@ -42,6 +42,7 @@ public class MessageEnvelopeTests
         var messageEnvelope = JsonSerializer.Deserialize<MessageEnvelope<OrderInfo>>(cloudEventJSON);
 
         // ASSERT
+        Assert.NotNull(messageEnvelope);
         Assert.Equal("A1234", messageEnvelope.Id);
         Assert.Equal("1.0", messageEnvelope.Version);
         Assert.Equal("order-info", messageEnvelope.Type);
@@ -50,7 +51,9 @@ public class MessageEnvelopeTests
         Assert.Equal("Bob", messageEnvelope.Message.Name);
         Assert.Equal("my-city", messageEnvelope.Message.City);
         Assert.Equal("t-shirt", messageEnvelope.Message.Merchandise);
+        Assert.NotNull(messageEnvelope.Metadata);
         Assert.Equal("random-string", ((JsonElement)messageEnvelope.Metadata["some-metadata"]).Deserialize<string>());
+        Assert.NotNull(messageEnvelope.SQSMetadata);
         Assert.Equal("dedup-id", messageEnvelope.SQSMetadata.MessageDeduplicationId);
         Assert.Equal("group-id", messageEnvelope.SQSMetadata.MessageGroupId);
         Assert.Equal("John Doe", messageEnvelope.SQSMetadata.MessageAttributes["MyNameAttribute"].StringValue);
@@ -60,11 +63,11 @@ public class MessageEnvelopeTests
 public class OrderInfo
 {
     [JsonPropertyName("name")]
-    public string Name { get; set; }
+    public string Name { get; set; } = string.Empty;
 
     [JsonPropertyName("city")]
-    public string City { get; set; }
+    public string City { get; set; } = string.Empty;
 
     [JsonPropertyName("merchandise")]
-    public string Merchandise { get; set; }
+    public string Merchandise { get; set; } = string.Empty;
 }
