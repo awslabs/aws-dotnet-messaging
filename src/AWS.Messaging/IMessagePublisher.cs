@@ -18,7 +18,7 @@ public interface IMessagePublisher
     /// configuration done during startup. It retrieves the <see cref="PublisherMapping"/> corresponding to the
     /// message type, which contains the routing information of the provided message type.
     /// The method wraps the message in a <see cref="MessageEnvelope"/> which contains metadata for the provided
-    /// message that enables the proper transportation of the message throughout the system.
+    /// message that enables the proper transportation of the message throughout the framework.
     /// This method is accessible by injecting <see cref="IMessagePublisher"/> into the application code
     /// using the dependency injection framework.
     /// </summary>
