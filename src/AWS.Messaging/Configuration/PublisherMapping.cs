@@ -22,7 +22,7 @@ public class PublisherMapping : IPublisherMapping
 
     /// <summary>
     /// Creates a mapping object for the specified message type as well as the AWS service to publisher to.
-    /// This object will be used internally by the system to properly route the user-defined message.
+    /// This object will be used internally by the framework to properly route the user-defined message.
     /// </summary>
     /// <param name="messageType">The Type of the message</param>
     /// <param name="publisherConfiguration">The publisher configuration</param>
