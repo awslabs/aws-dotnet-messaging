@@ -34,6 +34,6 @@ public class ConfigurationTests
 
     public class PurchaseOrder
     {
-        public string Id { get; set; }
+        public string? Id { get; set; }
     }
 }
