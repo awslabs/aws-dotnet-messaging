@@ -81,3 +81,14 @@ public class UnsupportedPublisherException : AWSMessagingException
     /// </summary>
     public UnsupportedPublisherException(string message, Exception? innerException = null) : base(message, innerException) { }
 }
+
+/// <summary>
+/// Thrown if the subscriber endpoint is not valid.
+/// </summary>
+public class InvalidSubscriberEndpointException : AWSMessagingException
+{
+    /// <summary>
+    /// Creates an instance of <see cref="InvalidSubscriberEndpointException"/>.
+    /// </summary>
+    public InvalidSubscriberEndpointException(string message, Exception? innerException = null) : base(message, innerException) { }
+}

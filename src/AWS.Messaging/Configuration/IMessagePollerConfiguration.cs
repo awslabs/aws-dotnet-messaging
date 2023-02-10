@@ -8,4 +8,8 @@ namespace AWS.Messaging.Configuration;
 /// </summary>
 public interface IMessagePollerConfiguration
 {
+    /// <summary>
+    /// The AWS service endpoint to poll messages from.
+    /// </summary>
+    string SubscriberEndpoint { get; }
 }

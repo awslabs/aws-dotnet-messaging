@@ -31,4 +31,18 @@ public interface IMessageBusBuilder
     /// <param name="eventBusUrl">The EventBridge event bus URL to publish the message to.</param>
     /// <param name="messageTypeIdentifier">The language-agnostic message type identifier. If not specified, the .NET type will be used.</param>
     IMessageBusBuilder AddEventBridgePublisher<TMessage>(string eventBusUrl, string? messageTypeIdentifier = null);
+
+    /// <summary>
+    /// Add a message handler for a given message type.
+    /// The message handler contains the business logic of how to process a given message type.
+    /// </summary>
+    /// <param name="messageTypeIdentifier">The language-agnostic message type identifier. If not specified, the .NET type will be used.</param>
+    IMessageBusBuilder AddMessageHandler<THandler, TMessage>(string? messageTypeIdentifier = null)
+        where THandler : IMessageHandler<TMessage>;
+
+    /// <summary>
+    /// Adds an SQS queue to poll for messages.
+    /// </summary>
+    /// <param name="queueUrl">The SQS queue to poll for messages.</param>
+    IMessageBusBuilder AddSQSPoller(string queueUrl);
 }

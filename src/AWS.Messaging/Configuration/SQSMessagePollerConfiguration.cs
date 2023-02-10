@@ -11,14 +11,17 @@ public class SQSMessagePollerConfiguration : IMessagePollerConfiguration
     /// <summary>
     /// The SQS QueueUrl to poll messages from.
     /// </summary>
-    public string QueueUrl { get; }
+    public string SubscriberEndpoint { get; }
 
     /// <summary>
-    /// Construct an instance of <see cref="AWS.Messaging.Configuration.SQSMessagePollerConfiguration" />
+    /// Construct an instance of <see cref="SQSMessagePollerConfiguration" />
     /// </summary>
     /// <param name="queueUrl">The SQS QueueUrl to poll messages from.</param>
     public SQSMessagePollerConfiguration(string queueUrl)
     {
-        QueueUrl = queueUrl;
+        if (string.IsNullOrEmpty(queueUrl))
+            throw new InvalidSubscriberEndpointException("The SQS Queue URL cannot be empty.");
+
+        SubscriberEndpoint = queueUrl;
     }
 }

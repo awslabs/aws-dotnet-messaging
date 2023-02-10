@@ -8,6 +8,8 @@ using Amazon.SQS;
 using AWS.Messaging.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
+using AWS.Messaging.UnitTests.Models;
+using AWS.Messaging.UnitTests.MessageHandlers;
 
 namespace AWS.Messaging.UnitTests;
 
@@ -111,5 +113,28 @@ public class MessageBusBuilderTests
 
         var sqsClient = serviceProvider.GetService<IAmazonSQS>();
         Assert.Null(sqsClient);
+    }
+
+    [Fact]
+    public void MessageBus_AddMessageHandler()
+    {
+        _serviceCollection.AddAWSMessageBus(builder =>
+        {
+            builder.AddMessageHandler<ChatMessageHandler, ChatMessage>("sqsQueueUrl");
+        });
+
+        var serviceProvider = _serviceCollection.BuildServiceProvider();
+
+        var messageHandler = serviceProvider.GetService<ChatMessageHandler>();
+        Assert.NotNull(messageHandler);
+    }
+
+    [Fact]
+    public void MessageBus_NoMessageHandler()
+    {
+        var serviceProvider = _serviceCollection.BuildServiceProvider();
+
+        var messageHandler = serviceProvider.GetService<ChatMessageHandler>();
+        Assert.Null(messageHandler);
     }
 }

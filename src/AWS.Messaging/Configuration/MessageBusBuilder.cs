@@ -48,11 +48,27 @@ public class MessageBusBuilder : IMessageBusBuilder
         return this;
     }
 
+    /// <inheritdoc/>
+    public IMessageBusBuilder AddMessageHandler<THandler, TMessage>(string? messageTypeIdentifier = null)
+        where THandler : IMessageHandler<TMessage>
+    {
+        var subscriberMapping = new SubscriberMapping(typeof(THandler), typeof(TMessage), messageTypeIdentifier);
+        _messageConfiguration.SubscriberMappings.Add(subscriberMapping);
+        return this;
+    }
+
+    /// <inheritdoc/>
+    public IMessageBusBuilder AddSQSPoller(string queueUrl)
+    {
+        _messageConfiguration.MessagePollerConfigurations.Add(new SQSMessagePollerConfiguration(queueUrl));
+        return this;
+    }
+
     internal void Build(IServiceCollection services)
     {
         services.AddSingleton<IMessageConfiguration>(_messageConfiguration);
 
-        if (_messageConfiguration.PublisherMappings.Any() == true)
+        if (_messageConfiguration.PublisherMappings.Any())
         {
             services.AddSingleton<IMessagePublisher, MessagePublisher>();
 
@@ -67,6 +83,14 @@ public class MessageBusBuilder : IMessageBusBuilder
             if (_messageConfiguration.PublisherMappings.Any(x => x.PublishTargetType == PublisherTargetType.EVENTBRIDGE_PUBLISHER))
             {
                 services.TryAddAWSService<Amazon.EventBridge.IAmazonEventBridge>();
+            }
+        }
+
+        if (_messageConfiguration.SubscriberMappings.Any())
+        {
+            foreach (var subscriberMapping in _messageConfiguration.SubscriberMappings)
+            {
+                services.AddSingleton(subscriberMapping.HandlerType);
             }
         }
     }

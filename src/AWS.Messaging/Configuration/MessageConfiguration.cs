@@ -17,4 +17,17 @@ public class MessageConfiguration : IMessageConfiguration
         var publisherMapping = PublisherMappings.FirstOrDefault(x => messageType == x.MessageType);
         return publisherMapping;
     }
+
+    /// <inheritdoc/>
+    public IList<SubscriberMapping> SubscriberMappings { get; } = new List<SubscriberMapping>();
+
+    /// <inheritdoc/>
+    public SubscriberMapping? GetSubscriberMapping(Type messageType)
+    {
+        var subscriberMapping = SubscriberMappings.FirstOrDefault(x => messageType == x.MessageType);
+        return subscriberMapping;
+    }
+
+    /// <inheritdoc/>
+    public IList<IMessagePollerConfiguration> MessagePollerConfigurations { get; set; } = new List<IMessagePollerConfiguration>();
 }

@@ -4,7 +4,7 @@
 namespace AWS.Messaging.Configuration;
 
 /// <summary>
-/// Interface for the message publisher builder configuration.
+/// Interface for the message configuration.
 /// </summary>
 public interface IMessageConfiguration
 {
@@ -19,4 +19,21 @@ public interface IMessageConfiguration
     /// <param name="messageType">The Type of the message</param>
     /// <returns>The <see cref="PublisherMapping"/> containing routing info for the specified message type.</returns>
     PublisherMapping? GetPublisherMapping(Type messageType);
+
+    /// <summary>
+    /// Maps the message types to a subscriber configuration
+    /// </summary>
+    IList<SubscriberMapping> SubscriberMappings { get; }
+
+    /// <summary>
+    /// Returns back the subscriber mapping for the given message type.
+    /// </summary>
+    /// <param name="messageType">The Type of the message</param>
+    /// <returns>The <see cref="SubscriberMapping"/> containing routing info for the specified message type.</returns>
+    SubscriberMapping? GetSubscriberMapping(Type messageType);
+
+    /// <summary>
+    /// List of configurations for subscriber to poll for messages from an AWS service endpoint.
+    /// </summary>
+    IList<IMessagePollerConfiguration> MessagePollerConfigurations { get; set; }
 }
