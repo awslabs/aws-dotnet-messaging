@@ -36,4 +36,9 @@ public interface IMessageConfiguration
     /// List of configurations for subscriber to poll for messages from an AWS service endpoint.
     /// </summary>
     IList<IMessagePollerConfiguration> MessagePollerConfigurations { get; set; }
+
+    /// <summary>
+    /// Holds an instance of <see cref="SerializationOptions"/> to control the serialization/de-serialization of the application message.
+    /// </summary>
+    SerializationOptions SerializationOptions { get; }
 }

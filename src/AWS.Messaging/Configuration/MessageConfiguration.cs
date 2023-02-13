@@ -30,4 +30,7 @@ public class MessageConfiguration : IMessageConfiguration
 
     /// <inheritdoc/>
     public IList<IMessagePollerConfiguration> MessagePollerConfigurations { get; set; } = new List<IMessagePollerConfiguration>();
+
+    /// <inheritdoc/>
+    public SerializationOptions SerializationOptions { get; } = new SerializationOptions();
 }
