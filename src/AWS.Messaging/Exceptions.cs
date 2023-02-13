@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using AWS.Messaging.Configuration;
+using AWS.Messaging.Serialization;
 
 namespace AWS.Messaging;
 
@@ -91,4 +92,26 @@ public class InvalidSubscriberEndpointException : AWSMessagingException
     /// Creates an instance of <see cref="InvalidSubscriberEndpointException"/>.
     /// </summary>
     public InvalidSubscriberEndpointException(string message, Exception? innerException = null) : base(message, innerException) { }
+}
+
+/// <summary>
+/// Thrown if failed to deserialize the application message while invoking <see cref="IMessageSerializer.Deserialize(string, Type)"/>
+/// </summary>
+public class FailedToDeserializeApplicationMessage : AWSMessagingException
+{
+    /// <summary>
+    /// Creates an instance of <see cref="FailedToDeserializeApplicationMessage"/>.
+    /// </summary>
+    public FailedToDeserializeApplicationMessage(string message, Exception? innerException = null) : base(message, innerException) { }
+}
+
+/// <summary>
+/// Thrown if failed to serialize the application message while invoking <see cref="IMessageSerializer.Serialize(object)"/>
+/// </summary>
+public class FailedToSerializeApplicationMessage : AWSMessagingException
+{
+    /// <summary>
+    /// Creates an instance of <see cref="FailedToSerializeApplicationMessage"/>.
+    /// </summary>
+    public FailedToSerializeApplicationMessage(string message, Exception? innerException = null) : base(message, innerException) { }
 }

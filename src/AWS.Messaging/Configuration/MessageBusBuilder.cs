@@ -1,7 +1,9 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using AWS.Messaging.Serialization;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace AWS.Messaging.Configuration;
 
@@ -64,9 +66,17 @@ public class MessageBusBuilder : IMessageBusBuilder
         return this;
     }
 
+    /// <inheritdoc/>
+    public IMessageBusBuilder ConfigureSerializationOptions(Action<SerializationOptions> options)
+    {
+        options(_messageConfiguration.SerializationOptions);
+        return this;
+    }
+
     internal void Build(IServiceCollection services)
     {
         services.AddSingleton<IMessageConfiguration>(_messageConfiguration);
+        services.AddSingleton<IMessageSerializer, MessageSerializer>();
 
         if (_messageConfiguration.PublisherMappings.Any())
         {

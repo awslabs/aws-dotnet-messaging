@@ -10,6 +10,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 using AWS.Messaging.UnitTests.Models;
 using AWS.Messaging.UnitTests.MessageHandlers;
+using System.Text.Json;
+using AWS.Messaging.Serialization;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace AWS.Messaging.UnitTests;
 
@@ -136,5 +140,45 @@ public class MessageBusBuilderTests
 
         var messageHandler = serviceProvider.GetService<ChatMessageHandler>();
         Assert.Null(messageHandler);
+    }
+
+    [Fact]
+    public void MessageBus_MessageSerializerShouldExist()
+    {
+        _serviceCollection.AddAWSMessageBus(builder =>
+        {
+            builder.AddSQSPoller("queueUrl");
+        });
+
+        _serviceCollection.AddSingleton<ILogger<MessageSerializer>, NullLogger<MessageSerializer>>();
+
+        var serviceProvider = _serviceCollection.BuildServiceProvider();
+
+        var messageSerializer = serviceProvider.GetService<IMessageSerializer>();
+        Assert.NotNull(messageSerializer);
+    }
+
+    [Fact]
+    public void MessageBus_AddSerializerOptions()
+    {
+        _serviceCollection.AddAWSMessageBus(builder =>
+        {
+            builder.ConfigureSerializationOptions(options =>
+            {
+                options.SystemTextJsonOptions = new JsonSerializerOptions
+                {
+                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                };
+            });
+        });
+
+        var serviceProvider = _serviceCollection.BuildServiceProvider();
+
+        var messageConfiguration = serviceProvider.GetService<IMessageConfiguration>();
+        Assert.NotNull(messageConfiguration);
+
+        var jsonSerializerOptions = messageConfiguration.SerializationOptions.SystemTextJsonOptions;
+        Assert.NotNull(jsonSerializerOptions);
+        Assert.Equal(JsonNamingPolicy.CamelCase, jsonSerializerOptions.PropertyNamingPolicy);
     }
 }
