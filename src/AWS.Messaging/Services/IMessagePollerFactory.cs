@@ -23,7 +23,7 @@ public interface IMessagePollerFactory
 }
 
 /// <summary>
-/// Implemenation of <see cref="AWS.Messaging.Services.IMessagePollerFactory" /> that is the default registered factory into
+/// Implementation of <see cref="AWS.Messaging.Services.IMessagePollerFactory" /> that is the default registered factory into
 /// the <see cref="Microsoft.Extensions.DependencyInjection.IServiceCollection" /> unless a user has registered their own implementation.
 /// </summary>
 internal class DefaultMessagePollerFactory : IMessagePollerFactory

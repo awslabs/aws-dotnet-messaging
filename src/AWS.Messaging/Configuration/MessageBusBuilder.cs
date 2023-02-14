@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using AWS.Messaging.Serialization;
+using AWS.Messaging.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -101,6 +102,17 @@ public class MessageBusBuilder : IMessageBusBuilder
             foreach (var subscriberMapping in _messageConfiguration.SubscriberMappings)
             {
                 services.AddSingleton(subscriberMapping.HandlerType);
+            }
+        }
+
+        if (_messageConfiguration.MessagePollerConfigurations.Any())
+        {
+            services.AddHostedService<MessagePumpService>();
+            services.TryAddSingleton<IMessagePollerFactory, DefaultMessagePollerFactory>();
+
+            if (_messageConfiguration.MessagePollerConfigurations.OfType<SQSMessagePollerConfiguration>().Any())
+            {
+                services.TryAddAWSService<Amazon.SQS.IAmazonSQS>();
             }
         }
     }
