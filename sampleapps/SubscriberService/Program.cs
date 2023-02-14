@@ -3,10 +3,16 @@
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using SubscriberService.MessageHandlers;
 using SubscriberService.Models;
 
 await Host.CreateDefaultBuilder(args)
+    .ConfigureLogging(logging =>
+    {
+        logging.ClearProviders();
+        logging.AddConsole().SetMinimumLevel(LogLevel.Debug);
+    })
     .ConfigureServices(services =>
     {
         services.AddAWSMessageBus(builder =>

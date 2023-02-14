@@ -1,19 +1,22 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Linq;
+using System.Text.Json;
 using Amazon.EventBridge;
 using Amazon.Extensions.NETCore.Setup;
 using Amazon.SimpleNotificationService;
 using Amazon.SQS;
 using AWS.Messaging.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Xunit;
-using AWS.Messaging.UnitTests.Models;
-using AWS.Messaging.UnitTests.MessageHandlers;
-using System.Text.Json;
 using AWS.Messaging.Serialization;
+using AWS.Messaging.Services;
+using AWS.Messaging.UnitTests.MessageHandlers;
+using AWS.Messaging.UnitTests.Models;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Xunit;
 
 namespace AWS.Messaging.UnitTests;
 
@@ -24,6 +27,7 @@ public class MessageBusBuilderTests
     public MessageBusBuilderTests()
     {
         _serviceCollection = new ServiceCollection();
+        _serviceCollection.AddLogging();
         _serviceCollection.AddDefaultAWSOptions(new AWSOptions
         {
             Region = Amazon.RegionEndpoint.USWest2
@@ -180,5 +184,26 @@ public class MessageBusBuilderTests
         var jsonSerializerOptions = messageConfiguration.SerializationOptions.SystemTextJsonOptions;
         Assert.NotNull(jsonSerializerOptions);
         Assert.Equal(JsonNamingPolicy.CamelCase, jsonSerializerOptions.PropertyNamingPolicy);
+    }
+
+    /// <summary>
+    /// Asserts that adding a SQS Poller will add a SQS client and
+    /// a MessagePumpService to the service provider.
+    /// </summary>
+    [Fact]
+    public void MessageBus_AddSQSPoller()
+    {
+        _serviceCollection.AddAWSMessageBus(builder =>
+        {
+            builder.AddSQSPoller("queueUrl");
+        });
+
+        var serviceProvider = _serviceCollection.BuildServiceProvider();
+
+        var messagePumpService = serviceProvider.GetServices<IHostedService>().OfType<MessagePumpService>().Single();
+        Assert.NotNull(messagePumpService);
+
+        var sqsClient = serviceProvider.GetService<IAmazonSQS>();
+        Assert.NotNull(sqsClient);
     }
 }
