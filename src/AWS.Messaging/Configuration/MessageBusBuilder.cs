@@ -3,6 +3,7 @@
 
 using AWS.Messaging.Serialization;
 using AWS.Messaging.Services;
+using AWS.Messaging.Publishers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -81,7 +82,7 @@ public class MessageBusBuilder : IMessageBusBuilder
 
         if (_messageConfiguration.PublisherMappings.Any())
         {
-            services.AddSingleton<IMessagePublisher, MessagePublisher>();
+            services.AddSingleton<IMessagePublisher, MessageRoutingPublisher>();
 
             if (_messageConfiguration.PublisherMappings.Any(x => x.PublishTargetType == PublisherTargetType.SQS_PUBLISHER))
             {

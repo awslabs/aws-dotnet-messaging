@@ -115,3 +115,14 @@ public class FailedToSerializeApplicationMessage : AWSMessagingException
     /// </summary>
     public FailedToSerializeApplicationMessage(string message, Exception? innerException = null) : base(message, innerException) { }
 }
+
+/// <summary>
+/// Thrown if the message being sent is invalid.
+/// </summary>
+public class InvalidMessageException : AWSMessagingException
+{
+    /// <summary>
+    /// Creates an instance of <see cref="InvalidMessageException"/>.
+    /// </summary>
+    public InvalidMessageException(string message, Exception? innerException = null) : base(message, innerException) { }
+}
