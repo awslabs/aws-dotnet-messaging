@@ -12,6 +12,7 @@ builder.Services.AddControllers();
 builder.Services.AddAWSMessageBus(builder =>
 {
     builder.AddSQSPublisher<ChatMessage>("https://sqs.us-west-2.amazonaws.com/012345678910/MPF");
+    builder.AddSNSPublisher<OrderInfo>("arn:aws:sns:us-west-2:012345678910:MPF");
     builder.ConfigureSerializationOptions(options =>
     {
         options.SystemTextJsonOptions = new JsonSerializerOptions

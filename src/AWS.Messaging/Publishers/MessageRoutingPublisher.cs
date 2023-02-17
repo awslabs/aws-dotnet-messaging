@@ -34,7 +34,8 @@ internal class MessageRoutingPublisher : IMessagePublisher
 
     private readonly Dictionary<string, Type> _publisherTypeMapping = new()
         {
-            { PublisherTargetType.SQS_PUBLISHER, typeof(SQSPublisher) }
+            { PublisherTargetType.SQS_PUBLISHER, typeof(SQSPublisher) },
+            { PublisherTargetType.SNS_PUBLISHER, typeof(SNSPublisher) }
         };
 
     /// <summary>

@@ -34,4 +34,21 @@ public class PublisherController : ControllerBase
 
         return Ok();
     }
+
+    [HttpPost("order", Name = "Order")]
+    public async Task<IActionResult> PublishOrder([FromBody] OrderInfo message)
+    {
+        if (message == null)
+        {
+            return BadRequest("A chat message was not used.");
+        }
+        if (string.IsNullOrEmpty(message.UserId))
+        {
+            return BadRequest("The MessageDescription cannot be null or empty.");
+        }
+
+        await _messagePublisher.PublishAsync(message);
+
+        return Ok();
+    }
 }
