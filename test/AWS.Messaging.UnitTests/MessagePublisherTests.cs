@@ -13,6 +13,8 @@ using Amazon.SQS;
 using AWS.Messaging.Serialization;
 using System.Threading;
 using Amazon.SQS.Model;
+using Amazon.SimpleNotificationService;
+using Amazon.SimpleNotificationService.Model;
 
 namespace AWS.Messaging.UnitTests;
 
@@ -22,6 +24,7 @@ public class MessagePublisherTests
     private readonly Mock<IMessageConfiguration> _messageConfiguration;
     private readonly Mock<ILogger<IMessagePublisher>> _logger;
     private readonly Mock<IAmazonSQS> _sqsClient;
+    private readonly Mock<IAmazonSimpleNotificationService> _snsClient;
     private readonly Mock<IEnvelopeSerializer> _envelopeSerializer;
     private readonly ChatMessage _chatMessage;
 
@@ -31,6 +34,7 @@ public class MessagePublisherTests
         _messageConfiguration = new Mock<IMessageConfiguration>();
         _logger = new Mock<ILogger<IMessagePublisher>>();
         _sqsClient = new Mock<IAmazonSQS>();
+        _snsClient = new Mock<IAmazonSimpleNotificationService>();
         _envelopeSerializer = new Mock<IEnvelopeSerializer>();
         _chatMessage = new ChatMessage { MessageDescription = "Test Description" };
     }
@@ -104,5 +108,49 @@ public class MessagePublisherTests
             );
 
         await Assert.ThrowsAsync<UnsupportedPublisherException>(() => messagePublisher.PublishAsync(_chatMessage));
+    }
+
+    private void SetupSNSPublisherDIServices()
+    {
+        var publisherConfiguration = new SNSPublisherConfiguration("endpoint");
+        var publisherMapping = new PublisherMapping(typeof(ChatMessage), publisherConfiguration, PublisherTargetType.SNS_PUBLISHER);
+
+        _serviceProvider.Setup(x => x.GetService(typeof(IAmazonSimpleNotificationService))).Returns(_snsClient.Object);
+        _serviceProvider.Setup(x => x.GetService(typeof(ILogger<IMessagePublisher>))).Returns(_logger.Object);
+        _serviceProvider.Setup(x => x.GetService(typeof(IMessageConfiguration))).Returns(_messageConfiguration.Object);
+        _serviceProvider.Setup(x => x.GetService(typeof(IEnvelopeSerializer))).Returns(_envelopeSerializer.Object);
+        _messageConfiguration.Setup(x => x.GetPublisherMapping(typeof(ChatMessage))).Returns(publisherMapping);
+    }
+
+    [Fact]
+    public async Task SNSPublisher_HappyPath()
+    {
+        SetupSNSPublisherDIServices();
+
+        _snsClient.Setup(x => x.PublishAsync(It.IsAny<PublishRequest>(), It.IsAny<CancellationToken>()));
+
+        var messagePublisher = new MessageRoutingPublisher(
+            _serviceProvider.Object,
+            _messageConfiguration.Object,
+            _logger.Object
+            );
+
+        await messagePublisher.PublishAsync(_chatMessage);
+
+        _snsClient.Verify(x => x.PublishAsync(It.IsAny<PublishRequest>(), It.IsAny<CancellationToken>()), Times.Exactly(1));
+    }
+
+    [Fact]
+    public async Task SNSPublisher_InvalidMessage()
+    {
+        SetupSNSPublisherDIServices();
+
+        var messagePublisher = new MessageRoutingPublisher(
+            _serviceProvider.Object,
+            _messageConfiguration.Object,
+            _logger.Object
+            );
+
+        await Assert.ThrowsAsync<InvalidMessageException>(() => messagePublisher.PublishAsync<ChatMessage?>(null));
     }
 }
