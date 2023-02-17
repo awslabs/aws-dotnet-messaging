@@ -16,38 +16,38 @@ public abstract class MessageEnvelope
     /// Specifies the envelope ID
     /// </summary>
     [JsonPropertyName("id")]
-    public string Id { get; set; }
+    public string Id { get; set; } = null!;
 
     /// <summary>
     /// Specifies the source of the event.
     /// This can be the organization publishing the event or the process that produced the event.
     /// </summary>
     [JsonPropertyName("source")]
-    public Uri Source { get; set; }
+    public Uri Source { get; set; } = null!;
 
     /// <summary>
     /// The version of the CloudEvents specification which the event uses.
     /// </summary>
     [JsonPropertyName("specversion")]
-    public string Version { get; set; }
+    public string Version { get; set; } = null!;
 
     /// <summary>
     /// The type of event that occurred. This represents the language agnostic type that is used to deserialize the envelope message into a .NET type.
     /// </summary>
     [JsonPropertyName("type")]
-    public string Type { get; set; }
+    public string MessageTypeIdentifier { get; set; } = null!;
 
     /// <summary>
     /// The timestamp when the event occurred.
     /// </summary>
     [JsonPropertyName("time")]
-    public DateTime TimeStamp { get; set; }
+    public DateTimeOffset TimeStamp { get; set; } = DateTimeOffset.MinValue;
 
     /// <summary>
     /// This stores different metadata that is not modeled as a top-level property in MessageEnvelope class.
     /// </summary>
     [JsonExtensionData]
-    public Dictionary<string, object>? Metadata { get; set; } = new Dictionary<string, object>();
+    public Dictionary<string, object> Metadata { get; set; } = new Dictionary<string, object>();
 
     /// <summary>
     /// Stores metadata related to Amazon SQS.
@@ -55,20 +55,10 @@ public abstract class MessageEnvelope
     public SQSMetadata? SQSMetadata { get; set; }
 
     /// <summary>
-    /// Creates a MessageEnvelope object that is aligned with CloudEvents specification v1.0
+    /// Attaches the user specified application message to the <see cref="MessageEnvelope"/>
     /// </summary>
-    public MessageEnvelope(string id,
-        Uri source,
-        string version,
-        string type,
-        DateTime timeStamp)
-    {
-        Id = id;
-        Source = source;
-        Version = version;
-        Type = type;
-        TimeStamp = timeStamp;
-    }
+    /// <param name="message">The user specified application message.</param>
+    internal abstract void SetMessage(object message);
 }
 
 /// <summary>
@@ -79,22 +69,17 @@ public abstract class MessageEnvelope
 public class MessageEnvelope<T> : MessageEnvelope
 {
     /// <summary>
-    /// Creates a MessageEnvelope object that is aligned with CloudEvents specification v1.0
-    /// </summary>
-    public MessageEnvelope(string id,
-        Uri source,
-        string version,
-        string type,
-        DateTime timeStamp,
-        T message)
-        : base(id, source, version, type, timeStamp)
-    {
-        Message = message;
-    }
-
-    /// <summary>
     /// The application message that will be processed.
     /// </summary>
     [JsonPropertyName("data")]
-    public T Message { get; set; }
+    public T Message { get; set; } = default!;
+
+    /// <summary>
+    /// Attaches the user specified application message to the <see cref="MessageEnvelope{T}.Message"/> property.
+    /// </summary>
+    /// <param name="message">The user specified application message.</param>
+    internal override void SetMessage(object message)
+    {
+        Message = (T)message;
+    }
 }

@@ -33,6 +33,13 @@ public interface IMessageConfiguration
     SubscriberMapping? GetSubscriberMapping(Type messageType);
 
     /// <summary>
+    /// Returns back the subscriber mapping for the given message type identifier.
+    /// </summary>
+    /// <param name="messageTypeIdentifier">The language agnostic identifier for the application message</param>
+    /// <returns>The <see cref="SubscriberMapping"/> containing routing info for the specified message type.</returns>
+    SubscriberMapping? GetSubscriberMapping(string messageTypeIdentifier);
+
+    /// <summary>
     /// List of configurations for subscriber to poll for messages from an AWS service endpoint.
     /// </summary>
     IList<IMessagePollerConfiguration> MessagePollerConfigurations { get; set; }

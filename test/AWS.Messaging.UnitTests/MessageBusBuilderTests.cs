@@ -14,8 +14,6 @@ using AWS.Messaging.UnitTests.MessageHandlers;
 using AWS.Messaging.UnitTests.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
 namespace AWS.Messaging.UnitTests;
@@ -44,11 +42,10 @@ public class MessageBusBuilderTests
 
         var serviceProvider = _serviceCollection.BuildServiceProvider();
 
-        var messageConfiguration = serviceProvider.GetService<IMessageConfiguration>();
-        Assert.NotNull(messageConfiguration);
-
         var messagePublisher = serviceProvider.GetService<IMessagePublisher>();
         Assert.NotNull(messagePublisher);
+
+        CheckRequiredServices(serviceProvider);
     }
 
     [Fact]
@@ -147,22 +144,6 @@ public class MessageBusBuilderTests
     }
 
     [Fact]
-    public void MessageBus_MessageSerializerShouldExist()
-    {
-        _serviceCollection.AddAWSMessageBus(builder =>
-        {
-            builder.AddSQSPoller("queueUrl");
-        });
-
-        _serviceCollection.AddSingleton<ILogger<MessageSerializer>, NullLogger<MessageSerializer>>();
-
-        var serviceProvider = _serviceCollection.BuildServiceProvider();
-
-        var messageSerializer = serviceProvider.GetService<IMessageSerializer>();
-        Assert.NotNull(messageSerializer);
-    }
-
-    [Fact]
     public void MessageBus_AddSerializerOptions()
     {
         _serviceCollection.AddAWSMessageBus(builder =>
@@ -236,6 +217,8 @@ public class MessageBusBuilderTests
         {
             Assert.Fail($"Expected configuration to be of type {typeof(SQSMessagePollerConfiguration)}");
         }
+
+        CheckRequiredServices(serviceProvider);
     }
 
     /// <summary>
@@ -290,5 +273,24 @@ public class MessageBusBuilderTests
                 $"Ensure that new public properties to configure SQS polling are added to both classes, " +
                 $"and then is set appropriately in {nameof(MessageBusBuilder.AddSQSPoller)} in {nameof(MessageBusBuilder)}.");
         }
+    }
+
+    // These services must be present irrespective of whether publishers or subscribers are configured.
+    private void CheckRequiredServices(ServiceProvider serviceProvider)
+    {
+        var messageConfiguration = serviceProvider.GetService<IMessageConfiguration>();
+        Assert.NotNull(messageConfiguration);
+
+        var messageSerializer = serviceProvider.GetService<IMessageSerializer>();
+        Assert.NotNull(messageSerializer);
+
+        var envelopeSerializer = serviceProvider.GetService<IEnvelopeSerializer>();
+        Assert.NotNull(envelopeSerializer);
+
+        var dateTimeHandler = serviceProvider.GetService<IDateTimeHandler>();
+        Assert.NotNull(dateTimeHandler);
+
+        var messageIdGenerator = serviceProvider.GetService<IMessageIdGenerator>();
+        Assert.NotNull(messageIdGenerator);
     }
 }

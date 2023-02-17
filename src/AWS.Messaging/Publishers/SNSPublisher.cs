@@ -57,7 +57,7 @@ internal class SNSPublisher : IMessagePublisher
         }
 
         _logger.LogDebug("Creating the message envelope for the message of type '{messageType}'.", typeof(T));
-        var messageEnvelope = _envelopeSerializer.ConvertToEnvelope<T>(message);
+        var messageEnvelope = await _envelopeSerializer.CreateEnvelopeAsync(message);
         var messageBody = _envelopeSerializer.Serialize(messageEnvelope);
 
         var request = new PublishRequest

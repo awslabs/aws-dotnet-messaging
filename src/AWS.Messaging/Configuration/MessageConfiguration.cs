@@ -29,6 +29,13 @@ public class MessageConfiguration : IMessageConfiguration
     }
 
     /// <inheritdoc/>
+    public SubscriberMapping? GetSubscriberMapping(string messageTypeIdentifier)
+    {
+        var subscriberMapping = SubscriberMappings.FirstOrDefault(x => messageTypeIdentifier == x.MessageTypeIdentifier);
+        return subscriberMapping;
+    }
+
+    /// <inheritdoc/>
     public IList<IMessagePollerConfiguration> MessagePollerConfigurations { get; set; } = new List<IMessagePollerConfiguration>();
 
     /// <inheritdoc/>

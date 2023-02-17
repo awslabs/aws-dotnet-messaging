@@ -4,7 +4,7 @@
 using System.Text.Json.Serialization;
 using AWS.Messaging.Configuration;
 using AWS.Messaging.Serialization;
-using Microsoft.Extensions.Logging;
+using AWS.Messaging.UnitTests.Models;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -69,27 +69,4 @@ public class MessageSerializerTests
         Assert.Equal("Prince St", message.Address?.Street);
         Assert.Equal("00001", message.Address?.ZipCode);
     }
-}
-
-class PersonInfo
-{
-    public string? FirstName { get; set; }
-    public string? LastName { get; set; }
-    public int Age { get; set; }
-    [JsonConverter(typeof(JsonStringEnumConverter))]
-    public Gender Gender { get; set; }
-    public AddressInfo? Address { get; set; }
-}
-
-class AddressInfo
-{
-    public int Unit { get; set; }
-    public string? Street { get; set; }
-    public string? ZipCode { get; set; }
-}
-
-enum Gender
-{
-    Male,
-    Female
 }
