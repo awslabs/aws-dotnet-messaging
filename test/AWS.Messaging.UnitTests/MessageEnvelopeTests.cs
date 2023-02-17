@@ -45,10 +45,10 @@ public class MessageEnvelopeTests
         Assert.NotNull(messageEnvelope);
         Assert.Equal("A1234", messageEnvelope.Id);
         Assert.Equal("1.0", messageEnvelope.Version);
-        Assert.Equal("order-info", messageEnvelope.Type);
-        Assert.Equal("/backend-service/order-placed", messageEnvelope.Source.ToString());
+        Assert.Equal("order-info", messageEnvelope.MessageTypeIdentifier);
+        Assert.Equal("/backend-service/order-placed", messageEnvelope.Source!.ToString());
         Assert.Equal(new DateTime(2018, 4, 5, 17, 31, 0), messageEnvelope.TimeStamp);
-        Assert.Equal("Bob", messageEnvelope.Message.Name);
+        Assert.Equal("Bob", messageEnvelope.Message!.Name);
         Assert.Equal("my-city", messageEnvelope.Message.City);
         Assert.Equal("t-shirt", messageEnvelope.Message.Merchandise);
         Assert.NotNull(messageEnvelope.Metadata);

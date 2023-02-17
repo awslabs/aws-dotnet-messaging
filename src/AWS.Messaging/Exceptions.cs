@@ -97,23 +97,23 @@ public class InvalidSubscriberEndpointException : AWSMessagingException
 /// <summary>
 /// Thrown if failed to deserialize the application message while invoking <see cref="IMessageSerializer.Deserialize(string, Type)"/>
 /// </summary>
-public class FailedToDeserializeApplicationMessage : AWSMessagingException
+public class FailedToDeserializeApplicationMessageException : AWSMessagingException
 {
     /// <summary>
-    /// Creates an instance of <see cref="FailedToDeserializeApplicationMessage"/>.
+    /// Creates an instance of <see cref="FailedToDeserializeApplicationMessageException"/>.
     /// </summary>
-    public FailedToDeserializeApplicationMessage(string message, Exception? innerException = null) : base(message, innerException) { }
+    public FailedToDeserializeApplicationMessageException(string message, Exception? innerException = null) : base(message, innerException) { }
 }
 
 /// <summary>
 /// Thrown if failed to serialize the application message while invoking <see cref="IMessageSerializer.Serialize(object)"/>
 /// </summary>
-public class FailedToSerializeApplicationMessage : AWSMessagingException
+public class FailedToSerializeApplicationMessageException : AWSMessagingException
 {
     /// <summary>
-    /// Creates an instance of <see cref="FailedToSerializeApplicationMessage"/>.
+    /// Creates an instance of <see cref="FailedToSerializeApplicationMessageException"/>.
     /// </summary>
-    public FailedToSerializeApplicationMessage(string message, Exception? innerException = null) : base(message, innerException) { }
+    public FailedToSerializeApplicationMessageException(string message, Exception? innerException = null) : base(message, innerException) { }
 }
 
 /// <summary>
@@ -125,4 +125,26 @@ public class InvalidMessageException : AWSMessagingException
     /// Creates an instance of <see cref="InvalidMessageException"/>.
     /// </summary>
     public InvalidMessageException(string message, Exception? innerException = null) : base(message, innerException) { }
+}
+
+/// <summary>
+/// Thrown if failed to create a <see cref="MessageEnvelope"/>
+/// </summary>
+public class FailedToCreateMessageEnvelopeException : AWSMessagingException
+{
+    /// <summary>
+    /// Creates an instance of <see cref="FailedToCreateMessageEnvelopeException"/>
+    /// </summary>
+    public FailedToCreateMessageEnvelopeException(string message, Exception? innerException = null) : base(message, innerException) { }
+}
+
+/// <summary>
+/// Thrown if failed to serialize a <see cref="MessageEnvelope"/>
+/// </summary>
+public class FailedToSerializeMessageEnvelopeException : AWSMessagingException
+{
+    /// <summary>
+    /// Creates an instance of <see cref="FailedToSerializeMessageEnvelopeException"/>
+    /// </summary>
+    public FailedToSerializeMessageEnvelopeException(string message, Exception? innerException = null) : base(message, innerException) { }
 }

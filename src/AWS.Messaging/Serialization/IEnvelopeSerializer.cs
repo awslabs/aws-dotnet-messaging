@@ -1,6 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using Amazon.SQS.Model;
+
 namespace AWS.Messaging.Serialization;
 
 /// <summary>
@@ -15,19 +17,15 @@ public interface IEnvelopeSerializer
     string Serialize<T>(MessageEnvelope<T> envelope);
 
     /// <summary>
-    /// Converts the specified message object into <see cref="MessageEnvelope"/>
-    /// </summary>
-    /// <param name="message">The message object that will be transformed into a <see cref="MessageEnvelope"/></param>
-    /// <param name="messageDataType">The .NET type of the underlying application message.</param>
-    MessageEnvelope ConvertToEnvelope(object message, Type messageDataType);
-
-    /// <summary>
-    /// Converts the specified message object into <see cref="MessageEnvelope"/>
+    /// Creates a <see cref="MessageEnvelope{T}"/>
     /// </summary>
     /// <typeparam name="T">The .NET type of the underlying application message.</typeparam>
-    /// <param name="message">The message object that will be transformed into a <see cref="MessageEnvelope"/></param>
-    MessageEnvelope<T> ConvertToEnvelope<T>(object message)
-    {
-        return (MessageEnvelope<T>)ConvertToEnvelope(message, typeof(T));
-    }
+    /// <param name="message">The application message sent by the user</param>
+    ValueTask<MessageEnvelope<T>> CreateEnvelopeAsync<T>(T message);
+
+    /// <summary>
+    /// Takes an SQS <see cref="Message"/> and converts the <see cref="Message.Body"/> into a <see cref="MessageEnvelope"/>
+    /// </summary>
+    /// <param name="message">The SQS <see cref="Message"/> sent by the user</param>
+    ConvertToEnvelopeResult ConvertToEnvelope(Message message);
 }

@@ -14,3 +14,11 @@ public class ChatMessageHandler : IMessageHandler<ChatMessage>
         return Task.FromResult(MessageProcessStatus.Success());
     }
 }
+
+public class AddressInfoHandler : IMessageHandler<AddressInfo>
+{
+    public Task<MessageProcessStatus> HandleAsync(MessageEnvelope<AddressInfo> messageEnvelope, CancellationToken token = default)
+    {
+        return Task.FromResult(MessageProcessStatus.Success());
+    }
+}

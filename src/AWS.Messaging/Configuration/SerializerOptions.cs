@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 
 namespace AWS.Messaging.Configuration;
@@ -19,6 +20,8 @@ public class SerializationOptions
     /// <summary>
     /// This is an instance of <see cref="JsonSerializerOptions"/> that controls the serialization/de-serialization logic of the application message.
     /// </summary>
-    public JsonSerializerOptions? SystemTextJsonOptions { get; set; }
-
+    public JsonSerializerOptions? SystemTextJsonOptions { get; set; } = new JsonSerializerOptions
+    {
+        Converters = { new JsonStringEnumConverter() }
+    };
 }

@@ -92,7 +92,10 @@ public class MessageBusBuilder : IMessageBusBuilder
     internal void Build(IServiceCollection services)
     {
         services.AddSingleton<IMessageConfiguration>(_messageConfiguration);
-        services.AddSingleton<IMessageSerializer, MessageSerializer>();
+        services.TryAddSingleton<IMessageSerializer, MessageSerializer>();
+        services.TryAddSingleton<IEnvelopeSerializer, EnvelopeSerializer>();
+        services.TryAddSingleton<IDateTimeHandler, DateTimeHandler>();
+        services.TryAddSingleton<IMessageIdGenerator, MessageIdGenerator>();
 
         if (_messageConfiguration.PublisherMappings.Any())
         {

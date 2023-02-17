@@ -23,7 +23,7 @@ internal class MessageSerializer : IMessageSerializer
     }
 
     /// <inheritdoc/>
-    /// <exception cref="FailedToDeserializeApplicationMessage"></exception>
+    /// <exception cref="FailedToDeserializeApplicationMessageException"></exception>
     public object Deserialize(string message, Type deserializedType)
     {
         try
@@ -35,12 +35,12 @@ internal class MessageSerializer : IMessageSerializer
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to deserialize application message into an instance of {0}.", deserializedType);
-            throw new FailedToDeserializeApplicationMessage($"Failed to deserialize application message into an instance of {deserializedType}.", ex);
+            throw new FailedToDeserializeApplicationMessageException($"Failed to deserialize application message into an instance of {deserializedType}.", ex);
         }
     }
 
     /// <inheritdoc/>
-    /// <exception cref="FailedToSerializeApplicationMessage"></exception>
+    /// <exception cref="FailedToSerializeApplicationMessageException"></exception>
     public string Serialize(object message)
     {
         try
@@ -53,7 +53,7 @@ internal class MessageSerializer : IMessageSerializer
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to serialize application message into a string");
-            throw new FailedToSerializeApplicationMessage("Failed to serialize application message into a string", ex);
+            throw new FailedToSerializeApplicationMessageException("Failed to serialize application message into a string", ex);
         }
     }
 }
