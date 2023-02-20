@@ -15,6 +15,8 @@ using System.Threading;
 using Amazon.SQS.Model;
 using Amazon.SimpleNotificationService;
 using Amazon.SimpleNotificationService.Model;
+using Amazon.EventBridge;
+using Amazon.EventBridge.Model;
 
 namespace AWS.Messaging.UnitTests;
 
@@ -25,6 +27,7 @@ public class MessagePublisherTests
     private readonly Mock<ILogger<IMessagePublisher>> _logger;
     private readonly Mock<IAmazonSQS> _sqsClient;
     private readonly Mock<IAmazonSimpleNotificationService> _snsClient;
+    private readonly Mock<IAmazonEventBridge> _eventBridgeClient;
     private readonly Mock<IEnvelopeSerializer> _envelopeSerializer;
     private readonly ChatMessage _chatMessage;
 
@@ -35,6 +38,7 @@ public class MessagePublisherTests
         _logger = new Mock<ILogger<IMessagePublisher>>();
         _sqsClient = new Mock<IAmazonSQS>();
         _snsClient = new Mock<IAmazonSimpleNotificationService>();
+        _eventBridgeClient = new Mock<IAmazonEventBridge>();
         _envelopeSerializer = new Mock<IEnvelopeSerializer>();
         _chatMessage = new ChatMessage { MessageDescription = "Test Description" };
     }
@@ -54,7 +58,11 @@ public class MessagePublisherTests
 
         await messagePublisher.PublishAsync(_chatMessage);
 
-        _sqsClient.Verify(x => x.SendMessageAsync(It.IsAny<SendMessageRequest>(), It.IsAny<CancellationToken>()), Times.Exactly(1));
+        _sqsClient.Verify(x =>
+            x.SendMessageAsync(
+                It.Is<SendMessageRequest>(request =>
+                    request.QueueUrl.Equals("endpoint")),
+                It.IsAny<CancellationToken>()), Times.Exactly(1));
     }
 
     [Fact]
@@ -137,13 +145,65 @@ public class MessagePublisherTests
 
         await messagePublisher.PublishAsync(_chatMessage);
 
-        _snsClient.Verify(x => x.PublishAsync(It.IsAny<PublishRequest>(), It.IsAny<CancellationToken>()), Times.Exactly(1));
+        _snsClient.Verify(x =>
+            x.PublishAsync(
+                It.Is<PublishRequest>(request =>
+                    request.TopicArn.Equals("endpoint")),
+                It.IsAny<CancellationToken>()), Times.Exactly(1));
     }
 
     [Fact]
     public async Task SNSPublisher_InvalidMessage()
     {
         SetupSNSPublisherDIServices();
+
+        var messagePublisher = new MessageRoutingPublisher(
+            _serviceProvider.Object,
+            _messageConfiguration.Object,
+            _logger.Object
+            );
+
+        await Assert.ThrowsAsync<InvalidMessageException>(() => messagePublisher.PublishAsync<ChatMessage?>(null));
+    }
+
+    private void SetupEventBridgePublisherDIServices()
+    {
+        var publisherConfiguration = new EventBridgePublisherConfiguration("endpoint");
+        var publisherMapping = new PublisherMapping(typeof(ChatMessage), publisherConfiguration, PublisherTargetType.EVENTBRIDGE_PUBLISHER);
+
+        _serviceProvider.Setup(x => x.GetService(typeof(IAmazonEventBridge))).Returns(_eventBridgeClient.Object);
+        _serviceProvider.Setup(x => x.GetService(typeof(ILogger<IMessagePublisher>))).Returns(_logger.Object);
+        _serviceProvider.Setup(x => x.GetService(typeof(IMessageConfiguration))).Returns(_messageConfiguration.Object);
+        _serviceProvider.Setup(x => x.GetService(typeof(IEnvelopeSerializer))).Returns(_envelopeSerializer.Object);
+        _messageConfiguration.Setup(x => x.GetPublisherMapping(typeof(ChatMessage))).Returns(publisherMapping);
+    }
+    
+    [Fact]
+    public async Task EventBridgePublisher_HappyPath()
+    {
+        SetupEventBridgePublisherDIServices();
+
+        _eventBridgeClient.Setup(x => x.PutEventsAsync(It.IsAny<PutEventsRequest>(), It.IsAny<CancellationToken>()));
+
+        var messagePublisher = new MessageRoutingPublisher(
+            _serviceProvider.Object,
+            _messageConfiguration.Object,
+            _logger.Object
+            );
+
+        await messagePublisher.PublishAsync(_chatMessage);
+
+        _eventBridgeClient.Verify(x =>
+            x.PutEventsAsync(
+                It.Is<PutEventsRequest>(request =>
+                    request.Entries[0].EventBusName.Equals("endpoint")),
+                It.IsAny<CancellationToken>()), Times.Exactly(1));
+    }
+
+    [Fact]
+    public async Task EventBridgePublisher_InvalidMessage()
+    {
+        SetupEventBridgePublisherDIServices();
 
         var messagePublisher = new MessageRoutingPublisher(
             _serviceProvider.Object,
