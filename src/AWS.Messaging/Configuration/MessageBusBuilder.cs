@@ -62,9 +62,23 @@ public class MessageBusBuilder : IMessageBusBuilder
     }
 
     /// <inheritdoc/>
-    public IMessageBusBuilder AddSQSPoller(string queueUrl)
+    public IMessageBusBuilder AddSQSPoller(string queueUrl, Action<SQSMessagePollerOptions>? options = null)
     {
-        _messageConfiguration.MessagePollerConfigurations.Add(new SQSMessagePollerConfiguration(queueUrl));
+        // Create the user-provided options class
+        var sqsMessagePollerOptions = new SQSMessagePollerOptions();
+
+        if (options != null)
+        {
+            options.Invoke(sqsMessagePollerOptions);
+        }
+
+        // Copy that to our internal options class
+        var sqsMessagePollerConfiguration = new SQSMessagePollerConfiguration(queueUrl)
+        {
+            MaxNumberOfConcurrentMessages = sqsMessagePollerOptions.MaxNumberOfConcurrentMessages
+        };
+
+        _messageConfiguration.MessagePollerConfigurations.Add(sqsMessagePollerConfiguration);
         return this;
     }
 
@@ -110,6 +124,7 @@ public class MessageBusBuilder : IMessageBusBuilder
         {
             services.AddHostedService<MessagePumpService>();
             services.TryAddSingleton<IMessagePollerFactory, DefaultMessagePollerFactory>();
+            services.TryAddSingleton<IMessageManagerFactory, DefaultMessageManagerFactory>();
 
             if (_messageConfiguration.MessagePollerConfigurations.OfType<SQSMessagePollerConfiguration>().Any())
             {

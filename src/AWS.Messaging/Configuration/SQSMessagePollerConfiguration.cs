@@ -4,14 +4,26 @@
 namespace AWS.Messaging.Configuration;
 
 /// <summary>
-/// Configuration for polling messages from SQS
+/// Internal configuration for polling messages from SQS
 /// </summary>
-public class SQSMessagePollerConfiguration : IMessagePollerConfiguration
+internal class SQSMessagePollerConfiguration : IMessagePollerConfiguration
 {
+    /// <summary>
+    /// Default value for <see cref="MaxNumberOfConcurrentMessages"/>
+    /// </summary>
+    /// <remarks>The default value is 10 messages.</remarks>
+    public const int DefaultMaxNumberOfConcurrentMessages = 10;
+
     /// <summary>
     /// The SQS QueueUrl to poll messages from.
     /// </summary>
     public string SubscriberEndpoint { get; }
+
+    /// <summary>
+    /// The maximum number of messages from this queue to process concurrently.
+    /// </summary>
+    /// <remarks><inheritdoc cref="DefaultMaxNumberOfConcurrentMessages" path="//remarks"/></remarks>
+    public int MaxNumberOfConcurrentMessages { get; init; } = DefaultMaxNumberOfConcurrentMessages;
 
     /// <summary>
     /// Construct an instance of <see cref="SQSMessagePollerConfiguration" />
