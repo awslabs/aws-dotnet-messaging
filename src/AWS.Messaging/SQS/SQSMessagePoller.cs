@@ -12,7 +12,7 @@ namespace AWS.Messaging.SQS;
 /// <summary>
 /// SQS implementation of the <see cref="AWS.Messaging.Services.IMessagePoller" />
 /// </summary>
-public class SQSMessagePoller : IMessagePoller
+internal class SQSMessagePoller : IMessagePoller
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly IAmazonSQS _sqsClient;

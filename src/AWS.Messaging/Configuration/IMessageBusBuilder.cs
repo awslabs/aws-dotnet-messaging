@@ -44,7 +44,8 @@ public interface IMessageBusBuilder
     /// Adds an SQS queue to poll for messages.
     /// </summary>
     /// <param name="queueUrl">The SQS queue to poll for messages.</param>
-    IMessageBusBuilder AddSQSPoller(string queueUrl);
+    /// <param name="options">Optional configuration for polling message from SQS.</param>
+    IMessageBusBuilder AddSQSPoller(string queueUrl, Action<SQSMessagePollerOptions>? options = null);
 
     /// <summary>
     /// Configures an instance of <see cref="SerializationOptions"/> to control the serialization/de-serialization logic for the application message.
