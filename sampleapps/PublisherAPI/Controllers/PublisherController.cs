@@ -18,8 +18,8 @@ public class PublisherController : ControllerBase
         _messagePublisher = messagePublisher;
     }
 
-    [HttpPost]
-    public async Task<IActionResult> PublishMessage([FromBody] ChatMessage message)
+    [HttpPost("chatmessage", Name = "Chat Message")]
+    public async Task<IActionResult> PublishChatMessage([FromBody] ChatMessage message)
     {
         if (message == null)
         {
@@ -40,9 +40,26 @@ public class PublisherController : ControllerBase
     {
         if (message == null)
         {
-            return BadRequest("A chat message was not used.");
+            return BadRequest("An order info was not used.");
         }
         if (string.IsNullOrEmpty(message.UserId))
+        {
+            return BadRequest("The MessageDescription cannot be null or empty.");
+        }
+
+        await _messagePublisher.PublishAsync(message);
+
+        return Ok();
+    }
+    
+    [HttpPost("fooditem", Name = "Food Item")]
+    public async Task<IActionResult> PublishFoodItem([FromBody] FoodItem message)
+    {
+        if (message == null)
+        {
+            return BadRequest("A food item was not used.");
+        }
+        if (string.IsNullOrEmpty(message.Name))
         {
             return BadRequest("The MessageDescription cannot be null or empty.");
         }
