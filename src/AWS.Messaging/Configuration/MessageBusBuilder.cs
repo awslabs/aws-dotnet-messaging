@@ -72,10 +72,14 @@ public class MessageBusBuilder : IMessageBusBuilder
             options.Invoke(sqsMessagePollerOptions);
         }
 
+        sqsMessagePollerOptions.Validate();
+
         // Copy that to our internal options class
         var sqsMessagePollerConfiguration = new SQSMessagePollerConfiguration(queueUrl)
         {
-            MaxNumberOfConcurrentMessages = sqsMessagePollerOptions.MaxNumberOfConcurrentMessages
+            MaxNumberOfConcurrentMessages = sqsMessagePollerOptions.MaxNumberOfConcurrentMessages,
+            VisibilityTimeout = sqsMessagePollerOptions.VisibilityTimeout,
+            WaitTimeSeconds = sqsMessagePollerOptions.WaitTimeSeconds
         };
 
         _messageConfiguration.MessagePollerConfigurations.Add(sqsMessagePollerConfiguration);
