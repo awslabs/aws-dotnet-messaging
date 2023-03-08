@@ -21,7 +21,7 @@ public interface IMessageManagerFactory
 }
 
 /// <summary>
-/// Implemenation of <see cref="AWS.Messaging.Services.IMessageManagerFactory" /> that is the default registered factory into
+/// Implementation of <see cref="AWS.Messaging.Services.IMessageManagerFactory" /> that is the default registered factory into
 /// the IServiceCollection unless a user has registered their own implementation.
 /// </summary>
 internal class DefaultMessageManagerFactory : IMessageManagerFactory
@@ -37,6 +37,6 @@ internal class DefaultMessageManagerFactory : IMessageManagerFactory
     /// <inheritdoc/>
     public IMessageManager CreateMessageManager(IMessagePoller poller)
     {
-        return ActivatorUtilities.CreateInstance<IMessageManager>(_serviceProvider, poller);
+        return ActivatorUtilities.CreateInstance<DefaultMessageManager>(_serviceProvider, poller);
     }
 }
