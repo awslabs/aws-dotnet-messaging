@@ -55,6 +55,11 @@ public abstract class MessageEnvelope
     public SQSMetadata? SQSMetadata { get; set; }
 
     /// <summary>
+    /// Stores metadata related to Amazon SNS.
+    /// </summary>
+    public SNSMetadata? SNSMetadata { get; set; }
+
+    /// <summary>
     /// Attaches the user specified application message to the <see cref="MessageEnvelope"/>
     /// </summary>
     /// <param name="message">The user specified application message.</param>

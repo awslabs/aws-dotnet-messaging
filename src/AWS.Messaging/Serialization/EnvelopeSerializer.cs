@@ -98,7 +98,8 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
     {
         try
         {
-            var intermediateEnvelope = JsonSerializer.Deserialize<MessageEnvelope<string>>(sqsMessage.Body)!;
+            var messageEnvelopeConfiguration = GetMessageEnvelopeConfiguration(sqsMessage);
+            var intermediateEnvelope = JsonSerializer.Deserialize<MessageEnvelope<string>>(messageEnvelopeConfiguration.MessageEnvelopeBody)!;
             ValidateMessageEnvelope(intermediateEnvelope);
             var messageTypeIdentifier = intermediateEnvelope.MessageTypeIdentifier;
             var subscriberMapping = _messageConfiguration.GetSubscriberMapping(messageTypeIdentifier);
@@ -124,6 +125,8 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             finalMessageEnvelope.MessageTypeIdentifier = intermediateEnvelope.MessageTypeIdentifier;
             finalMessageEnvelope.TimeStamp = intermediateEnvelope.TimeStamp;
             finalMessageEnvelope.Metadata = intermediateEnvelope.Metadata;
+            finalMessageEnvelope.SQSMetadata = messageEnvelopeConfiguration.SQSMetadata;
+            finalMessageEnvelope.SNSMetadata = messageEnvelopeConfiguration.SNSMetadata;
             finalMessageEnvelope.SetMessage(message);
 
             var result = new ConvertToEnvelopeResult(finalMessageEnvelope, subscriberMapping);
@@ -172,5 +175,53 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             _logger.LogError("MessageEnvelope instance is not valid{newline}{errorMessage}", Environment.NewLine, validationFailures);
             throw new InvalidDataException($"MessageEnvelope instance is not valid{Environment.NewLine}{validationFailures}");
         }
+    }
+
+    private MessageEnvelopeConfiguration GetMessageEnvelopeConfiguration(Message sqsMessage)
+    {
+        var messageEnvelopeBody = sqsMessage.Body;
+        var sqsMetadata = new SQSMetadata();
+        var snsMetadata = new SNSMetadata();
+
+        using (var document = JsonDocument.Parse(sqsMessage.Body))
+        {
+            var root = document.RootElement;
+            // Check if the SQS message body contains an outer envelope injected by SNS.
+            if (root.TryGetProperty("TopicArn", out var topicArn) && root.TryGetProperty("Type", out var messageType))
+            {
+                var topicArnStr = topicArn.GetString() ?? string.Empty;
+                var messageTypeStr = messageType.GetString() ?? string.Empty;
+                if (topicArnStr.Contains("sns") && string.Equals(messageTypeStr, "Notification"))
+                {
+                    // Retrieve the inner message envelope
+                    messageEnvelopeBody = root.GetProperty("Message").GetString();
+                    if (string.IsNullOrEmpty(messageEnvelopeBody))
+                    {
+                        throw new FailedToCreateMessageEnvelopeConfigurationException("The SNS message envelope does not contain a valid message property.");
+                    }
+
+                    // Retrieve SNS message attributes
+                    if (root.TryGetProperty("MessageAttributes", out var messageAttributes))
+                    {
+                        snsMetadata.MessageAttributes = messageAttributes.Deserialize<Dictionary<string, Amazon.SimpleNotificationService.Model.MessageAttributeValue>>()
+                        ?? new Dictionary<string, Amazon.SimpleNotificationService.Model.MessageAttributeValue>();
+                    }
+                }
+            }
+        }
+
+        // Retrieve SQS metdata
+        sqsMetadata.MessageAttributes = sqsMessage.MessageAttributes;
+        sqsMetadata.ReceiptHandle = sqsMessage.ReceiptHandle;
+        if (sqsMessage.Attributes.ContainsKey("MessageGroupId"))
+        {
+            sqsMetadata.MessageGroupId = sqsMessage.Attributes["MessageGroupId"];
+        }
+        if (sqsMessage.Attributes.ContainsKey("MessageDeduplicationId"))
+        {
+            sqsMetadata.MessageDeduplicationId = sqsMessage.Attributes["MessageDeduplicationId"];
+        }
+
+        return new MessageEnvelopeConfiguration(messageEnvelopeBody, sqsMetadata, snsMetadata);
     }
 }

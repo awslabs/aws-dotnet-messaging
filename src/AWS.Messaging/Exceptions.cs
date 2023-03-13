@@ -148,3 +148,14 @@ public class FailedToSerializeMessageEnvelopeException : AWSMessagingException
     /// </summary>
     public FailedToSerializeMessageEnvelopeException(string message, Exception? innerException = null) : base(message, innerException) { }
 }
+
+/// <summary>
+/// Thrown if failed to create a <see cref="MessageEnvelopeConfiguration"/> instance.
+/// </summary>
+public class FailedToCreateMessageEnvelopeConfigurationException : AWSMessagingException
+{
+    /// <summary>
+    /// Creates an instance of <see cref="FailedToCreateMessageEnvelopeConfigurationException"/>
+    /// </summary>
+    public FailedToCreateMessageEnvelopeConfigurationException(string message, Exception? innerException = null) : base(message, innerException) { }
+}

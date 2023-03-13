@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System;
+using System.Collections.Generic;
+using System.Text.Json;
 using System.Threading.Tasks;
 using Amazon.SQS.Model;
 using AWS.Messaging.Serialization;
@@ -98,29 +100,40 @@ public class EnvelopeSerializerTests
     }
 
     [Fact]
-    public async Task ConvertToEnvelope()
+    public void ConvertToEnvelope_NoOuterEnvelope_In_SQSMessageBody()
     {
         // ARRANGE
         var serviceProvider = _serviceCollection.BuildServiceProvider();
         var envelopeSerializer = serviceProvider.GetRequiredService<IEnvelopeSerializer>();
-        var message = new AddressInfo
+        var messageEnvelope = new MessageEnvelope<AddressInfo>
         {
-            Street = "Prince St",
-            Unit = 123,
-            ZipCode = "00001"
-        };
+            Id = "66659d05-e4ff-462f-81c4-09e560e66a5c",
+            Source = new Uri("/aws/messaging", UriKind.Relative),
+            Version = "1.0",
+            MessageTypeIdentifier = "addressInfo",
+            TimeStamp = _testdate,
+            Message = new AddressInfo
+            {
+                Street = "Prince St",
+                Unit = 123,
+                ZipCode = "00001"
+            }
 
-        var envelope = await envelopeSerializer.CreateEnvelopeAsync(message);
+        };
         var sqsMessage = new Message
         {
-            Body = envelopeSerializer.Serialize(envelope)
+            Body = envelopeSerializer.Serialize(messageEnvelope),
+            ReceiptHandle = "receipt-handle"
         };
+        sqsMessage.MessageAttributes.Add("attr1", new MessageAttributeValue{DataType = "String", StringValue = "val1" });
+        sqsMessage.Attributes.Add("MessageGroupId", "group-123");
+        sqsMessage.Attributes.Add("MessageDeduplicationId", "dedup-123");
 
         // ACT
         var result = envelopeSerializer.ConvertToEnvelope(sqsMessage);
 
         // ASSERT
-        envelope = (MessageEnvelope<AddressInfo>)result.Envelope;
+        var envelope = (MessageEnvelope<AddressInfo>)result.Envelope;
         Assert.NotNull(envelope);
         Assert.Equal(_testdate, envelope.TimeStamp);
         Assert.Equal("1.0", envelope.Version);
@@ -137,5 +150,87 @@ public class EnvelopeSerializerTests
         Assert.Equal("addressInfo", subscribeMapping.MessageTypeIdentifier);
         Assert.Equal(typeof(AddressInfo), subscribeMapping.MessageType);
         Assert.Equal(typeof(AddressInfoHandler), subscribeMapping.HandlerType);
+
+        var sqsMetadata = envelope.SQSMetadata!;
+        Assert.Equal("receipt-handle", sqsMetadata.ReceiptHandle);
+        Assert.Equal("group-123", sqsMetadata.MessageGroupId);
+        Assert.Equal("dedup-123", sqsMetadata.MessageDeduplicationId);
+        Assert.Equal("String", sqsMetadata.MessageAttributes["attr1"].DataType);
+        Assert.Equal("val1", sqsMetadata.MessageAttributes["attr1"].StringValue);
+    }
+
+    [Fact]
+    public void ConvertToEnvelope_HasOuterEnvelope_In_SQSMessageBody()
+    {
+        // ARRANGE
+        var serviceProvider = _serviceCollection.BuildServiceProvider();
+        var envelopeSerializer = serviceProvider.GetRequiredService<IEnvelopeSerializer>();
+
+        var innerMessageEnvelope = new MessageEnvelope<AddressInfo>
+        {
+            Id = "66659d05-e4ff-462f-81c4-09e560e66a5c",
+            Source = new Uri("/aws/messaging", UriKind.Relative),
+            Version = "1.0",
+            MessageTypeIdentifier = "addressInfo",
+            TimeStamp = _testdate,
+            Message = new AddressInfo
+            {
+                Street = "Prince St",
+                Unit = 123,
+                ZipCode = "00001"
+            }
+        };
+
+        var outerMessageEnvelope = new Dictionary<string, object>
+        {
+            { "Type", "Notification" },
+            { "MessageId", "dc1e94d9-56c5-5e96-808d-cc7f68faa162" },
+            { "TopicArn", "arn:aws:sns:us-east-2:111122223333:ExampleTopic1" },
+            { "Subject", "TestSubject" },
+            { "Timestamp", "2021-02-16T21:41:19.978Z" },
+            { "SignatureVersion", "1" },
+            { "Signature", "abcdef33242" },
+            { "SigningCertURL", "https://sns.us-east-2.amazonaws.com/SimpleNotificationService-010a507c1833636cd94bdb98bd93083a.pem" },
+            { "UnsubscribeURL", "https://sns.us-east-2.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:us-east-2:111122223333:ExampleTopic1:e1039402-24e7-40a3-a0d4-797da162b297" },
+            { "Message", envelopeSerializer.Serialize(innerMessageEnvelope) },
+            { "MessageAttributes", new Dictionary<string, Amazon.SimpleNotificationService.Model.MessageAttributeValue>
+            {
+                { "attr1", new Amazon.SimpleNotificationService.Model.MessageAttributeValue{ DataType = "String", StringValue = "val1"} },
+                { "attr2", new Amazon.SimpleNotificationService.Model.MessageAttributeValue{ DataType = "Number", StringValue = "3"} }
+            } }
+        };
+
+        var sqsMessage = new Message
+        {
+            Body = JsonSerializer.Serialize(outerMessageEnvelope)
+        };
+
+        // ACT
+        var result = envelopeSerializer.ConvertToEnvelope(sqsMessage);
+
+        // ASSERT
+        var envelope = (MessageEnvelope<AddressInfo>)result.Envelope;
+        Assert.NotNull(envelope);
+        Assert.Equal(_testdate, envelope.TimeStamp);
+        Assert.Equal("1.0", envelope.Version);
+        Assert.Equal("/aws/messaging", envelope.Source?.ToString());
+        Assert.Equal("addressInfo", envelope.MessageTypeIdentifier);
+
+        var addressInfo = envelope.Message;
+        Assert.Equal("Prince St", addressInfo?.Street);
+        Assert.Equal(123, addressInfo?.Unit);
+        Assert.Equal("00001", addressInfo?.ZipCode);
+
+        var subscribeMapping = result.Mapping;
+        Assert.NotNull(subscribeMapping);
+        Assert.Equal("addressInfo", subscribeMapping.MessageTypeIdentifier);
+        Assert.Equal(typeof(AddressInfo), subscribeMapping.MessageType);
+        Assert.Equal(typeof(AddressInfoHandler), subscribeMapping.HandlerType);
+
+        var snsMetadata = envelope.SNSMetadata!;
+        Assert.Equal("String", snsMetadata.MessageAttributes["attr1"].DataType);
+        Assert.Equal("val1", snsMetadata.MessageAttributes["attr1"].StringValue);
+        Assert.Equal("Number", snsMetadata.MessageAttributes["attr2"].DataType);
+        Assert.Equal("3", snsMetadata.MessageAttributes["attr2"].StringValue);
     }
 }
