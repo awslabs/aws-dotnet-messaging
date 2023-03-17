@@ -99,7 +99,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
         try
         {
             var messageEnvelopeConfiguration = GetMessageEnvelopeConfiguration(sqsMessage);
-            var intermediateEnvelope = JsonSerializer.Deserialize<MessageEnvelope<string>>(messageEnvelopeConfiguration.MessageEnvelopeBody)!;
+            var intermediateEnvelope = JsonSerializer.Deserialize<MessageEnvelope<string>>(messageEnvelopeConfiguration.MessageEnvelopeBody!)!;
             ValidateMessageEnvelope(intermediateEnvelope);
             var messageTypeIdentifier = intermediateEnvelope.MessageTypeIdentifier;
             var subscriberMapping = _messageConfiguration.GetSubscriberMapping(messageTypeIdentifier);
@@ -179,49 +179,78 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
 
     private MessageEnvelopeConfiguration GetMessageEnvelopeConfiguration(Message sqsMessage)
     {
-        var messageEnvelopeBody = sqsMessage.Body;
-        var sqsMetadata = new SQSMetadata();
-        var snsMetadata = new SNSMetadata();
+        var envelopeConfiguration = new MessageEnvelopeConfiguration();
+        envelopeConfiguration.MessageEnvelopeBody = sqsMessage.Body;
 
         using (var document = JsonDocument.Parse(sqsMessage.Body))
         {
             var root = document.RootElement;
             // Check if the SQS message body contains an outer envelope injected by SNS.
-            if (root.TryGetProperty("TopicArn", out var topicArn) && root.TryGetProperty("Type", out var messageType))
+            if (root.TryGetProperty("Type", out var messageType) && string.Equals("Notification", messageType.GetString()))
             {
-                var topicArnStr = topicArn.GetString() ?? string.Empty;
-                var messageTypeStr = messageType.GetString() ?? string.Empty;
-                if (topicArnStr.Contains("sns") && string.Equals(messageTypeStr, "Notification"))
+                // Retrieve the inner message envelope.
+                envelopeConfiguration.MessageEnvelopeBody = GetJsonPropertyAsString(root, "Message");
+                if (string.IsNullOrEmpty(envelopeConfiguration.MessageEnvelopeBody))
                 {
-                    // Retrieve the inner message envelope
-                    messageEnvelopeBody = root.GetProperty("Message").GetString();
-                    if (string.IsNullOrEmpty(messageEnvelopeBody))
-                    {
-                        throw new FailedToCreateMessageEnvelopeConfigurationException("The SNS message envelope does not contain a valid message property.");
-                    }
-
-                    // Retrieve SNS message attributes
-                    if (root.TryGetProperty("MessageAttributes", out var messageAttributes))
-                    {
-                        snsMetadata.MessageAttributes = messageAttributes.Deserialize<Dictionary<string, Amazon.SimpleNotificationService.Model.MessageAttributeValue>>()
-                        ?? new Dictionary<string, Amazon.SimpleNotificationService.Model.MessageAttributeValue>();
-                    }
+                    _logger.LogError("Failed to create a message envelope configuration because the SNS message envelope does not contain a valid message property.");
+                    throw new FailedToCreateMessageEnvelopeConfigurationException("The SNS message envelope does not contain a valid message property.");
                 }
+                SetSNSMetadata(envelopeConfiguration, root);
             }
         }
 
-        // Retrieve SQS metdata
-        sqsMetadata.MessageAttributes = sqsMessage.MessageAttributes;
-        sqsMetadata.ReceiptHandle = sqsMessage.ReceiptHandle;
+        SetSQSMetadata(envelopeConfiguration, sqsMessage);
+        return envelopeConfiguration;
+    }
+
+    private void SetSQSMetadata(MessageEnvelopeConfiguration envelopeConfiguration, Message sqsMessage)
+    {
+        envelopeConfiguration.SQSMetadata = new SQSMetadata
+        {
+            MessageAttributes = sqsMessage.MessageAttributes,
+            ReceiptHandle = sqsMessage.ReceiptHandle
+        };
         if (sqsMessage.Attributes.ContainsKey("MessageGroupId"))
         {
-            sqsMetadata.MessageGroupId = sqsMessage.Attributes["MessageGroupId"];
+            envelopeConfiguration.SQSMetadata.MessageGroupId = sqsMessage.Attributes["MessageGroupId"];
         }
         if (sqsMessage.Attributes.ContainsKey("MessageDeduplicationId"))
         {
-            sqsMetadata.MessageDeduplicationId = sqsMessage.Attributes["MessageDeduplicationId"];
+            envelopeConfiguration.SQSMetadata.MessageDeduplicationId = sqsMessage.Attributes["MessageDeduplicationId"];
         }
+    }
 
-        return new MessageEnvelopeConfiguration(messageEnvelopeBody, sqsMetadata, snsMetadata);
+    private void SetSNSMetadata(MessageEnvelopeConfiguration envelopeConfiguration, JsonElement root)
+    {
+        envelopeConfiguration.SNSMetadata = new SNSMetadata
+        {
+            MessageId = GetJsonPropertyAsString(root, "MessageId"),
+            TopicArn = GetJsonPropertyAsString(root, "TopicArn"),
+            Subject = GetJsonPropertyAsString(root, "Subject"),
+            UnsubscribeURL = GetJsonPropertyAsString(root, "UnsubscribeURL"),
+            Timestamp = GetJsonPropertyAsDateTimeOffset(root, "Timestamp")
+        };
+        if (root.TryGetProperty("MessageAttributes", out var messageAttributes))
+        {
+            envelopeConfiguration.SNSMetadata.MessageAttributes = messageAttributes.Deserialize<Dictionary<string, Amazon.SimpleNotificationService.Model.MessageAttributeValue>>();
+        }
+    }
+
+    private string? GetJsonPropertyAsString(JsonElement node, string propertyName)
+    {
+        if (node.TryGetProperty(propertyName, out var propertyValue))
+        {
+            return propertyValue.GetString();
+        }
+        return null;
+    }
+
+    private DateTimeOffset GetJsonPropertyAsDateTimeOffset(JsonElement node, string propertyName)
+    {
+        if (node.TryGetProperty(propertyName, out var propertyValue))
+        {
+            return JsonSerializer.Deserialize<DateTimeOffset>(propertyValue);
+        }
+        return DateTimeOffset.MinValue;
     }
 }

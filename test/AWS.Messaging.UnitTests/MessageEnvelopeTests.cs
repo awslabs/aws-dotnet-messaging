@@ -56,7 +56,7 @@ public class MessageEnvelopeTests
         Assert.NotNull(messageEnvelope.SQSMetadata);
         Assert.Equal("dedup-id", messageEnvelope.SQSMetadata.MessageDeduplicationId);
         Assert.Equal("group-id", messageEnvelope.SQSMetadata.MessageGroupId);
-        Assert.Equal("John Doe", messageEnvelope.SQSMetadata.MessageAttributes["MyNameAttribute"].StringValue);
+        Assert.Equal("John Doe", messageEnvelope.SQSMetadata.MessageAttributes!["MyNameAttribute"].StringValue);
     }
 }
 

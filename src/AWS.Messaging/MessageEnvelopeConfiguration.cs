@@ -11,28 +11,15 @@ internal class MessageEnvelopeConfiguration
     /// <summary>
     /// Stores the JSON blob that will be deserialized into <see cref="MessageEnvelope"/>
     /// </summary>
-    public string MessageEnvelopeBody { get; init; }
+    public string? MessageEnvelopeBody { get; set; }
 
     /// <summary>
     /// Stores metadata related to Amazon SQS.
     /// </summary>
-    public SQSMetadata SQSMetadata { get; init; }
+    public SQSMetadata? SQSMetadata { get; set; }
 
     /// <summary>
     /// Stores metadata related to Amazon SNS.
     /// </summary>
-    public SNSMetadata SNSMetadata { get; init; }
-
-    /// <summary>
-    /// Creates an instance of <see cref="MessageEnvelopeConfiguration"/>
-    /// </summary>
-    /// <param name="messageEnvelopeBody">Stores the JSON blob that will be deserialized into <see cref="MessageEnvelope"/></param>
-    /// <param name="sqsMetadata">Stores metadata related to Amazon SQS.</param>
-    /// <param name="snsMetadata">Stores metadata related to Amazon SNS.</param>
-    public MessageEnvelopeConfiguration(string messageEnvelopeBody, SQSMetadata sqsMetadata, SNSMetadata snsMetadata)
-    {
-        MessageEnvelopeBody = messageEnvelopeBody;
-        SQSMetadata = sqsMetadata;
-        SNSMetadata = snsMetadata;
-    }
+    public SNSMetadata? SNSMetadata { get; set; }
 }
