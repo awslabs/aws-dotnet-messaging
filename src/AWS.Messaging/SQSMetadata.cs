@@ -28,6 +28,6 @@ namespace AWS.Messaging
         /// <summary>
         /// Each message attribute consists of a Name, Type, and Value.For more information, see Amazon SQS message attributes (https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-message-metadata.html#sqs-message-attributes)
         /// </summary>
-        public Dictionary<string, MessageAttributeValue> MessageAttributes { get; set; } = new Dictionary<string, MessageAttributeValue>();
+        public Dictionary<string, MessageAttributeValue>? MessageAttributes { get; set; }
     }
 }

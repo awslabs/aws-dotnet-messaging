@@ -125,7 +125,7 @@ public class EnvelopeSerializerTests
             Body = envelopeSerializer.Serialize(messageEnvelope),
             ReceiptHandle = "receipt-handle"
         };
-        sqsMessage.MessageAttributes.Add("attr1", new MessageAttributeValue{DataType = "String", StringValue = "val1" });
+        sqsMessage.MessageAttributes.Add("attr1", new Amazon.SQS.Model.MessageAttributeValue{DataType = "String", StringValue = "val1" });
         sqsMessage.Attributes.Add("MessageGroupId", "group-123");
         sqsMessage.Attributes.Add("MessageDeduplicationId", "dedup-123");
 
@@ -155,7 +155,7 @@ public class EnvelopeSerializerTests
         Assert.Equal("receipt-handle", sqsMetadata.ReceiptHandle);
         Assert.Equal("group-123", sqsMetadata.MessageGroupId);
         Assert.Equal("dedup-123", sqsMetadata.MessageDeduplicationId);
-        Assert.Equal("String", sqsMetadata.MessageAttributes["attr1"].DataType);
+        Assert.Equal("String", sqsMetadata.MessageAttributes!["attr1"].DataType);
         Assert.Equal("val1", sqsMetadata.MessageAttributes["attr1"].StringValue);
     }
 
@@ -184,14 +184,14 @@ public class EnvelopeSerializerTests
         var outerMessageEnvelope = new Dictionary<string, object>
         {
             { "Type", "Notification" },
-            { "MessageId", "dc1e94d9-56c5-5e96-808d-cc7f68faa162" },
+            { "MessageId", "abcd-123" },
             { "TopicArn", "arn:aws:sns:us-east-2:111122223333:ExampleTopic1" },
             { "Subject", "TestSubject" },
-            { "Timestamp", "2021-02-16T21:41:19.978Z" },
+            { "Timestamp", _testdate },
             { "SignatureVersion", "1" },
             { "Signature", "abcdef33242" },
             { "SigningCertURL", "https://sns.us-east-2.amazonaws.com/SimpleNotificationService-010a507c1833636cd94bdb98bd93083a.pem" },
-            { "UnsubscribeURL", "https://sns.us-east-2.amazonaws.com/?Action=Unsubscribe&SubscriptionArn=arn:aws:sns:us-east-2:111122223333:ExampleTopic1:e1039402-24e7-40a3-a0d4-797da162b297" },
+            { "UnsubscribeURL", "https://www.click-here.com" },
             { "Message", envelopeSerializer.Serialize(innerMessageEnvelope) },
             { "MessageAttributes", new Dictionary<string, Amazon.SimpleNotificationService.Model.MessageAttributeValue>
             {
@@ -228,7 +228,12 @@ public class EnvelopeSerializerTests
         Assert.Equal(typeof(AddressInfoHandler), subscribeMapping.HandlerType);
 
         var snsMetadata = envelope.SNSMetadata!;
-        Assert.Equal("String", snsMetadata.MessageAttributes["attr1"].DataType);
+        Assert.Equal("arn:aws:sns:us-east-2:111122223333:ExampleTopic1", snsMetadata.TopicArn);
+        Assert.Equal("https://www.click-here.com", snsMetadata.UnsubscribeURL);
+        Assert.Equal("abcd-123", snsMetadata.MessageId);
+        Assert.Equal("TestSubject", snsMetadata.Subject);
+        Assert.Equal(_testdate, snsMetadata.Timestamp);
+        Assert.Equal("String", snsMetadata.MessageAttributes!["attr1"].DataType);
         Assert.Equal("val1", snsMetadata.MessageAttributes["attr1"].StringValue);
         Assert.Equal("Number", snsMetadata.MessageAttributes["attr2"].DataType);
         Assert.Equal("3", snsMetadata.MessageAttributes["attr2"].StringValue);
