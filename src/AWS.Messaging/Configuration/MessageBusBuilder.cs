@@ -6,6 +6,9 @@ using AWS.Messaging.Services;
 using AWS.Messaging.Publishers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using AWS.Messaging.Publishers.SQS;
+using AWS.Messaging.Publishers.SNS;
+using AWS.Messaging.Publishers.EventBridge;
 
 namespace AWS.Messaging.Configuration;
 
@@ -108,14 +111,17 @@ public class MessageBusBuilder : IMessageBusBuilder
             if (_messageConfiguration.PublisherMappings.Any(x => x.PublishTargetType == PublisherTargetType.SQS_PUBLISHER))
             {
                 services.TryAddAWSService<Amazon.SQS.IAmazonSQS>();
+                services.TryAddSingleton<ISQSPublisher, SQSPublisher>();
             }
             if (_messageConfiguration.PublisherMappings.Any(x => x.PublishTargetType == PublisherTargetType.SNS_PUBLISHER))
             {
                 services.TryAddAWSService<Amazon.SimpleNotificationService.IAmazonSimpleNotificationService>();
+                services.TryAddSingleton<ISNSPublisher, SNSPublisher>();
             }
             if (_messageConfiguration.PublisherMappings.Any(x => x.PublishTargetType == PublisherTargetType.EVENTBRIDGE_PUBLISHER))
             {
                 services.TryAddAWSService<Amazon.EventBridge.IAmazonEventBridge>();
+                services.TryAddSingleton<IEventBridgePublisher, EventBridgePublisher>();
             }
         }
 
