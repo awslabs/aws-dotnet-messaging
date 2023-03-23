@@ -3,6 +3,9 @@
 
 using System.Collections.Concurrent;
 using AWS.Messaging.Configuration;
+using AWS.Messaging.Publishers.EventBridge;
+using AWS.Messaging.Publishers.SNS;
+using AWS.Messaging.Publishers.SQS;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 

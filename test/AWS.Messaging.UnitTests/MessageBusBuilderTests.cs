@@ -10,6 +10,9 @@ using Amazon.Extensions.NETCore.Setup;
 using Amazon.SimpleNotificationService;
 using Amazon.SQS;
 using AWS.Messaging.Configuration;
+using AWS.Messaging.Publishers.EventBridge;
+using AWS.Messaging.Publishers.SNS;
+using AWS.Messaging.Publishers.SQS;
 using AWS.Messaging.Serialization;
 using AWS.Messaging.Services;
 using AWS.Messaging.UnitTests.MessageHandlers;
@@ -73,13 +76,19 @@ public class MessageBusBuilderTests
         var serviceProvider = _serviceCollection.BuildServiceProvider();
 
         var sqsClient = serviceProvider.GetService<IAmazonSQS>();
+        var sqsPublisher = serviceProvider.GetService<ISQSPublisher>();
         Assert.NotNull(sqsClient);
+        Assert.NotNull(sqsPublisher);
 
         var snsClient = serviceProvider.GetService<IAmazonSimpleNotificationService>();
+        var snsPublisher = serviceProvider.GetService<ISNSPublisher>();
         Assert.Null(snsClient);
+        Assert.Null(snsPublisher);
 
         var eventBridgeClient = serviceProvider.GetService<IAmazonEventBridge>();
+        var eventBridgePublisher = serviceProvider.GetService<IEventBridgePublisher>();
         Assert.Null(eventBridgeClient);
+        Assert.Null(eventBridgePublisher);
     }
 
     [Fact]
@@ -93,13 +102,19 @@ public class MessageBusBuilderTests
         var serviceProvider = _serviceCollection.BuildServiceProvider();
 
         var snsClient = serviceProvider.GetService<IAmazonSimpleNotificationService>();
+        var snsPublisher = serviceProvider.GetService<ISNSPublisher>();
         Assert.NotNull(snsClient);
+        Assert.NotNull(snsPublisher);
 
         var sqsClient = serviceProvider.GetService<IAmazonSQS>();
+        var sqsPublisher = serviceProvider.GetService<ISQSPublisher>();
         Assert.Null(sqsClient);
+        Assert.Null(sqsPublisher);
 
         var eventBridgeClient = serviceProvider.GetService<IAmazonEventBridge>();
+        var eventBridgePublisher = serviceProvider.GetService<IEventBridgePublisher>();
         Assert.Null(eventBridgeClient);
+        Assert.Null(eventBridgePublisher);
     }
 
     [Fact]
@@ -113,13 +128,19 @@ public class MessageBusBuilderTests
         var serviceProvider = _serviceCollection.BuildServiceProvider();
 
         var eventBridgeClient = serviceProvider.GetService<IAmazonEventBridge>();
+        var eventBridgePublisher = serviceProvider.GetService<IEventBridgePublisher>();
         Assert.NotNull(eventBridgeClient);
-
-        var snsClient = serviceProvider.GetService<IAmazonSimpleNotificationService>();
-        Assert.Null(snsClient);
+        Assert.NotNull(eventBridgePublisher);
 
         var sqsClient = serviceProvider.GetService<IAmazonSQS>();
+        var sqsPublisher = serviceProvider.GetService<ISQSPublisher>();
         Assert.Null(sqsClient);
+        Assert.Null(sqsPublisher);
+
+        var snsClient = serviceProvider.GetService<IAmazonSimpleNotificationService>();
+        var snsPublisher = serviceProvider.GetService<ISNSPublisher>();
+        Assert.Null(snsClient);
+        Assert.Null(snsPublisher);
     }
 
     [Fact]
