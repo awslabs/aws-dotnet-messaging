@@ -160,7 +160,7 @@ public class EnvelopeSerializerTests
     }
 
     [Fact]
-    public void ConvertToEnvelope_HasOuterEnvelope_In_SQSMessageBody()
+    public void ConvertToEnvelope_With_SNSOuterEnvelope_In_SQSMessageBody()
     {
         // ARRANGE
         var serviceProvider = _serviceCollection.BuildServiceProvider();
@@ -237,5 +237,77 @@ public class EnvelopeSerializerTests
         Assert.Equal("val1", snsMetadata.MessageAttributes["attr1"].StringValue);
         Assert.Equal("Number", snsMetadata.MessageAttributes["attr2"].DataType);
         Assert.Equal("3", snsMetadata.MessageAttributes["attr2"].StringValue);
+    }
+
+    [Fact]
+    public void ConvertToEnvelope_With_EventBridgeOuterEnvelope_In_SQSMessageBody()
+    {
+        // ARRANGE
+        var serviceProvider = _serviceCollection.BuildServiceProvider();
+        var envelopeSerializer = serviceProvider.GetRequiredService<IEnvelopeSerializer>();
+
+        var innerMessageEnvelope = new MessageEnvelope<AddressInfo>
+        {
+            Id = "66659d05-e4ff-462f-81c4-09e560e66a5c",
+            Source = new Uri("/aws/messaging", UriKind.Relative),
+            Version = "1.0",
+            MessageTypeIdentifier = "addressInfo",
+            TimeStamp = _testdate,
+            Message = new AddressInfo
+            {
+                Street = "Prince St",
+                Unit = 123,
+                ZipCode = "00001"
+            }
+        };
+
+        var outerMessageEnvelope = new Dictionary<string, object>
+        {
+            { "version", "0" },
+            { "id", "abcd-123" },
+            { "source", "some-source" },
+            { "detail-type", "address" },
+            { "time", _testdate },
+            { "account", "123456789123" },
+            { "region", "us-west-2" },
+            { "resources", new List<string>{ "arn1", "arn2" } },
+            { "detail", envelopeSerializer.Serialize(innerMessageEnvelope) },
+        };
+
+        var sqsMessage = new Message
+        {
+            Body = JsonSerializer.Serialize(outerMessageEnvelope)
+        };
+
+        // ACT
+        var result = envelopeSerializer.ConvertToEnvelope(sqsMessage);
+
+        // ASSERT
+        var envelope = (MessageEnvelope<AddressInfo>)result.Envelope;
+        Assert.NotNull(envelope);
+        Assert.Equal(_testdate, envelope.TimeStamp);
+        Assert.Equal("1.0", envelope.Version);
+        Assert.Equal("/aws/messaging", envelope.Source?.ToString());
+        Assert.Equal("addressInfo", envelope.MessageTypeIdentifier);
+
+        var addressInfo = envelope.Message;
+        Assert.Equal("Prince St", addressInfo?.Street);
+        Assert.Equal(123, addressInfo?.Unit);
+        Assert.Equal("00001", addressInfo?.ZipCode);
+
+        var subscribeMapping = result.Mapping;
+        Assert.NotNull(subscribeMapping);
+        Assert.Equal("addressInfo", subscribeMapping.MessageTypeIdentifier);
+        Assert.Equal(typeof(AddressInfo), subscribeMapping.MessageType);
+        Assert.Equal(typeof(AddressInfoHandler), subscribeMapping.HandlerType);
+
+        var eventBridgeMetadata = envelope.EventBridgeMetadata!;
+        Assert.Equal("abcd-123", eventBridgeMetadata.EventId);
+        Assert.Equal("some-source", eventBridgeMetadata.Source);
+        Assert.Equal("address", eventBridgeMetadata.DetailType);
+        Assert.Equal(_testdate, eventBridgeMetadata.Time);
+        Assert.Equal("123456789123", eventBridgeMetadata.AWSAccount);
+        Assert.Equal("us-west-2", eventBridgeMetadata.AWSRegion);
+        Assert.Equal(new List<string> { "arn1", "arn2" }, eventBridgeMetadata.Resources);
     }
 }

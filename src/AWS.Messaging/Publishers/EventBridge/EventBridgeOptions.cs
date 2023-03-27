@@ -23,5 +23,15 @@ namespace AWS.Messaging.Publishers.EventBridge
         /// To learn more about X-Ray trace headers, see <see href="https://docs.aws.amazon.com/xray/latest/devguide/xray-concepts.html#xray-concepts-tracingheader">Tracing header</see> in the X-Ray Developer Guide.
         /// </summary>
         public string? TraceHeader { get; set; }
+
+        /// <summary>
+        /// Specifies the type of event being sent.
+        /// </summary>
+        public string? DetailType { get; set; }
+
+        /// <summary>
+        /// Contains a list of Amazon Resource Names that the event primarily concerns.
+        /// </summary>
+        public List<string>? Resources { get; set; }
     }
 }
