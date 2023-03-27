@@ -127,6 +127,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             finalMessageEnvelope.Metadata = intermediateEnvelope.Metadata;
             finalMessageEnvelope.SQSMetadata = messageEnvelopeConfiguration.SQSMetadata;
             finalMessageEnvelope.SNSMetadata = messageEnvelopeConfiguration.SNSMetadata;
+            finalMessageEnvelope.EventBridgeMetadata = messageEnvelopeConfiguration.EventBridgeMetadata;
             finalMessageEnvelope.SetMessage(message);
 
             var result = new ConvertToEnvelopeResult(finalMessageEnvelope, subscriberMapping);
@@ -197,6 +198,21 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
                 }
                 SetSNSMetadata(envelopeConfiguration, root);
             }
+            // Check if the SQS message body contains an outer envelope injected by EventBridge.
+            else if (root.TryGetProperty("detail", out var innerEnvelope)
+                && root.TryGetProperty("id", out var _)
+                && root.TryGetProperty("version", out var _)
+                && root.TryGetProperty("region", out var _))
+            {
+                // Retrieve the inner message envelope.
+                envelopeConfiguration.MessageEnvelopeBody = innerEnvelope.GetString();
+                if (string.IsNullOrEmpty(envelopeConfiguration.MessageEnvelopeBody))
+                {
+                    _logger.LogError("Failed to create a message envelope configuration because the EventBridge message envelope does not contain a valid 'detail' property.");
+                    throw new FailedToCreateMessageEnvelopeConfigurationException("The EventBridge message envelope does not contain a valid 'detail' property.");
+                }
+                SetEventBridgeMetadata(envelopeConfiguration, root);
+            }
         }
 
         SetSQSMetadata(envelopeConfiguration, sqsMessage);
@@ -236,6 +252,20 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
         }
     }
 
+    private void SetEventBridgeMetadata(MessageEnvelopeConfiguration envelopeConfiguration, JsonElement root)
+    {
+        envelopeConfiguration.EventBridgeMetadata = new EventBridgeMetadata
+        {
+            EventId = GetJsonPropertyAsString(root, "id"),
+            Source = GetJsonPropertyAsString(root, "source"),
+            DetailType = GetJsonPropertyAsString(root, "detail-type"),
+            Time = GetJsonPropertyAsDateTimeOffset(root, "time"),
+            AWSAccount = GetJsonPropertyAsString(root, "account"),
+            AWSRegion = GetJsonPropertyAsString(root, "region"),
+            Resources = GetJsonPropertyAsList<string>(root, "resources")
+        };
+    }
+
     private string? GetJsonPropertyAsString(JsonElement node, string propertyName)
     {
         if (node.TryGetProperty(propertyName, out var propertyValue))
@@ -252,5 +282,14 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             return JsonSerializer.Deserialize<DateTimeOffset>(propertyValue);
         }
         return DateTimeOffset.MinValue;
+    }
+
+    private List<T>? GetJsonPropertyAsList<T>(JsonElement node, string propertyName)
+    {
+        if (node.TryGetProperty(propertyName, out var propertyValue))
+        {
+            return JsonSerializer.Deserialize<List<T>>(propertyValue);
+        }
+        return null;
     }
 }

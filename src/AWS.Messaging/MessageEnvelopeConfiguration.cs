@@ -22,4 +22,9 @@ internal class MessageEnvelopeConfiguration
     /// Stores metadata related to Amazon SNS.
     /// </summary>
     public SNSMetadata? SNSMetadata { get; set; }
+
+    /// <summary>
+    /// Stores metadata related to Amazon EventBridge.
+    /// </summary>
+    public EventBridgeMetadata? EventBridgeMetadata { get; set; }
 }

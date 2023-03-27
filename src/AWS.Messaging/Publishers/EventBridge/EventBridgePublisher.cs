@@ -79,7 +79,7 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
         var requestEntry = new PutEventsRequestEntry
         {
             EventBusName = eventBusName,
-            Detail = messageBody,
+            Detail = messageBody
         };
 
         var putEventsRequest = new PutEventsRequest
@@ -98,6 +98,12 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
 
         if (eventBridgeOptions.Time != DateTimeOffset.MinValue)
             requestEntry.Time = eventBridgeOptions.Time.DateTime;
+
+        if (!string.IsNullOrEmpty(eventBridgeOptions.DetailType))
+            requestEntry.DetailType = eventBridgeOptions.DetailType;
+
+        if (eventBridgeOptions.Resources?.Any() ?? false)
+            requestEntry.Resources = eventBridgeOptions.Resources;
 
         return putEventsRequest;
     }

@@ -60,6 +60,11 @@ public abstract class MessageEnvelope
     public SNSMetadata? SNSMetadata { get; set; }
 
     /// <summary>
+    /// Stores metadata related to Amazon EventBridge.
+    /// </summary>
+    public EventBridgeMetadata? EventBridgeMetadata { get; set; }
+
+    /// <summary>
     /// Attaches the user specified application message to the <see cref="MessageEnvelope"/>
     /// </summary>
     /// <param name="message">The user specified application message.</param>
