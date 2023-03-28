@@ -136,6 +136,7 @@ public class MessageBusBuilder : IMessageBusBuilder
         if (_messageConfiguration.MessagePollerConfigurations.Any())
         {
             services.AddHostedService<MessagePumpService>();
+            services.TryAddSingleton<HandlerInvoker>();
             services.TryAddSingleton<IMessagePollerFactory, DefaultMessagePollerFactory>();
             services.TryAddSingleton<IMessageManagerFactory, DefaultMessageManagerFactory>();
 

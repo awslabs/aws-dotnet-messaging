@@ -1,6 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using AWS.Messaging.Configuration;
+
 namespace AWS.Messaging.Services;
 
 /// <summary>
@@ -22,6 +24,7 @@ public interface IMessageManager
     /// <summary>
     /// Start the async processing of a message.
     /// </summary>
-    /// <param name="messageEnvelope">The message to start processing.</param>
-    void StartProcessMessage(MessageEnvelope messageEnvelope);
+    /// <param name="messageEnvelope">The message to start processing</param>
+    /// <param name="subscriberMapping">The mapping between the message's type and its handler</param>
+    void StartProcessMessage(MessageEnvelope messageEnvelope, SubscriberMapping subscriberMapping);
 }

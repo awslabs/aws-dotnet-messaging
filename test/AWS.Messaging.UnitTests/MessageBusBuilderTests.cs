@@ -221,6 +221,11 @@ public class MessageBusBuilderTests
         Assert.NotNull(messagePollerFactory);
         Assert.IsType<DefaultMessagePollerFactory>(messagePollerFactory);
 
+        // Verify that the helper to invoke message handlers was added
+        var handlerInvoker = serviceProvider.GetService<HandlerInvoker>();
+        Assert.NotNull(handlerInvoker);
+        Assert.IsType<HandlerInvoker>(handlerInvoker);
+
         // Verify that the message framework configuration object exists
         var messageConfiguration = serviceProvider.GetService<IMessageConfiguration>();
         Assert.NotNull(messageConfiguration);
