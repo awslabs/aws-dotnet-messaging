@@ -181,3 +181,15 @@ public class InvalidSQSMessagePollerOptionsException : AWSMessagingException
     /// </summary>
     public InvalidSQSMessagePollerOptionsException(string message, Exception? innerException = null) : base(message, innerException) { }
 }
+
+/// <summary>
+/// Thrown during message handling if unable to find an <see cref="IMessageHandler{T}.HandleAsync(MessageEnvelope{T}, CancellationToken)"/>
+/// method on the handler type for a given message
+/// </summary>
+public class InvalidMessageHandlerSignatureException : AWSMessagingException
+{
+    /// <summary>
+    /// Creates an instance of <see cref="InvalidMessageHandlerSignatureException"/>.
+    /// </summary>
+    public InvalidMessageHandlerSignatureException(string message, Exception? innerException = null) : base(message, innerException) { }
+}
