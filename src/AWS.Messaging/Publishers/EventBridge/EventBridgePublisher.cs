@@ -62,24 +62,26 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
             throw new InvalidMessageException("The message cannot be null.");
         }
 
-        var publisherEndpoint = GetPublisherEndpoint(typeof(T));
+        var publisherMapping = GetPublisherMapping(typeof(T));
+        var publisherEndpoint = publisherMapping.PublisherConfiguration.PublisherEndpoint;
 
         _logger.LogDebug("Creating the message envelope for the message of type '{messageType}'.", typeof(T));
         var messageEnvelope = await _envelopeSerializer.CreateEnvelopeAsync(message);
         var messageBody = _envelopeSerializer.Serialize(messageEnvelope);
 
         _logger.LogDebug("Sending the message of type '{messageType}' to EventBridge. Publisher Endpoint: {endpoint}", typeof(T), publisherEndpoint);
-        var request = CreatePutEventsRequest(publisherEndpoint, messageBody, eventBridgeOptions);
+        var request = CreatePutEventsRequest(publisherEndpoint, publisherMapping.MessageTypeIdentifier, messageEnvelope.Source?.ToString(), messageBody, eventBridgeOptions);
         await _eventBridgeClient.PutEventsAsync(request, token);
         _logger.LogDebug("The message of type '{messageType}' has been pushed to EventBridge.", typeof(T));
     }
 
-    private PutEventsRequest CreatePutEventsRequest(string eventBusName, string messageBody, EventBridgeOptions? eventBridgeOptions)
+    private PutEventsRequest CreatePutEventsRequest(string eventBusName, string messageType, string? source, string messageBody, EventBridgeOptions? eventBridgeOptions)
     {
         var requestEntry = new PutEventsRequestEntry
         {
             EventBusName = eventBusName,
-            Detail = messageBody,
+            DetailType = messageType,
+            Detail = messageBody
         };
 
         var putEventsRequest = new PutEventsRequest
@@ -87,22 +89,21 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
             Entries = new() { requestEntry }
         };
 
-        if (eventBridgeOptions is null)
-            return putEventsRequest;
-
-        if (!string.IsNullOrEmpty(eventBridgeOptions.Source))
+        if (!string.IsNullOrEmpty(eventBridgeOptions?.Source))
             requestEntry.Source = eventBridgeOptions.Source;
+        else if(!string.IsNullOrEmpty(source))
+            requestEntry.Source = source;
 
-        if (!string.IsNullOrEmpty(eventBridgeOptions.TraceHeader))
+        if (!string.IsNullOrEmpty(eventBridgeOptions?.TraceHeader))
             requestEntry.TraceHeader = eventBridgeOptions.TraceHeader;
 
-        if (eventBridgeOptions.Time != DateTimeOffset.MinValue)
+        if (eventBridgeOptions != null && eventBridgeOptions.Time != DateTimeOffset.MinValue)
             requestEntry.Time = eventBridgeOptions.Time.DateTime;
 
         return putEventsRequest;
     }
 
-    private string GetPublisherEndpoint(Type messageType)
+    private PublisherMapping GetPublisherMapping(Type messageType)
     {
         var mapping = _messageConfiguration.GetPublisherMapping(messageType);
         if (mapping is null)
@@ -115,6 +116,6 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
             _logger.LogError("Messages of type '{messageType}' are not configured for publishing to EventBridge.", messageType.FullName);
             throw new MissingMessageTypeConfigurationException($"Messages of type '{messageType.FullName}' are not configured for publishing to EventBridge.");
         }
-        return mapping.PublisherConfiguration.PublisherEndpoint;
+        return mapping;
     }
 }
