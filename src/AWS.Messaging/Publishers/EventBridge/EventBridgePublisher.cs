@@ -100,6 +100,12 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
         if (eventBridgeOptions != null && eventBridgeOptions.Time != DateTimeOffset.MinValue)
             requestEntry.Time = eventBridgeOptions.Time.DateTime;
 
+        if (!string.IsNullOrEmpty(eventBridgeOptions?.DetailType))
+            requestEntry.DetailType = eventBridgeOptions.DetailType;
+
+        if (eventBridgeOptions?.Resources?.Any() ?? false)
+            requestEntry.Resources = eventBridgeOptions.Resources;
+
         return putEventsRequest;
     }
 
