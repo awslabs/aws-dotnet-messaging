@@ -17,6 +17,7 @@ using Amazon.SimpleNotificationService;
 using Amazon.SimpleNotificationService.Model;
 using Amazon.EventBridge;
 using Amazon.EventBridge.Model;
+using AWS.Messaging.Publishers.EventBridge;
 
 namespace AWS.Messaging.UnitTests;
 
@@ -40,6 +41,14 @@ public class MessagePublisherTests
         _snsClient = new Mock<IAmazonSimpleNotificationService>();
         _eventBridgeClient = new Mock<IAmazonEventBridge>();
         _envelopeSerializer = new Mock<IEnvelopeSerializer>();
+
+        _envelopeSerializer.SetReturnsDefault<ValueTask<MessageEnvelope<ChatMessage>>> (ValueTask.FromResult(new MessageEnvelope<ChatMessage>()
+        {
+            Id = "1234",
+            Source = new Uri("/aws/messaging/unittest", UriKind.Relative)
+        }));
+
+
         _chatMessage = new ChatMessage { MessageDescription = "Test Description" };
     }
 
@@ -196,7 +205,63 @@ public class MessagePublisherTests
         _eventBridgeClient.Verify(x =>
             x.PutEventsAsync(
                 It.Is<PutEventsRequest>(request =>
-                    request.Entries[0].EventBusName.Equals("endpoint")),
+                    request.Entries[0].EventBusName.Equals("endpoint") && request.Entries[0].DetailType.Equals("AWS.Messaging.UnitTests.Models.ChatMessage") && request.Entries[0].Source.Equals("/aws/messaging/unittest")),
+                It.IsAny<CancellationToken>()), Times.Exactly(1));
+    }
+
+    [Fact]
+    public async Task EventBridgePublisher_OptionSource()
+    {
+        SetupEventBridgePublisherDIServices();
+
+        _eventBridgeClient.Setup(x => x.PutEventsAsync(It.IsAny<PutEventsRequest>(), It.IsAny<CancellationToken>()));
+
+        var messagePublisher = new EventBridgePublisher(
+            _eventBridgeClient.Object,
+            _logger.Object,
+            _messageConfiguration.Object,
+            _envelopeSerializer.Object
+            );
+
+        await messagePublisher.PublishAsync(_chatMessage, new EventBridgeOptions
+        {
+            Source = "/aws/custom"
+        });
+
+        _eventBridgeClient.Verify(x =>
+            x.PutEventsAsync(
+                It.Is<PutEventsRequest>(request =>
+                    request.Entries[0].EventBusName.Equals("endpoint") && request.Entries[0].DetailType.Equals("AWS.Messaging.UnitTests.Models.ChatMessage") && request.Entries[0].Source.Equals("/aws/custom")),
+                It.IsAny<CancellationToken>()), Times.Exactly(1));
+    }
+
+    [Fact]
+    public async Task EventBridgePublisher_SetOptions()
+    {
+        SetupEventBridgePublisherDIServices();
+
+        _eventBridgeClient.Setup(x => x.PutEventsAsync(It.IsAny<PutEventsRequest>(), It.IsAny<CancellationToken>()));
+
+        var messagePublisher = new EventBridgePublisher(
+            _eventBridgeClient.Object,
+            _logger.Object,
+            _messageConfiguration.Object,
+            _envelopeSerializer.Object
+            );
+
+        DateTimeOffset dateTimeOffset = new DateTimeOffset(2015, 2, 17, 0, 0, 0, TimeSpan.Zero);
+
+        await messagePublisher.PublishAsync(_chatMessage, new EventBridgeOptions
+        {
+            TraceHeader = "trace-header1",
+            Time = dateTimeOffset
+        });
+
+        _eventBridgeClient.Verify(x =>
+            x.PutEventsAsync(
+                It.Is<PutEventsRequest>(request =>
+                    request.Entries[0].EventBusName.Equals("endpoint") && request.Entries[0].TraceHeader.Equals("trace-header1") && request.Entries[0].Time.Year == dateTimeOffset.Year),
+                 
                 It.IsAny<CancellationToken>()), Times.Exactly(1));
     }
 
