@@ -6,7 +6,7 @@ namespace AWS.Messaging.Configuration;
 /// <summary>
 /// Maps the <see cref="IMessageHandler{T}"/> to the type of message being processed.
 /// </summary>
-public class SubscriberMapping : ISubscriberMapping
+public class SubscriberMapping
 {
     /// <inheritdoc/>
     public Type HandlerType { get; }

@@ -1,6 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using AWS.Messaging.Serialization;
+
 namespace AWS.Messaging.Configuration;
 
 /// <summary>
@@ -48,4 +50,9 @@ public interface IMessageConfiguration
     /// Holds an instance of <see cref="SerializationOptions"/> to control the serialization/de-serialization of the application message.
     /// </summary>
     SerializationOptions SerializationOptions { get; }
+
+    /// <summary>
+    /// Holds instances of <see cref="ISerializationCallback"/> that lets users inject their own metadata to incoming and outgoing messages.
+    /// </summary>
+    IList<ISerializationCallback> SerializationCallbacks { get; }
 }

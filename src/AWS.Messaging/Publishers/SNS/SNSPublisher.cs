@@ -68,7 +68,7 @@ internal class SNSPublisher : IMessagePublisher, ISNSPublisher
 
         _logger.LogDebug("Creating the message envelope for the message of tyspe '{messageType}'.", typeof(T));
         var messageEnvelope = await _envelopeSerializer.CreateEnvelopeAsync(message);
-        var messageBody = _envelopeSerializer.Serialize(messageEnvelope);
+        var messageBody = await _envelopeSerializer.SerializeAsync(messageEnvelope);
 
         _logger.LogDebug("Sending the message of type '{messageType}' to SNS. Publisher Endpoint: {endpoint}", typeof(T), publisherEndpoint);
         var request = CreatePublishRequest(publisherEndpoint, messageBody, snsOptions);

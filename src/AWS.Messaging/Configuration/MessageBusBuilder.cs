@@ -99,6 +99,13 @@ public class MessageBusBuilder : IMessageBusBuilder
         return this;
     }
 
+    /// <inheritdoc/>
+    public IMessageBusBuilder AddSerializationCallback(ISerializationCallback serializationCallback)
+    {
+        _messageConfiguration.SerializationCallbacks.Add(serializationCallback);
+        return this;
+    }
+
     internal void Build(IServiceCollection services)
     {
         services.AddSingleton<IMessageConfiguration>(_messageConfiguration);

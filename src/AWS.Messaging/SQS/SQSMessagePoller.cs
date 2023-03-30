@@ -107,7 +107,7 @@ internal class SQSMessagePoller : IMessagePoller
 
                 foreach (var message in receiveMessageResponse.Messages)
                 {
-                    var messageEnvelopeResult = _envelopeSerializer.ConvertToEnvelope(message);
+                    var messageEnvelopeResult = await _envelopeSerializer.ConvertToEnvelopeAsync(message);
                     _messageManager.StartProcessMessage(messageEnvelopeResult.Envelope, messageEnvelopeResult.Mapping);
                 }
             }
