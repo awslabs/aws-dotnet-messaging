@@ -4,9 +4,9 @@
 namespace AWS.Messaging.Configuration;
 
 /// <summary>
-/// Implementation of <see cref="IPublisherMapping"/>.
+/// This maps a message type to a message publisher.
 /// </summary>
-public class PublisherMapping : IPublisherMapping
+public class PublisherMapping
 {
     /// <inheritdoc/>
     public string PublishTargetType { get; init; }

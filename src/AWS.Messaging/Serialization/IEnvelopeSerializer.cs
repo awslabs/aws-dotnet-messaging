@@ -14,7 +14,7 @@ public interface IEnvelopeSerializer
     /// Serializes <see cref="MessageEnvelope{T}"/> into a string.
     /// </summary>
     /// <param name="envelope"><see cref="MessageEnvelope{T}"/></param>
-    string Serialize<T>(MessageEnvelope<T> envelope);
+    ValueTask<string> SerializeAsync<T>(MessageEnvelope<T> envelope);
 
     /// <summary>
     /// Creates a <see cref="MessageEnvelope{T}"/>
@@ -27,5 +27,5 @@ public interface IEnvelopeSerializer
     /// Takes an SQS <see cref="Message"/> and converts the <see cref="Message.Body"/> into a <see cref="MessageEnvelope"/>
     /// </summary>
     /// <param name="message">The SQS <see cref="Message"/> sent by the user</param>
-    ConvertToEnvelopeResult ConvertToEnvelope(Message message);
+    ValueTask<ConvertToEnvelopeResult> ConvertToEnvelopeAsync(Message message);
 }

@@ -67,7 +67,7 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
 
         _logger.LogDebug("Creating the message envelope for the message of type '{messageType}'.", typeof(T));
         var messageEnvelope = await _envelopeSerializer.CreateEnvelopeAsync(message);
-        var messageBody = _envelopeSerializer.Serialize(messageEnvelope);
+        var messageBody = await _envelopeSerializer.SerializeAsync(messageEnvelope);
 
         _logger.LogDebug("Sending the message of type '{messageType}' to EventBridge. Publisher Endpoint: {endpoint}", typeof(T), publisherEndpoint);
         var request = CreatePutEventsRequest(publisherEndpoint, publisherMapping.MessageTypeIdentifier, messageEnvelope.Source?.ToString(), messageBody, eventBridgeOptions);

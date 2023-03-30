@@ -19,6 +19,7 @@ using AWS.Messaging.UnitTests.MessageHandlers;
 using AWS.Messaging.UnitTests.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Moq;
 using Xunit;
 
 namespace AWS.Messaging.UnitTests;
@@ -284,6 +285,22 @@ public class MessageBusBuilderTests
         {
             Assert.Fail($"Expected configuration to be of type {typeof(SQSMessagePollerConfiguration)}");
         }
+    }
+
+    [Fact]
+    public void MessageBus_AddSerializationCallback()
+    {
+        _serviceCollection.AddAWSMessageBus(builder =>
+        {
+            builder.AddSNSPublisher<OrderInfo>("snsTopicUrl");
+            builder.AddSerializationCallback(new Mock<ISerializationCallback>().Object);
+        });
+
+        var serviceProvider = _serviceCollection.BuildServiceProvider();
+        var messageConfiguration = serviceProvider.GetService<IMessageConfiguration>();
+
+        Assert.NotNull(messageConfiguration);
+        Assert.Equal(1, messageConfiguration.SerializationCallbacks.Count);
     }
 
     /// <summary>

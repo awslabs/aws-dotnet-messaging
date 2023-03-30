@@ -1,6 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using AWS.Messaging.Serialization;
+
 namespace AWS.Messaging.Configuration;
 
 /// <summary>
@@ -40,4 +42,7 @@ public class MessageConfiguration : IMessageConfiguration
 
     /// <inheritdoc/>
     public SerializationOptions SerializationOptions { get; } = new SerializationOptions();
-}
+
+    /// <inheritdoc/>
+    public IList<ISerializationCallback> SerializationCallbacks { get; } = new List<ISerializationCallback>();
+} 

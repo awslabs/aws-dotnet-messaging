@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Amazon.SQS.Model;
@@ -67,7 +68,7 @@ public class EnvelopeSerializerTests
     }
 
     [Fact]
-    public void SerializeEnvelope()
+    public async Task SerializeEnvelope()
     {
         // ARRANGE
         var message = new AddressInfo
@@ -91,7 +92,7 @@ public class EnvelopeSerializerTests
         var envelopeSerializer = serviceProvider.GetRequiredService<IEnvelopeSerializer>();
 
         // ACT
-        var jsonBlob = envelopeSerializer.Serialize(envelope);
+        var jsonBlob = await envelopeSerializer.SerializeAsync(envelope);
 
         // ASSERT
         // The \u0022 corresponds to quotation mark (")
@@ -100,7 +101,7 @@ public class EnvelopeSerializerTests
     }
 
     [Fact]
-    public void ConvertToEnvelope_NoOuterEnvelope_In_SQSMessageBody()
+    public async Task ConvertToEnvelope_NoOuterEnvelope_In_SQSMessageBody()
     {
         // ARRANGE
         var serviceProvider = _serviceCollection.BuildServiceProvider();
@@ -122,15 +123,15 @@ public class EnvelopeSerializerTests
         };
         var sqsMessage = new Message
         {
-            Body = envelopeSerializer.Serialize(messageEnvelope),
+            Body = await envelopeSerializer.SerializeAsync(messageEnvelope),
             ReceiptHandle = "receipt-handle"
         };
-        sqsMessage.MessageAttributes.Add("attr1", new Amazon.SQS.Model.MessageAttributeValue{DataType = "String", StringValue = "val1" });
+        sqsMessage.MessageAttributes.Add("attr1", new MessageAttributeValue { DataType = "String", StringValue = "val1" });
         sqsMessage.Attributes.Add("MessageGroupId", "group-123");
         sqsMessage.Attributes.Add("MessageDeduplicationId", "dedup-123");
 
         // ACT
-        var result = envelopeSerializer.ConvertToEnvelope(sqsMessage);
+        var result = await envelopeSerializer.ConvertToEnvelopeAsync(sqsMessage);
 
         // ASSERT
         var envelope = (MessageEnvelope<AddressInfo>)result.Envelope;
@@ -160,7 +161,7 @@ public class EnvelopeSerializerTests
     }
 
     [Fact]
-    public void ConvertToEnvelope_With_SNSOuterEnvelope_In_SQSMessageBody()
+    public async Task ConvertToEnvelope_With_SNSOuterEnvelope_In_SQSMessageBody()
     {
         // ARRANGE
         var serviceProvider = _serviceCollection.BuildServiceProvider();
@@ -192,7 +193,7 @@ public class EnvelopeSerializerTests
             { "Signature", "abcdef33242" },
             { "SigningCertURL", "https://sns.us-east-2.amazonaws.com/SimpleNotificationService-010a507c1833636cd94bdb98bd93083a.pem" },
             { "UnsubscribeURL", "https://www.click-here.com" },
-            { "Message", envelopeSerializer.Serialize(innerMessageEnvelope) },
+            { "Message", await envelopeSerializer.SerializeAsync(innerMessageEnvelope) },
             { "MessageAttributes", new Dictionary<string, Amazon.SimpleNotificationService.Model.MessageAttributeValue>
             {
                 { "attr1", new Amazon.SimpleNotificationService.Model.MessageAttributeValue{ DataType = "String", StringValue = "val1"} },
@@ -206,7 +207,7 @@ public class EnvelopeSerializerTests
         };
 
         // ACT
-        var result = envelopeSerializer.ConvertToEnvelope(sqsMessage);
+        var result = await envelopeSerializer.ConvertToEnvelopeAsync(sqsMessage);
 
         // ASSERT
         var envelope = (MessageEnvelope<AddressInfo>)result.Envelope;
@@ -240,7 +241,7 @@ public class EnvelopeSerializerTests
     }
 
     [Fact]
-    public void ConvertToEnvelope_With_EventBridgeOuterEnvelope_In_SQSMessageBody()
+    public async Task ConvertToEnvelope_With_EventBridgeOuterEnvelope_In_SQSMessageBody()
     {
         // ARRANGE
         var serviceProvider = _serviceCollection.BuildServiceProvider();
@@ -271,7 +272,7 @@ public class EnvelopeSerializerTests
             { "account", "123456789123" },
             { "region", "us-west-2" },
             { "resources", new List<string>{ "arn1", "arn2" } },
-            { "detail", envelopeSerializer.Serialize(innerMessageEnvelope) },
+            { "detail", await envelopeSerializer.SerializeAsync(innerMessageEnvelope) },
         };
 
         var sqsMessage = new Message
@@ -280,7 +281,7 @@ public class EnvelopeSerializerTests
         };
 
         // ACT
-        var result = envelopeSerializer.ConvertToEnvelope(sqsMessage);
+        var result = await envelopeSerializer.ConvertToEnvelopeAsync(sqsMessage);
 
         // ASSERT
         var envelope = (MessageEnvelope<AddressInfo>)result.Envelope;
@@ -309,5 +310,92 @@ public class EnvelopeSerializerTests
         Assert.Equal("123456789123", eventBridgeMetadata.AWSAccount);
         Assert.Equal("us-west-2", eventBridgeMetadata.AWSRegion);
         Assert.Equal(new List<string> { "arn1", "arn2" }, eventBridgeMetadata.Resources);
+    }
+
+    [Fact]
+    public async Task SerializationCallbacks_AreCorrectlyInvoked()
+    {
+        // ARRANGE
+        _serviceCollection.AddAWSMessageBus(builder =>
+        {
+            builder.AddMessageHandler<AddressInfoHandler, AddressInfo>("addressInfo");
+            builder.AddSerializationCallback(new MockSerializationCallback());
+        });
+        var serviceProvider = _serviceCollection.BuildServiceProvider();
+        var envelopeSerializer = serviceProvider.GetRequiredService<IEnvelopeSerializer>();
+        var messageEnvelope = new MessageEnvelope<AddressInfo>
+        {
+            Id = "123",
+            Source = new Uri("/aws/messaging", UriKind.Relative),
+            Version = "1.0",
+            MessageTypeIdentifier = "addressInfo",
+            TimeStamp = _testdate,
+            Message = new AddressInfo
+            {
+                Street = "Prince St",
+                Unit = 123,
+                ZipCode = "00001"
+            }
+        };
+
+        // ACT - Serialize Envelope
+        var serializedMessage = await envelopeSerializer.SerializeAsync(messageEnvelope);
+
+        // ASSERT - Check expected base 64 encoded string
+        var expectedserializedMessage = "eyJpZCI6IjEyMyIsInNvdXJjZSI6Ii9hd3MvbWVzc2FnaW5nIiwic3BlY3ZlcnNpb24iOiIxLjAiLCJ0eXBlIjoiYWRkcmVzc0luZm8iLCJ0aW1lIjoiMjAwMC0xMi0wNVQxMDozMDo1NSswMDowMCIsImRhdGEiOiJ7XHUwMDIyVW5pdFx1MDAyMjoxMjMsXHUwMDIyU3RyZWV0XHUwMDIyOlx1MDAyMlByaW5jZSBTdFx1MDAyMixcdTAwMjJaaXBDb2RlXHUwMDIyOlx1MDAyMjAwMDAxXHUwMDIyfSJ9";
+        Assert.Equal(expectedserializedMessage, serializedMessage);
+
+        // ACT - Convert To Envelope from base 64 Encoded Message
+        var sqsMessage = new Message
+        {
+            Body = serializedMessage
+        };
+
+        var conversionResult = await envelopeSerializer.ConvertToEnvelopeAsync(sqsMessage);
+
+        // ASSERT
+        var envelope = (MessageEnvelope<AddressInfo>)conversionResult.Envelope;
+        Assert.NotNull(envelope);
+        Assert.Equal("123", envelope.Id);
+        Assert.Equal(_testdate, envelope.TimeStamp);
+        Assert.Equal("1.0", envelope.Version);
+        Assert.Equal("/aws/messaging", envelope.Source?.ToString());
+        Assert.Equal("addressInfo", envelope.MessageTypeIdentifier);
+        Assert.Equal(true, envelope.Metadata["Is-Delivered"]);
+
+        var subscribeMapping = conversionResult.Mapping;
+        Assert.NotNull(subscribeMapping);
+        Assert.Equal("addressInfo", subscribeMapping.MessageTypeIdentifier);
+        Assert.Equal(typeof(AddressInfo), subscribeMapping.MessageType);
+        Assert.Equal(typeof(AddressInfoHandler), subscribeMapping.HandlerType);
+    }
+}
+
+public class MockSerializationCallback : ISerializationCallback
+{
+    public ValueTask PreSerializationAsync(MessageEnvelope messageEnvelope)
+    {
+        messageEnvelope.Metadata["Is-Delivered"] = false;
+        return ValueTask.CompletedTask;
+    }
+
+    public ValueTask<string> PostSerializationAsync(string message)
+    {
+        var bytes = Encoding.UTF8.GetBytes(message);
+        var encodedString = Convert.ToBase64String(bytes);
+        return new ValueTask<string>(encodedString);
+    }
+
+    public ValueTask<string> PreDeserializationAsync(string message)
+    {
+        var bytes = Convert.FromBase64String(message);
+        var decodedString = Encoding.UTF8.GetString(bytes);
+        return new ValueTask<string>(decodedString);
+    }
+
+    public ValueTask PostDeserializationAsync(MessageEnvelope messageEnvelope)
+    {
+        messageEnvelope.Metadata["Is-Delivered"] = true;
+        return ValueTask.CompletedTask;
     }
 }

@@ -63,11 +63,11 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
     /// </summary>
     /// <typeparam name="T">The .NET type of the uderlying application message held by <see cref="MessageEnvelope{T}.Message"/></typeparam>
     /// <param name="envelope">The <see cref="MessageEnvelope{T}"/> instance that will be serialized</param>
-    /// <returns></returns>
-    public string Serialize<T>(MessageEnvelope<T> envelope)
+    public async ValueTask<string> SerializeAsync<T>(MessageEnvelope<T> envelope)
     {
         try
         {
+            await InvokePreSerializationCallback(envelope);
             var message = envelope.Message ?? throw new ArgumentNullException("The underlying application message cannot be null");
 
             // This blob serves as an intermediate data container because the underlying application message
@@ -83,21 +83,24 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             };
 
             var jsonString = blob.ToJsonString();
-            _logger.LogTrace("Serialized the MessageEnvelope object as the following raw string:\n{jsonString}", jsonString);
-            return jsonString;
+            var serializedMessage = await InvokePostSerializationCallback(jsonString);
+            
+            _logger.LogTrace("Serialized the MessageEnvelope object as the following raw string:\n{serializedMessage}", serializedMessage);
+            return serializedMessage;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to serialize the MessageEnvelope into a JSON string");
-            throw new FailedToSerializeMessageEnvelopeException("Failed to serialize the MessageEnvelope into a JSON string", ex);
+            _logger.LogError(ex, "Failed to serialize the MessageEnvelope into a raw string");
+            throw new FailedToSerializeMessageEnvelopeException("Failed to serialize the MessageEnvelope into a raw string", ex);
         }
     }
 
     // <inheritdoc/>
-    public ConvertToEnvelopeResult ConvertToEnvelope(Message sqsMessage)
+    public async ValueTask<ConvertToEnvelopeResult> ConvertToEnvelopeAsync(Message sqsMessage)
     {
         try
         {
+            sqsMessage.Body = await InvokePreDeserializationCallback(sqsMessage.Body);
             var messageEnvelopeConfiguration = GetMessageEnvelopeConfiguration(sqsMessage);
             var intermediateEnvelope = JsonSerializer.Deserialize<MessageEnvelope<string>>(messageEnvelopeConfiguration.MessageEnvelopeBody!)!;
             ValidateMessageEnvelope(intermediateEnvelope);
@@ -130,6 +133,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             finalMessageEnvelope.EventBridgeMetadata = messageEnvelopeConfiguration.EventBridgeMetadata;
             finalMessageEnvelope.SetMessage(message);
 
+            await InvokePostDeserializationCallback(finalMessageEnvelope);
             var result = new ConvertToEnvelopeResult(finalMessageEnvelope, subscriberMapping);
 
             _logger.LogTrace("Created a generic {messageEnvelopeName} of type '{messageEnvelopeType}'", nameof(MessageEnvelope), result.Envelope.GetType());
@@ -291,5 +295,39 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             return JsonSerializer.Deserialize<List<T>>(propertyValue);
         }
         return null;
+    }
+
+    private async ValueTask InvokePreSerializationCallback(MessageEnvelope messageEnvelope)
+    {
+        foreach (var serializationCallback in _messageConfiguration.SerializationCallbacks)
+        {
+            await serializationCallback.PreSerializationAsync(messageEnvelope);
+        }
+    }
+
+    private async ValueTask<string> InvokePostSerializationCallback(string message)
+    {
+        foreach (var serializationCallback in _messageConfiguration.SerializationCallbacks)
+        {
+            message = await serializationCallback.PostSerializationAsync(message);
+        }
+        return message;
+    }
+
+    private async ValueTask<string> InvokePreDeserializationCallback(string message)
+    {
+        foreach (var serializationCallback in _messageConfiguration.SerializationCallbacks)
+        {
+            message = await serializationCallback.PreDeserializationAsync(message);
+        }
+        return message;
+    }
+
+    private async ValueTask InvokePostDeserializationCallback(MessageEnvelope messageEnvelope)
+    {
+        foreach (var serializationCallback in _messageConfiguration.SerializationCallbacks)
+        {
+            await serializationCallback.PostDeserializationAsync(messageEnvelope);
+        }
     }
 }

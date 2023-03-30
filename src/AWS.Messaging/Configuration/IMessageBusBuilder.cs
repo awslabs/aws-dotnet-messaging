@@ -1,6 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using AWS.Messaging.Serialization;
+
 namespace AWS.Messaging.Configuration;
 
 /// <summary>
@@ -51,4 +53,10 @@ public interface IMessageBusBuilder
     /// Configures an instance of <see cref="SerializationOptions"/> to control the serialization/de-serialization logic for the application message.
     /// </summary>
     IMessageBusBuilder ConfigureSerializationOptions(Action<SerializationOptions> options);
+
+    /// <summary>
+    /// Adds a serialization callback that lets users inject their own metadata to incoming and outgoing messages.
+    /// </summary>
+    /// <param name="serializationCallback">An instance of <see cref="ISerializationCallback"/>that lets users inject their own metadata to incoming and outgoing messages.</param>
+    IMessageBusBuilder AddSerializationCallback(ISerializationCallback serializationCallback);
 }
