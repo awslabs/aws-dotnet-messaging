@@ -20,7 +20,13 @@ internal class SQSMessagePollerConfiguration : IMessagePollerConfiguration
     /// Default value for <see cref="VisibilityTimeout"/>
     /// </summary>
     /// <remarks>The default value is 20 seconds.</remarks>
-    public const int DEFAULT_VISBILITY_TIMEOUT_SECONDS = 20;
+    public const int DEFAULT_VISIBILITY_TIMEOUT_SECONDS = 20;
+
+    /// <summary>
+    /// Default value for <see cref="VisibilityTimeoutExtensionInterval"/>
+    /// </summary>
+    /// <remarks>The default value is 18 seconds.</remarks>
+    public const int DEFAULT_VISIBILITY_TIMEOUT_EXTENSION_INTERVAL_SECONDS = 18;
 
     /// <summary>
     /// Default value for <see cref="WaitTimeSeconds"/>
@@ -43,10 +49,19 @@ internal class SQSMessagePollerConfiguration : IMessagePollerConfiguration
     /// <inheritdoc cref="ReceiveMessageRequest.VisibilityTimeout"/>
     /// </summary>
     /// <remarks>
-    /// <inheritdoc cref="DEFAULT_VISBILITY_TIMEOUT_SECONDS" path="//remarks"/>
+    /// <inheritdoc cref="DEFAULT_VISIBILITY_TIMEOUT_SECONDS" path="//remarks"/>
     /// The minimum is 0 seconds. The maximum is 12 hours.
     /// </remarks>
-    public int VisibilityTimeout { get; init; } = DEFAULT_VISBILITY_TIMEOUT_SECONDS;
+    public int VisibilityTimeout { get; init; } = DEFAULT_VISIBILITY_TIMEOUT_SECONDS;
+
+    /// <summary>
+    /// How often in seconds to extend the visibility timeout of messages that have been
+    /// received from SQS but are still being proceessed
+    /// </summary>
+    /// <remarks>
+    /// <inheritdoc cref="DEFAULT_VISIBILITY_TIMEOUT_EXTENSION_INTERVAL_SECONDS" path="//remarks"/>
+    /// </remarks>
+    public int VisibilityTimeoutExtensionInterval { get; init; } = DEFAULT_VISIBILITY_TIMEOUT_EXTENSION_INTERVAL_SECONDS;
 
     /// <summary>
     /// <inheritdoc cref="ReceiveMessageRequest.WaitTimeSeconds"/>

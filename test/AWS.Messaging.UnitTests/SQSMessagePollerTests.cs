@@ -85,13 +85,13 @@ public class SQSMessagePollerTests
             It.Is<DeleteMessageBatchRequest>(request =>
                 request.QueueUrl == TEST_QUEUE_URL &&
                 request.Entries.Count == 2 &&
-                request.Entries.Any(x => x.ReceiptHandle == "rh1") &&
-                request.Entries.Any(x => x.ReceiptHandle == "rh2")),
+                request.Entries.Any(entry => entry.Id == "1" && entry.ReceiptHandle == "rh1") &&
+                request.Entries.Any(entry => entry.Id == "2" && entry.ReceiptHandle == "rh2")),
             It.IsAny<CancellationToken>()));
     }
 
     /// <summary>
-    /// Tests that calling <see cref="IMessagePoller.ExtendMessageVisiblityTimeoutAsync"/> calls
+    /// Tests that calling <see cref="IMessagePoller.ExtendMessageVisibilityTimeoutAsync"/> calls
     /// SQS's ChangeMessageVisibilityBatch with an expected request.
     /// </summary>
     [Fact]
@@ -110,14 +110,14 @@ public class SQSMessagePollerTests
             new MessageEnvelope<ChatMessage> { Id = "2", SQSMetadata = new SQSMetadata { ReceiptHandle ="rh2"} }
         };
 
-        await messagePoller.ExtendMessageVisiblityTimeoutAsync(messageEnvelopes);
+        await messagePoller.ExtendMessageVisibilityTimeoutAsync(messageEnvelopes);
 
         client.Verify(x => x.ChangeMessageVisibilityBatchAsync(
             It.Is<ChangeMessageVisibilityBatchRequest>(request =>
                 request.QueueUrl == TEST_QUEUE_URL &&
                 request.Entries.Count == 2 &&
-                request.Entries.Any(x => x.ReceiptHandle == "rh1") &&
-                request.Entries.Any(x => x.ReceiptHandle == "rh2")),
+                request.Entries.Any(entry => entry.Id == "1" && entry.ReceiptHandle == "rh1") &&
+                request.Entries.Any(entry => entry.Id == "2" && entry.ReceiptHandle == "rh2")),
             It.IsAny<CancellationToken>()));
     }
 

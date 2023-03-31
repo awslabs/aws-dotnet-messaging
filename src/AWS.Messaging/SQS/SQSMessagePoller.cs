@@ -22,14 +22,15 @@ internal class SQSMessagePoller : IMessagePoller
     private readonly IEnvelopeSerializer _envelopeSerializer;
 
     /// <summary>
-    /// The number of milliseconds to pause if already processing the configured maximum number of messages
-    /// </summary>
-    private const int CONCURRENCY_LIMIT_PAUSE_MILLIS = 50;
-
-    /// <summary>
     /// Maximum valid value for <see cref="ReceiveMessageRequest.MaxNumberOfMessages"/>
     /// </summary>
     private const int SQS_MAX_NUMBER_MESSAGES_TO_READ = 10;
+
+    /// <summary>
+    /// The maximum amount of time a polling iteration should pause for while waiting
+    /// for in flight messages to finish processing
+    /// </summary>
+    private static readonly TimeSpan CONCURRENT_CAPACITY_WAIT_TIMEOUT = TimeSpan.FromMinutes(1);
 
     /// <summary>
     /// Creates instance of <see cref="AWS.Messaging.SQS.SQSMessagePoller" />
@@ -55,6 +56,10 @@ internal class SQSMessagePoller : IMessagePoller
     }
 
     /// <inheritdoc/>
+    public int VisibilityTimeoutExtensionInterval => _configuration.VisibilityTimeoutExtensionInterval;
+    
+
+    /// <inheritdoc/>
     public async Task StartPollingAsync(CancellationToken token = default)
     {
         await PollQueue(token);
@@ -70,11 +75,14 @@ internal class SQSMessagePoller : IMessagePoller
         {
             var numberOfMessagesToRead = _configuration.MaxNumberOfConcurrentMessages - _messageManager.ActiveMessageCount;
 
-            // If already processing the maximum number of messages, block and then try again
-            // TODO: change this to a signal once DefaultMessageManager is implemented
+            // If already processing the maximum number of messages, wait for at least one to complete and then try again
             if (numberOfMessagesToRead <= 0)
             {
-                await Task.Delay(CONCURRENCY_LIMIT_PAUSE_MILLIS);
+                _logger.LogTrace("The maximum number of {max} concurrent messages is already being processed. " +
+                    "Waiting for one or more to complete for a maximum of {timeout} seconds before attempting to poll again.",
+                    _configuration.MaxNumberOfConcurrentMessages, CONCURRENT_CAPACITY_WAIT_TIMEOUT.TotalSeconds);
+
+                await _messageManager.WaitAsync(CONCURRENT_CAPACITY_WAIT_TIMEOUT);
                 continue;
             }
 
@@ -108,7 +116,9 @@ internal class SQSMessagePoller : IMessagePoller
                 foreach (var message in receiveMessageResponse.Messages)
                 {
                     var messageEnvelopeResult = await _envelopeSerializer.ConvertToEnvelopeAsync(message);
-                    _messageManager.StartProcessMessage(messageEnvelopeResult.Envelope, messageEnvelopeResult.Mapping);
+
+                    // Don't await this result, we want to process multiple messages concurrently
+                    _ = _messageManager.ProcessMessageAsync(messageEnvelopeResult.Envelope, messageEnvelopeResult.Mapping, token);
                 }
             }
             catch (AWSMessagingException)
@@ -135,7 +145,7 @@ internal class SQSMessagePoller : IMessagePoller
     }
 
     /// <inheritdoc/>
-    public async Task DeleteMessagesAsync(IEnumerable<MessageEnvelope> messages)
+    public async Task DeleteMessagesAsync(IEnumerable<MessageEnvelope> messages, CancellationToken token = default)
     {
         if (messages.Count() == 0)
         {
@@ -155,6 +165,7 @@ internal class SQSMessagePoller : IMessagePoller
                     message.Id, message.SQSMetadata.ReceiptHandle, _configuration.SubscriberEndpoint);
                 request.Entries.Add(new DeleteMessageBatchRequestEntry()
                 {
+                    Id = message.Id,
                     ReceiptHandle = message.SQSMetadata.ReceiptHandle
                 });
             }
@@ -169,7 +180,7 @@ internal class SQSMessagePoller : IMessagePoller
 
         try
         {
-            var response = await _sqsClient.DeleteMessageBatchAsync(request);
+            var response = await _sqsClient.DeleteMessageBatchAsync(request, token);
 
             foreach (var successMessage in response.Successful)
             {
@@ -200,7 +211,7 @@ internal class SQSMessagePoller : IMessagePoller
     }
 
     /// <inheritdoc/>
-    public async Task ExtendMessageVisiblityTimeoutAsync(IEnumerable<MessageEnvelope> messages)
+    public async Task ExtendMessageVisibilityTimeoutAsync(IEnumerable<MessageEnvelope> messages, CancellationToken token = default)
     {
         if (messages.Count() == 0)
         {
@@ -220,6 +231,7 @@ internal class SQSMessagePoller : IMessagePoller
                     message.Id, message.SQSMetadata.ReceiptHandle, _configuration.VisibilityTimeout);
                 request.Entries.Add(new ChangeMessageVisibilityBatchRequestEntry
                 {
+                    Id = message.Id,
                     ReceiptHandle = message.SQSMetadata.ReceiptHandle,
                     VisibilityTimeout = _configuration.VisibilityTimeout
                 });
@@ -235,7 +247,7 @@ internal class SQSMessagePoller : IMessagePoller
 
         try
         {
-            var response = await _sqsClient.ChangeMessageVisibilityBatchAsync(request);
+            var response = await _sqsClient.ChangeMessageVisibilityBatchAsync(request, token);
 
             foreach (var successMessage in response.Successful)
             {

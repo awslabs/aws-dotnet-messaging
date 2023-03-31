@@ -14,23 +14,28 @@ namespace AWS.Messaging.Services;
 public interface IMessagePoller
 {
     /// <summary>
+    /// How frequently message visibility should be extended in seconds
+    /// via <see cref="ExtendMessageVisibilityTimeoutAsync"/> while the message is still being processed
+    /// </summary>
+    int VisibilityTimeoutExtensionInterval { get; }
+
+    /// <summary>
     /// Start polling the underlying service. Polling will run indefinitely till the CancellationToken is cancelled.
     /// </summary>
     /// <param name="token">Optional cancellation token to shutdown the poller.</param>
-    /// <returns></returns>
-    Task StartPollingAsync(CancellationToken token = default(CancellationToken));
+    Task StartPollingAsync(CancellationToken token = default);
 
     /// <summary>
     /// Delete the message in the underlying service.
     /// </summary>
     /// <param name="messages">The messages to delete.</param>
-    /// <returns></returns>
-    Task DeleteMessagesAsync(IEnumerable<MessageEnvelope> messages);
+    /// <param name="token">Optional token to cancel the deletion.</param>
+    Task DeleteMessagesAsync(IEnumerable<MessageEnvelope> messages, CancellationToken token = default);
 
     /// <summary>
     /// Inform the underlying service to extend the message's visibility timeout because the message is still being processed.
     /// </summary>
     /// <param name="messages">The messages to extend their visibility timeout.</param>
-    /// <returns></returns>
-    Task ExtendMessageVisiblityTimeoutAsync(IEnumerable<MessageEnvelope> messages);
+    /// <param name="token">Optional token to cancel the visibility timeout extension.</param>
+    Task ExtendMessageVisibilityTimeoutAsync(IEnumerable<MessageEnvelope> messages, CancellationToken token = default);
 }
