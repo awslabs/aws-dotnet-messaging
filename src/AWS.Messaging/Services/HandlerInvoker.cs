@@ -8,10 +8,8 @@ using Microsoft.Extensions.Logging;
 
 namespace AWS.Messaging.Services;
 
-/// <summary>
-/// Identifies and invokes the correct method on a registered <see cref="IMessageHandler{T}"/> for received messages
-/// </summary>
-public class HandlerInvoker
+/// <inheritdoc cref="IHandlerInvoker"/>
+public class HandlerInvoker : IHandlerInvoker
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<HandlerInvoker> _logger;
@@ -33,13 +31,7 @@ public class HandlerInvoker
         _logger = logger;
     }
 
-    /// <summary>
-    /// Identifies and invokes the correct method to invoke on a registered <see cref="IMessageHandler{T}"/> for the given message
-    /// </summary>
-    /// <param name="messageEnvelope">Envelope of the message that is being handled</param>
-    /// <param name="subscriberMapping">Subscriber mapping of the message that is being handled</param>
-    /// <param name="token">Cancellation token which will be passed to the message handler</param>
-    /// <returns>Task representing the outcome of the message handler</returns>
+    /// <inheritdoc/>
     public async Task<MessageProcessStatus> InvokeAsync(MessageEnvelope messageEnvelope, SubscriberMapping subscriberMapping, CancellationToken token = default)
     {
         var handler = _serviceProvider.GetService(subscriberMapping.HandlerType);

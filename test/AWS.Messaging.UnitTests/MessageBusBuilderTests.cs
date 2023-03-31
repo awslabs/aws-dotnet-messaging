@@ -266,7 +266,7 @@ public class MessageBusBuilderTests
         Assert.IsType<DefaultMessagePollerFactory>(messagePollerFactory);
 
         // Verify that the helper to invoke message handlers was added
-        var handlerInvoker = serviceProvider.GetService<HandlerInvoker>();
+        var handlerInvoker = serviceProvider.GetService<IHandlerInvoker>();
         Assert.NotNull(handlerInvoker);
         Assert.IsType<HandlerInvoker>(handlerInvoker);
 
@@ -304,6 +304,7 @@ public class MessageBusBuilderTests
             builder.AddSQSPoller("queueUrl", options => {
                 options.MaxNumberOfConcurrentMessages = 20;
                 options.VisibilityTimeout = 5;
+                options.VisibilityTimeoutExtensionInterval = 2;
                 options.WaitTimeSeconds = 10;
             });
         });
@@ -322,6 +323,7 @@ public class MessageBusBuilderTests
             Assert.Equal("queueUrl", sqsConfiguration.SubscriberEndpoint);
             Assert.Equal(20, sqsConfiguration.MaxNumberOfConcurrentMessages);
             Assert.Equal(5, sqsConfiguration.VisibilityTimeout);
+            Assert.Equal(2, sqsConfiguration.VisibilityTimeoutExtensionInterval);
             Assert.Equal(10, sqsConfiguration.WaitTimeSeconds);
         }
         else
@@ -371,17 +373,33 @@ public class MessageBusBuilderTests
     /// </summary>
     public static IEnumerable<object[]> GetInvalidSQSMessagePollerOptionsCases()
     {
-        // Must be postive 
+        // MaxNumberOfConcurrentMessages must be postive 
         yield return new object[] { new Action<SQSMessagePollerOptions>((options) => options.MaxNumberOfConcurrentMessages = -1) };
         yield return new object[] { new Action<SQSMessagePollerOptions>((options) => options.MaxNumberOfConcurrentMessages = 0) };
 
-        // Must be between 0 seconds and 12 hours inclusive
+        // VisibilityTimeout must be between 0 seconds and 12 hours inclusive
         yield return new object[] { new Action<SQSMessagePollerOptions>((options) => options.VisibilityTimeout = -1) };
         yield return new object[] { new Action<SQSMessagePollerOptions>((options) => options.VisibilityTimeout = (int)TimeSpan.FromHours(12).TotalSeconds + 1) };
 
-        // Must be between 0 and 20 seconds inclusive
+        // WaitTimeSeconds must be between 0 and 20 seconds inclusive
         yield return new object[] { new Action<SQSMessagePollerOptions>((options) => options.WaitTimeSeconds = -1) };
         yield return new object[] { new Action<SQSMessagePollerOptions>((options) => options.WaitTimeSeconds = 21) };
+
+        // VisibilityTimeoutExtensionInterval must be postive 
+        yield return new object[] { new Action<SQSMessagePollerOptions>((options) => options.VisibilityTimeoutExtensionInterval = -1) };
+        yield return new object[] { new Action<SQSMessagePollerOptions>((options) => options.VisibilityTimeoutExtensionInterval = 0) };
+
+        // VisibilityTimeoutExtensionInterval must be strictly less than than VisibilityTimeout
+        yield return new object[] { new Action<SQSMessagePollerOptions>((options) =>
+        {
+            options.VisibilityTimeout = 5;
+            options.VisibilityTimeoutExtensionInterval = 5;
+        })};
+        yield return new object[] { new Action<SQSMessagePollerOptions>((options) =>
+        {
+            options.VisibilityTimeout = 4;
+            options.VisibilityTimeoutExtensionInterval = 5;
+        })};
     }
 
     /// <summary>

@@ -14,10 +14,13 @@ public class SQSMessagePollerOptions
     public int MaxNumberOfConcurrentMessages { get; set; } = SQSMessagePollerConfiguration.DEFAULT_MAX_NUMBER_OF_CONCURRENT_MESSAGES;
 
     /// <inheritdoc cref="SQSMessagePollerConfiguration.VisibilityTimeout"/>
-    public int VisibilityTimeout { get; set; } = SQSMessagePollerConfiguration.DEFAULT_VISBILITY_TIMEOUT_SECONDS;
+    public int VisibilityTimeout { get; set; } = SQSMessagePollerConfiguration.DEFAULT_VISIBILITY_TIMEOUT_SECONDS;
 
     /// <inheritdoc cref="SQSMessagePollerConfiguration.WaitTimeSeconds"/>
     public int WaitTimeSeconds { get; set; } = SQSMessagePollerConfiguration.DEFAULT_WAIT_TIME_SECONDS;
+
+    /// <inheritdoc cref="SQSMessagePollerConfiguration.VisibilityTimeoutExtensionInterval"/>
+    public int VisibilityTimeoutExtensionInterval { get; set; } = SQSMessagePollerConfiguration.DEFAULT_VISIBILITY_TIMEOUT_EXTENSION_INTERVAL_SECONDS;
 
     /// <summary>
     /// Validates that the options are valid against the message framework's and/or SQS limits
@@ -42,6 +45,18 @@ public class SQSMessagePollerOptions
         if (WaitTimeSeconds < 0 || WaitTimeSeconds > 20)
         {
             errorMessages.Add($"{nameof(WaitTimeSeconds)} must be between 0 seconds and 20 seconds. Current value: {WaitTimeSeconds}.");
+        }
+
+        if (VisibilityTimeoutExtensionInterval <= 0)
+        {
+            errorMessages.Add($"{nameof(VisibilityTimeoutExtensionInterval)} must be greater than 0. Current value: {VisibilityTimeoutExtensionInterval}.");
+        }
+
+        if (VisibilityTimeoutExtensionInterval >= VisibilityTimeout)
+        {
+            errorMessages.Add($"{nameof(VisibilityTimeoutExtensionInterval)} ({VisibilityTimeoutExtensionInterval} seconds) " +
+                $"must be less than {nameof(VisibilityTimeout)} ({VisibilityTimeout} seconds), " +
+                $"or else other consumers may receive the message while it is still being processed.");
         }
 
         if (errorMessages.Any())
