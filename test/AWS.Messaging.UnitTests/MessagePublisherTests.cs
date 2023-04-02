@@ -18,6 +18,7 @@ using Amazon.SimpleNotificationService.Model;
 using Amazon.EventBridge;
 using Amazon.EventBridge.Model;
 using AWS.Messaging.Publishers.EventBridge;
+using AWS.Messaging.Services;
 
 namespace AWS.Messaging.UnitTests;
 
@@ -62,7 +63,8 @@ public class MessagePublisherTests
         var messagePublisher = new MessageRoutingPublisher(
             _serviceProvider.Object,
             _messageConfiguration.Object,
-            _logger.Object
+            _logger.Object,
+            new DefaultTelemetryWriter(_serviceProvider.Object)
             );
 
         await messagePublisher.PublishAsync(_chatMessage);
@@ -80,7 +82,8 @@ public class MessagePublisherTests
         var messagePublisher = new MessageRoutingPublisher(
             _serviceProvider.Object,
             _messageConfiguration.Object,
-            _logger.Object
+            _logger.Object,
+            new DefaultTelemetryWriter(_serviceProvider.Object)
             );
 
         await Assert.ThrowsAsync<MissingMessageTypeConfigurationException>(() => messagePublisher.PublishAsync(_chatMessage));
@@ -94,7 +97,8 @@ public class MessagePublisherTests
         var messagePublisher = new MessageRoutingPublisher(
             _serviceProvider.Object,
             _messageConfiguration.Object,
-            _logger.Object
+            _logger.Object,
+            new DefaultTelemetryWriter(_serviceProvider.Object)
             );
 
         await Assert.ThrowsAsync<InvalidMessageException>(() => messagePublisher.PublishAsync<ChatMessage?>(null));
@@ -121,7 +125,8 @@ public class MessagePublisherTests
         var messagePublisher = new MessageRoutingPublisher(
             _serviceProvider.Object,
             _messageConfiguration.Object,
-            _logger.Object
+            _logger.Object,
+            new DefaultTelemetryWriter(_serviceProvider.Object)
             );
 
         await Assert.ThrowsAsync<UnsupportedPublisherException>(() => messagePublisher.PublishAsync(_chatMessage));
@@ -149,7 +154,8 @@ public class MessagePublisherTests
         var messagePublisher = new MessageRoutingPublisher(
             _serviceProvider.Object,
             _messageConfiguration.Object,
-            _logger.Object
+            _logger.Object,
+            new DefaultTelemetryWriter(_serviceProvider.Object)
             );
 
         await messagePublisher.PublishAsync(_chatMessage);
@@ -169,7 +175,8 @@ public class MessagePublisherTests
         var messagePublisher = new MessageRoutingPublisher(
             _serviceProvider.Object,
             _messageConfiguration.Object,
-            _logger.Object
+            _logger.Object,
+            new DefaultTelemetryWriter(_serviceProvider.Object)
             );
 
         await Assert.ThrowsAsync<InvalidMessageException>(() => messagePublisher.PublishAsync<ChatMessage?>(null));
@@ -186,7 +193,7 @@ public class MessagePublisherTests
         _serviceProvider.Setup(x => x.GetService(typeof(IEnvelopeSerializer))).Returns(_envelopeSerializer.Object);
         _messageConfiguration.Setup(x => x.GetPublisherMapping(typeof(ChatMessage))).Returns(publisherMapping);
     }
-    
+
     [Fact]
     public async Task EventBridgePublisher_HappyPath()
     {
@@ -197,7 +204,8 @@ public class MessagePublisherTests
         var messagePublisher = new MessageRoutingPublisher(
             _serviceProvider.Object,
             _messageConfiguration.Object,
-            _logger.Object
+            _logger.Object,
+            new DefaultTelemetryWriter(_serviceProvider.Object)
             );
 
         await messagePublisher.PublishAsync(_chatMessage);
@@ -261,7 +269,7 @@ public class MessagePublisherTests
             x.PutEventsAsync(
                 It.Is<PutEventsRequest>(request =>
                     request.Entries[0].EventBusName.Equals("endpoint") && request.Entries[0].TraceHeader.Equals("trace-header1") && request.Entries[0].Time.Year == dateTimeOffset.Year),
-                 
+
                 It.IsAny<CancellationToken>()), Times.Exactly(1));
     }
 
@@ -273,7 +281,8 @@ public class MessagePublisherTests
         var messagePublisher = new MessageRoutingPublisher(
             _serviceProvider.Object,
             _messageConfiguration.Object,
-            _logger.Object
+            _logger.Object,
+            new DefaultTelemetryWriter(_serviceProvider.Object)
             );
 
         await Assert.ThrowsAsync<InvalidMessageException>(() => messagePublisher.PublishAsync<ChatMessage?>(null));

@@ -1,6 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using Microsoft.Extensions.DependencyInjection;
+
 namespace AWS.Messaging.Configuration;
 
 /// <summary>
@@ -51,4 +53,11 @@ public interface IMessageBusBuilder
     /// Configures an instance of <see cref="SerializationOptions"/> to control the serialization/de-serialization logic for the application message.
     /// </summary>
     IMessageBusBuilder ConfigureSerializationOptions(Action<SerializationOptions> options);
+
+    /// <summary>
+    /// Add additional services to the IMessageBusBuilder. This method is used for plugins to the library. For example telemetry plugins.
+    /// </summary>
+    /// <param name="serviceDescriptor"></param>
+    /// <returns></returns>
+    IMessageBusBuilder AddAdditionalService(ServiceDescriptor serviceDescriptor);
 }

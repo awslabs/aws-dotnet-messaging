@@ -33,7 +33,7 @@ public class HandlerInvokerTests
 
         var serviceProvider = serviceCollection.BuildServiceProvider();
 
-        var handlerInvoker = new HandlerInvoker(serviceProvider, new NullLogger<HandlerInvoker>());
+        var handlerInvoker = new HandlerInvoker(serviceProvider, new NullLogger<HandlerInvoker>(), new DefaultTelemetryWriter(serviceProvider));
 
         var envelope = new MessageEnvelope<ChatMessage>();
         var subscriberMapping = new SubscriberMapping(typeof(ChatMessageHandler), typeof(ChatMessage));
@@ -58,7 +58,7 @@ public class HandlerInvokerTests
 
         var serviceProvider = serviceCollection.BuildServiceProvider();
 
-        var handlerInvoker = new HandlerInvoker(serviceProvider, new NullLogger<HandlerInvoker>());
+        var handlerInvoker = new HandlerInvoker(serviceProvider, new NullLogger<HandlerInvoker>(), new DefaultTelemetryWriter(serviceProvider));
 
         // Assert that ChatMessage is routed to the right handler method, which always succeeds
         var chatEnvelope = new MessageEnvelope<ChatMessage>();
@@ -93,7 +93,7 @@ public class HandlerInvokerTests
 
         var serviceProvider = serviceCollection.BuildServiceProvider();
 
-        var handlerInvoker = new HandlerInvoker(serviceProvider, mockLogger.Object);
+        var handlerInvoker = new HandlerInvoker(serviceProvider, mockLogger.Object, new DefaultTelemetryWriter(serviceProvider));
         var envelope = new MessageEnvelope<ChatMessage>()
         {
             Id = "123"

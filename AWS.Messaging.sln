@@ -23,7 +23,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "sampleapps", "sampleapps", 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "PublisherAPI", "sampleapps\PublisherAPI\PublisherAPI.csproj", "{A7F3DA5F-0D7A-4D8A-837D-F78F4A4E3CA7}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SubscriberService", "sampleapps\SubscriberService\SubscriberService.csproj", "{D398D75B-80F3-4D4F-AFC7-15CD61DD22C3}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SubscriberService", "sampleapps\SubscriberService\SubscriberService.csproj", "{D398D75B-80F3-4D4F-AFC7-15CD61DD22C3}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AWS.Messaging.Telemetry.XRay", "src\AWS.Messaging.Telemetry.XRay\AWS.Messaging.Telemetry.XRay.csproj", "{BEFAA674-EFE1-4474-A62C-661C95E823CE}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AWS.Messaging.Telemetry.OpenTelemetry", "src\AWS.Messaging.Telemetry.OpenTelemetry\AWS.Messaging.Telemetry.OpenTelemetry.csproj", "{38BDD70B-4FCB-4576-8EA9-4C1263C91DFF}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -51,6 +55,14 @@ Global
 		{D398D75B-80F3-4D4F-AFC7-15CD61DD22C3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{D398D75B-80F3-4D4F-AFC7-15CD61DD22C3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{D398D75B-80F3-4D4F-AFC7-15CD61DD22C3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BEFAA674-EFE1-4474-A62C-661C95E823CE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BEFAA674-EFE1-4474-A62C-661C95E823CE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BEFAA674-EFE1-4474-A62C-661C95E823CE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BEFAA674-EFE1-4474-A62C-661C95E823CE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{38BDD70B-4FCB-4576-8EA9-4C1263C91DFF}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{38BDD70B-4FCB-4576-8EA9-4C1263C91DFF}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{38BDD70B-4FCB-4576-8EA9-4C1263C91DFF}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{38BDD70B-4FCB-4576-8EA9-4C1263C91DFF}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -61,6 +73,8 @@ Global
 		{A4D5F664-E3A3-411A-9327-05913794021C} = {80DB2C77-6ADD-4A60-B27D-763BDF9659D3}
 		{A7F3DA5F-0D7A-4D8A-837D-F78F4A4E3CA7} = {1AA8985B-897C-4BD5-9735-FD8B33FEBFFB}
 		{D398D75B-80F3-4D4F-AFC7-15CD61DD22C3} = {1AA8985B-897C-4BD5-9735-FD8B33FEBFFB}
+		{BEFAA674-EFE1-4474-A62C-661C95E823CE} = {2D0A561B-0B97-4259-8603-3AF5437BB652}
+		{38BDD70B-4FCB-4576-8EA9-4C1263C91DFF} = {2D0A561B-0B97-4259-8603-3AF5437BB652}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7B2B759D-6455-4089-8173-3F1619567B36}

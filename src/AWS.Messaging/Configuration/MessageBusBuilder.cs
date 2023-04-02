@@ -18,6 +18,7 @@ namespace AWS.Messaging.Configuration;
 public class MessageBusBuilder : IMessageBusBuilder
 {
     private readonly MessageConfiguration _messageConfiguration;
+    private readonly IList<ServiceDescriptor> _additionalServices = new List<ServiceDescriptor>();
 
     /// <summary>
     /// Creates an instance of <see cref="MessageBusBuilder"/>.
@@ -96,6 +97,13 @@ public class MessageBusBuilder : IMessageBusBuilder
         return this;
     }
 
+    /// <inheritdoc/>
+    public IMessageBusBuilder AddAdditionalService(ServiceDescriptor serviceDescriptor)
+    {
+        _additionalServices.Add(serviceDescriptor);
+        return this;
+    }
+
     internal void Build(IServiceCollection services)
     {
         services.AddSingleton<IMessageConfiguration>(_messageConfiguration);
@@ -103,6 +111,7 @@ public class MessageBusBuilder : IMessageBusBuilder
         services.TryAddSingleton<IEnvelopeSerializer, EnvelopeSerializer>();
         services.TryAddSingleton<IDateTimeHandler, DateTimeHandler>();
         services.TryAddSingleton<IMessageIdGenerator, MessageIdGenerator>();
+        services.TryAddSingleton<ITelemetryWriter, DefaultTelemetryWriter>();
 
         if (_messageConfiguration.PublisherMappings.Any())
         {
@@ -144,6 +153,11 @@ public class MessageBusBuilder : IMessageBusBuilder
             {
                 services.TryAddAWSService<Amazon.SQS.IAmazonSQS>();
             }
+        }
+
+        foreach(var service in _additionalServices)
+        {
+            services.Add(service);
         }
     }
 }

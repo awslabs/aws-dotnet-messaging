@@ -6,6 +6,8 @@ using AWS.Messaging.Configuration;
 using AWS.Messaging.Publishers.EventBridge;
 using AWS.Messaging.Publishers.SNS;
 using AWS.Messaging.Publishers.SQS;
+using AWS.Messaging.Services;
+using AWS.Messaging.Telemetry;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -21,6 +23,7 @@ internal class MessageRoutingPublisher : IMessagePublisher
     private readonly IServiceProvider _serviceProvider;
     private readonly IMessageConfiguration _messageConfiguration;
     private readonly ILogger<IMessagePublisher> _logger;
+    private readonly ITelemetryWriter _telemetryWriter;
 
     /// <summary>
     /// Creates an instance of <see cref="MessageRoutingPublisher"/>.
@@ -28,11 +31,13 @@ internal class MessageRoutingPublisher : IMessagePublisher
     public MessageRoutingPublisher(
         IServiceProvider serviceProvider,
         IMessageConfiguration messageConfiguration,
-        ILogger<IMessagePublisher> logger)
+        ILogger<IMessagePublisher> logger,
+        ITelemetryWriter telemetryWriter)
     {
         _serviceProvider = serviceProvider;
         _messageConfiguration = messageConfiguration;
         _logger = logger;
+        _telemetryWriter = telemetryWriter;
     }
 
     private readonly Dictionary<string, Type> _publisherTypeMapping = new()
@@ -59,31 +64,46 @@ internal class MessageRoutingPublisher : IMessagePublisher
     /// <param name="token">The cancellation token used to cancel the request.</param>
     public async Task PublishAsync<T>(T message, CancellationToken token = default)
     {
-        var mapping = _messageConfiguration.GetPublisherMapping(typeof(T));
-        if (mapping == null)
+        using (var trace = _telemetryWriter.Trace("Routing message to AWS service"))
         {
-            _logger.LogError("The framework is not configured to publish messages of type '{0}'.", typeof(T).FullName);
-            throw new MissingMessageTypeConfigurationException($"The framework is not configured to publish messages of type '{typeof(T).FullName}'.");
-        }
-
-        if (_publisherTypeMapping.ContainsKey(mapping.PublishTargetType))
-        {
-            var publisherType = _publisherTypeMapping[mapping.PublishTargetType];
-            if (!typeof(IMessagePublisher).IsAssignableFrom(publisherType))
+            try
             {
-                _logger.LogError("The message publisher corresponding to the type '{0}' is invalid " +
-                    "and does not implement the interface '{1}'.", mapping.PublishTargetType, typeof(IMessagePublisher));
-                throw new InvalidPublisherTypeException($"The message publisher corresponding to the type '{mapping.PublishTargetType}' is invalid " +
-                    $"and does not implement the interface '{typeof(IMessagePublisher)}'.");
-            }
+                trace.AddMetadata(TelemetryKeys.ObjectType, typeof(T).FullName!);
 
-            var publisher = GetPublisherInstance(publisherType);
-            await publisher.PublishAsync(message, token);
-        }
-        else
-        {
-            _logger.LogError("The publisher type '{0}' is not supported.", mapping.PublishTargetType);
-            throw new UnsupportedPublisherException($"The publisher type '{mapping.PublishTargetType}' is not supported.");
+                var mapping = _messageConfiguration.GetPublisherMapping(typeof(T));
+                if (mapping == null)
+                {
+                    _logger.LogError("The framework is not configured to publish messages of type '{0}'.", typeof(T).FullName);
+                    throw new MissingMessageTypeConfigurationException($"The framework is not configured to publish messages of type '{typeof(T).FullName}'.");
+                }
+
+                trace.AddMetadata(TelemetryKeys.PublishTargetType, mapping.PublishTargetType);
+
+                if (_publisherTypeMapping.ContainsKey(mapping.PublishTargetType))
+                {
+                    var publisherType = _publisherTypeMapping[mapping.PublishTargetType];
+                    if (!typeof(IMessagePublisher).IsAssignableFrom(publisherType))
+                    {
+                        _logger.LogError("The message publisher corresponding to the type '{0}' is invalid " +
+                                         "and does not implement the interface '{1}'.", mapping.PublishTargetType, typeof(IMessagePublisher));
+                        throw new InvalidPublisherTypeException($"The message publisher corresponding to the type '{mapping.PublishTargetType}' is invalid " +
+                                                                $"and does not implement the interface '{typeof(IMessagePublisher)}'.");
+                    }
+
+                    var publisher = GetPublisherInstance(publisherType);
+                    await publisher.PublishAsync(message, token);
+                }
+                else
+                {
+                    _logger.LogError("The publisher type '{0}' is not supported.", mapping.PublishTargetType);
+                    throw new UnsupportedPublisherException($"The publisher type '{mapping.PublishTargetType}' is not supported.");
+                }
+            }
+            catch (Exception e)
+            {
+                trace.AddException(e);
+                throw;
+            }
         }
     }
 
