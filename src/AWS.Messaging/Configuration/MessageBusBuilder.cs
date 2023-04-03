@@ -42,9 +42,12 @@ public class MessageBusBuilder : IMessageBusBuilder
     }
 
     /// <inheritdoc/>
-    public IMessageBusBuilder AddEventBridgePublisher<TMessage>(string eventBusUrl, string? messageTypeIdentifier = null)
+    public IMessageBusBuilder AddEventBridgePublisher<TMessage>(string eventBusName, string? messageTypeIdentifier = null, EventBridgePublishOptions? options = null)
     {
-        var eventBridgePublisherConfiguration = new EventBridgePublisherConfiguration(eventBusUrl);
+        var eventBridgePublisherConfiguration = new EventBridgePublisherConfiguration(eventBusName)
+        {
+            EndpointID = options?.EndpointID
+        };
         return AddPublisher<TMessage>(eventBridgePublisherConfiguration, PublisherTargetType.EVENTBRIDGE_PUBLISHER, messageTypeIdentifier);
     }
 

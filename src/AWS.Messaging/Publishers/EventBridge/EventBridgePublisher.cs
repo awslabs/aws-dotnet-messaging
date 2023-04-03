@@ -70,22 +70,26 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
         var messageBody = _envelopeSerializer.Serialize(messageEnvelope);
 
         _logger.LogDebug("Sending the message of type '{messageType}' to EventBridge. Publisher Endpoint: {endpoint}", typeof(T), publisherEndpoint);
-        var request = CreatePutEventsRequest(publisherEndpoint, publisherMapping.MessageTypeIdentifier, messageEnvelope.Source?.ToString(), messageBody, eventBridgeOptions);
+        var request = CreatePutEventsRequest(publisherMapping, messageEnvelope.Source?.ToString(), messageBody, eventBridgeOptions);
         await _eventBridgeClient.PutEventsAsync(request, token);
         _logger.LogDebug("The message of type '{messageType}' has been pushed to EventBridge.", typeof(T));
     }
 
-    private PutEventsRequest CreatePutEventsRequest(string eventBusName, string messageType, string? source, string messageBody, EventBridgeOptions? eventBridgeOptions)
+    private PutEventsRequest CreatePutEventsRequest(PublisherMapping publisherMapping, string? source, string messageBody, EventBridgeOptions? eventBridgeOptions)
     {
+        var publisherEndpoint = publisherMapping.PublisherConfiguration.PublisherEndpoint;
+        var publisherConfiguration = (EventBridgePublisherConfiguration)publisherMapping.PublisherConfiguration;
+
         var requestEntry = new PutEventsRequestEntry
         {
-            EventBusName = eventBusName,
-            DetailType = messageType,
+            EventBusName = publisherEndpoint,
+            DetailType = publisherMapping.MessageTypeIdentifier,
             Detail = messageBody
         };
 
         var putEventsRequest = new PutEventsRequest
         {
+            EndpointId = publisherConfiguration.EndpointID,
             Entries = new() { requestEntry }
         };
 
