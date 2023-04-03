@@ -25,12 +25,13 @@ public interface IMessageBusBuilder
     IMessageBusBuilder AddSNSPublisher<TMessage>(string topicUrl, string? messageTypeIdentifier = null);
 
     /// <summary>
-    /// Adds an EventBridge Publisher to the framework which will handle publishing
-    /// the defined message type to the specified EventBridge event bus URL.
+    /// Adds an EventBridge Publisher to the framework which will handle publishing the defined message type to the specified EventBridge event bus name.
+    /// If you are specifying a global endpoint ID via <see cref="EventBridgePublishOptions"/>, then you must also include the <see href="https://www.nuget.org/packages/AWSSDK.Extensions.CrtIntegration">AWSSDK.Extensions.CrtIntegration</see> package in your application.
     /// </summary>
-    /// <param name="eventBusUrl">The EventBridge event bus URL to publish the message to.</param>
+    /// <param name="eventBusName">The EventBridge event bus name or ARN where the message will be published.</param>
     /// <param name="messageTypeIdentifier">The language-agnostic message type identifier. If not specified, the .NET type will be used.</param>
-    IMessageBusBuilder AddEventBridgePublisher<TMessage>(string eventBusUrl, string? messageTypeIdentifier = null);
+    /// <param name="options">Contains additional properties that can be set while configuring an EventBridge publisher</param>
+    IMessageBusBuilder AddEventBridgePublisher<TMessage>(string eventBusName, string? messageTypeIdentifier = null, EventBridgePublishOptions? options = null);
 
     /// <summary>
     /// Add a message handler for a given message type.

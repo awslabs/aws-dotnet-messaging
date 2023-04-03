@@ -175,9 +175,13 @@ public class MessagePublisherTests
         await Assert.ThrowsAsync<InvalidMessageException>(() => messagePublisher.PublishAsync<ChatMessage?>(null));
     }
 
-    private void SetupEventBridgePublisherDIServices()
+    private void SetupEventBridgePublisherDIServices(string eventBusName, string? endpointID = null)
     {
-        var publisherConfiguration = new EventBridgePublisherConfiguration("endpoint");
+        var publisherConfiguration = new EventBridgePublisherConfiguration(eventBusName)
+        {
+            EndpointID = endpointID
+        };
+
         var publisherMapping = new PublisherMapping(typeof(ChatMessage), publisherConfiguration, PublisherTargetType.EVENTBRIDGE_PUBLISHER);
 
         _serviceProvider.Setup(x => x.GetService(typeof(IAmazonEventBridge))).Returns(_eventBridgeClient.Object);
@@ -190,7 +194,7 @@ public class MessagePublisherTests
     [Fact]
     public async Task EventBridgePublisher_HappyPath()
     {
-        SetupEventBridgePublisherDIServices();
+        SetupEventBridgePublisherDIServices("event-bus-123");
 
         _eventBridgeClient.Setup(x => x.PutEventsAsync(It.IsAny<PutEventsRequest>(), It.IsAny<CancellationToken>()));
 
@@ -205,14 +209,38 @@ public class MessagePublisherTests
         _eventBridgeClient.Verify(x =>
             x.PutEventsAsync(
                 It.Is<PutEventsRequest>(request =>
-                    request.Entries[0].EventBusName.Equals("endpoint") && request.Entries[0].DetailType.Equals("AWS.Messaging.UnitTests.Models.ChatMessage") && request.Entries[0].Source.Equals("/aws/messaging/unittest")),
+                    request.Entries[0].EventBusName.Equals("event-bus-123") && string.IsNullOrEmpty(request.EndpointId)
+                    && request.Entries[0].DetailType.Equals("AWS.Messaging.UnitTests.Models.ChatMessage") && request.Entries[0].Source.Equals("/aws/messaging/unittest")),
+                It.IsAny<CancellationToken>()), Times.Exactly(1));
+    }
+
+    [Fact]
+    public async Task EventBridgePublisher_GlobalEP()
+    {
+        SetupEventBridgePublisherDIServices("event-bus-123", "endpoint.123");
+
+        _eventBridgeClient.Setup(x => x.PutEventsAsync(It.IsAny<PutEventsRequest>(), It.IsAny<CancellationToken>()));
+
+        var messagePublisher = new MessageRoutingPublisher(
+            _serviceProvider.Object,
+            _messageConfiguration.Object,
+            _logger.Object
+            );
+
+        await messagePublisher.PublishAsync(_chatMessage);
+
+        _eventBridgeClient.Verify(x =>
+            x.PutEventsAsync(
+                It.Is<PutEventsRequest>(request =>
+                    request.Entries[0].EventBusName.Equals("event-bus-123") && request.EndpointId.Equals("endpoint.123")
+                    && request.Entries[0].DetailType.Equals("AWS.Messaging.UnitTests.Models.ChatMessage") && request.Entries[0].Source.Equals("/aws/messaging/unittest")),
                 It.IsAny<CancellationToken>()), Times.Exactly(1));
     }
 
     [Fact]
     public async Task EventBridgePublisher_OptionSource()
     {
-        SetupEventBridgePublisherDIServices();
+        SetupEventBridgePublisherDIServices("event-bus-123");
 
         _eventBridgeClient.Setup(x => x.PutEventsAsync(It.IsAny<PutEventsRequest>(), It.IsAny<CancellationToken>()));
 
@@ -231,14 +259,15 @@ public class MessagePublisherTests
         _eventBridgeClient.Verify(x =>
             x.PutEventsAsync(
                 It.Is<PutEventsRequest>(request =>
-                    request.Entries[0].EventBusName.Equals("endpoint") && request.Entries[0].DetailType.Equals("AWS.Messaging.UnitTests.Models.ChatMessage") && request.Entries[0].Source.Equals("/aws/custom")),
+                    request.Entries[0].EventBusName.Equals("event-bus-123") && string.IsNullOrEmpty(request.EndpointId)
+                    && request.Entries[0].DetailType.Equals("AWS.Messaging.UnitTests.Models.ChatMessage") && request.Entries[0].Source.Equals("/aws/custom")),
                 It.IsAny<CancellationToken>()), Times.Exactly(1));
     }
 
     [Fact]
     public async Task EventBridgePublisher_SetOptions()
     {
-        SetupEventBridgePublisherDIServices();
+        SetupEventBridgePublisherDIServices("event-bus-123");
 
         _eventBridgeClient.Setup(x => x.PutEventsAsync(It.IsAny<PutEventsRequest>(), It.IsAny<CancellationToken>()));
 
@@ -260,7 +289,8 @@ public class MessagePublisherTests
         _eventBridgeClient.Verify(x =>
             x.PutEventsAsync(
                 It.Is<PutEventsRequest>(request =>
-                    request.Entries[0].EventBusName.Equals("endpoint") && request.Entries[0].TraceHeader.Equals("trace-header1") && request.Entries[0].Time.Year == dateTimeOffset.Year),
+                    request.Entries[0].EventBusName.Equals("event-bus-123") && string.IsNullOrEmpty(request.EndpointId)
+                    && request.Entries[0].TraceHeader.Equals("trace-header1") && request.Entries[0].Time.Year == dateTimeOffset.Year),
                  
                 It.IsAny<CancellationToken>()), Times.Exactly(1));
     }
@@ -268,7 +298,7 @@ public class MessagePublisherTests
     [Fact]
     public async Task EventBridgePublisher_InvalidMessage()
     {
-        SetupEventBridgePublisherDIServices();
+        SetupEventBridgePublisherDIServices("event-bus-123");
 
         var messagePublisher = new MessageRoutingPublisher(
             _serviceProvider.Object,

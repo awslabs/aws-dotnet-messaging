@@ -9,19 +9,24 @@ namespace AWS.Messaging.Configuration;
 public class EventBridgePublisherConfiguration : IMessagePublisherConfiguration
 {
     /// <summary>
-    /// Retrieves the EventBridge Event Bus URL which the publisher will use to route the message.
+    /// Retrieves the EventBridge Event Bus name or ARN which the publisher will use to route the message.
     /// </summary>
     public string PublisherEndpoint { get; set; }
 
     /// <summary>
+    /// The ID of the global EventBridge endpoint.
+    /// </summary>
+    public string? EndpointID { get; set; }
+
+    /// <summary>
     /// Creates an instance of <see cref="EventBridgePublisherConfiguration"/>.
     /// </summary>
-    /// <param name="eventBusUrl">The EventBus URL</param>
-    public EventBridgePublisherConfiguration(string eventBusUrl)
+    /// <param name="eventBusName">The name or the ARN of the event bus where the mesasge is published</param>
+    public EventBridgePublisherConfiguration(string eventBusName)
     {
-        if (string.IsNullOrEmpty(eventBusUrl))
-            throw new InvalidPublisherEndpointException("The Event Bus URL cannot be empty.");
+        if (string.IsNullOrEmpty(eventBusName))
+            throw new InvalidPublisherEndpointException("The event bus name cannot be empty.");
 
-        PublisherEndpoint = eventBusUrl;
+        PublisherEndpoint = eventBusName;
     }
 }

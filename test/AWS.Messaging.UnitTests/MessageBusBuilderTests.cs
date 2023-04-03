@@ -122,10 +122,53 @@ public class MessageBusBuilderTests
     {
         _serviceCollection.AddAWSMessageBus(builder =>
         {
-            builder.AddEventBridgePublisher<OrderInfo>("eventBusUrl");
+            builder.AddEventBridgePublisher<OrderInfo>("eventBusName");
         });
 
         var serviceProvider = _serviceCollection.BuildServiceProvider();
+
+        var messageConfiguration = serviceProvider.GetService<IMessageConfiguration>();
+        var publisherMapping = messageConfiguration?.GetPublisherMapping(typeof(OrderInfo))!;
+        var publisherConfiguration = (EventBridgePublisherConfiguration)publisherMapping.PublisherConfiguration;
+        Assert.NotNull(publisherConfiguration);
+        Assert.Equal("eventBusName", publisherConfiguration.PublisherEndpoint);
+        Assert.True(string.IsNullOrEmpty(publisherConfiguration.EndpointID));
+
+        var eventBridgeClient = serviceProvider.GetService<IAmazonEventBridge>();
+        var eventBridgePublisher = serviceProvider.GetService<IEventBridgePublisher>();
+        Assert.NotNull(eventBridgeClient);
+        Assert.NotNull(eventBridgePublisher);
+
+        var sqsClient = serviceProvider.GetService<IAmazonSQS>();
+        var sqsPublisher = serviceProvider.GetService<ISQSPublisher>();
+        Assert.Null(sqsClient);
+        Assert.Null(sqsPublisher);
+
+        var snsClient = serviceProvider.GetService<IAmazonSimpleNotificationService>();
+        var snsPublisher = serviceProvider.GetService<ISNSPublisher>();
+        Assert.Null(snsClient);
+        Assert.Null(snsPublisher);
+    }
+
+    [Fact]
+    public void MessageBus_AddEventBus_WithEndpointID()
+    {
+        _serviceCollection.AddAWSMessageBus(builder =>
+        {
+            builder.AddEventBridgePublisher<OrderInfo>("eventBusName", options: new EventBridgePublishOptions
+            {
+                EndpointID = "endpoint.123"
+            });
+        });
+
+        var serviceProvider = _serviceCollection.BuildServiceProvider();
+
+        var messageConfiguration = serviceProvider.GetService<IMessageConfiguration>();
+        var publisherMapping = messageConfiguration?.GetPublisherMapping(typeof(OrderInfo))!;
+        var publisherConfiguration = (EventBridgePublisherConfiguration)publisherMapping.PublisherConfiguration;
+        Assert.NotNull(publisherConfiguration);
+        Assert.Equal("eventBusName", publisherConfiguration.PublisherEndpoint);
+        Assert.Equal("endpoint.123", publisherConfiguration.EndpointID);
 
         var eventBridgeClient = serviceProvider.GetService<IAmazonEventBridge>();
         var eventBridgePublisher = serviceProvider.GetService<IEventBridgePublisher>();
