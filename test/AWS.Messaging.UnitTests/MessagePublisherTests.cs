@@ -19,12 +19,12 @@ using Amazon.EventBridge;
 using Amazon.EventBridge.Model;
 using AWS.Messaging.Publishers.EventBridge;
 using AWS.Messaging.Services;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace AWS.Messaging.UnitTests;
 
 public class MessagePublisherTests
 {
-    private readonly Mock<IServiceProvider> _serviceProvider;
     private readonly Mock<IMessageConfiguration> _messageConfiguration;
     private readonly Mock<ILogger<IMessagePublisher>> _logger;
     private readonly Mock<IAmazonSQS> _sqsClient;
@@ -35,7 +35,6 @@ public class MessagePublisherTests
 
     public MessagePublisherTests()
     {
-        _serviceProvider = new Mock<IServiceProvider>();
         _messageConfiguration = new Mock<IMessageConfiguration>();
         _logger = new Mock<ILogger<IMessagePublisher>>();
         _sqsClient = new Mock<IAmazonSQS>();
@@ -56,15 +55,15 @@ public class MessagePublisherTests
     [Fact]
     public async Task SQSPublisher_HappyPath()
     {
-        SetupSQSPublisherDIServices();
+        var serviceProvider = SetupSQSPublisherDIServices();
 
         _sqsClient.Setup(x => x.SendMessageAsync(It.IsAny<SendMessageRequest>(), It.IsAny<CancellationToken>()));
 
         var messagePublisher = new MessageRoutingPublisher(
-            _serviceProvider.Object,
+            serviceProvider,
             _messageConfiguration.Object,
             _logger.Object,
-            new DefaultTelemetryWriter(_serviceProvider.Object)
+            new DefaultTelemetryWriter(serviceProvider)
             );
 
         await messagePublisher.PublishAsync(_chatMessage);
@@ -79,11 +78,13 @@ public class MessagePublisherTests
     [Fact]
     public async Task SQSPublisher_MappingNotFound()
     {
+        var serviceProvider = new ServiceCollection().BuildServiceProvider();
+
         var messagePublisher = new MessageRoutingPublisher(
-            _serviceProvider.Object,
+            serviceProvider,
             _messageConfiguration.Object,
             _logger.Object,
-            new DefaultTelemetryWriter(_serviceProvider.Object)
+            new DefaultTelemetryWriter(serviceProvider)
             );
 
         await Assert.ThrowsAsync<MissingMessageTypeConfigurationException>(() => messagePublisher.PublishAsync(_chatMessage));
@@ -92,70 +93,80 @@ public class MessagePublisherTests
     [Fact]
     public async Task SQSPublisher_InvalidMessage()
     {
-        SetupSQSPublisherDIServices();
+        var serviceProvider = SetupSQSPublisherDIServices();
 
         var messagePublisher = new MessageRoutingPublisher(
-            _serviceProvider.Object,
+            serviceProvider,
             _messageConfiguration.Object,
             _logger.Object,
-            new DefaultTelemetryWriter(_serviceProvider.Object)
+            new DefaultTelemetryWriter(serviceProvider)
             );
 
         await Assert.ThrowsAsync<InvalidMessageException>(() => messagePublisher.PublishAsync<ChatMessage?>(null));
     }
 
-    private void SetupSQSPublisherDIServices()
+    private IServiceProvider SetupSQSPublisherDIServices()
     {
         var publisherConfiguration = new SQSPublisherConfiguration("endpoint");
         var publisherMapping = new PublisherMapping(typeof(ChatMessage), publisherConfiguration, PublisherTargetType.SQS_PUBLISHER);
-
-        _serviceProvider.Setup(x => x.GetService(typeof(IAmazonSQS))).Returns(_sqsClient.Object);
-        _serviceProvider.Setup(x => x.GetService(typeof(ILogger<IMessagePublisher>))).Returns(_logger.Object);
-        _serviceProvider.Setup(x => x.GetService(typeof(IMessageConfiguration))).Returns(_messageConfiguration.Object);
-        _serviceProvider.Setup(x => x.GetService(typeof(IEnvelopeSerializer))).Returns(_envelopeSerializer.Object);
         _messageConfiguration.Setup(x => x.GetPublisherMapping(typeof(ChatMessage))).Returns(publisherMapping);
+
+        var services = new ServiceCollection();
+        services.AddSingleton<IAmazonSQS>(_sqsClient.Object);
+        services.AddSingleton<ILogger<IMessagePublisher>>(_logger.Object);
+        services.AddSingleton<IMessageConfiguration>(_messageConfiguration.Object);
+        services.AddSingleton<IEnvelopeSerializer>(_envelopeSerializer.Object);
+        services.AddSingleton<ITelemetryWriter, DefaultTelemetryWriter>();
+
+        return services.BuildServiceProvider();
     }
 
     [Fact]
     public async Task SQSPublisher_UnsupportedPublisher()
     {
+        var serviceProvider = SetupSQSPublisherDIServices();
+
         var publisherMapping = new PublisherMapping(typeof(ChatMessage), null!, "NEW_PUBLISHER");
         _messageConfiguration.Setup(x => x.GetPublisherMapping(typeof(ChatMessage))).Returns(publisherMapping);
 
         var messagePublisher = new MessageRoutingPublisher(
-            _serviceProvider.Object,
+            serviceProvider,
             _messageConfiguration.Object,
             _logger.Object,
-            new DefaultTelemetryWriter(_serviceProvider.Object)
+            new DefaultTelemetryWriter(serviceProvider)
             );
 
         await Assert.ThrowsAsync<UnsupportedPublisherException>(() => messagePublisher.PublishAsync(_chatMessage));
     }
 
-    private void SetupSNSPublisherDIServices()
+    private IServiceProvider SetupSNSPublisherDIServices()
     {
         var publisherConfiguration = new SNSPublisherConfiguration("endpoint");
         var publisherMapping = new PublisherMapping(typeof(ChatMessage), publisherConfiguration, PublisherTargetType.SNS_PUBLISHER);
-
-        _serviceProvider.Setup(x => x.GetService(typeof(IAmazonSimpleNotificationService))).Returns(_snsClient.Object);
-        _serviceProvider.Setup(x => x.GetService(typeof(ILogger<IMessagePublisher>))).Returns(_logger.Object);
-        _serviceProvider.Setup(x => x.GetService(typeof(IMessageConfiguration))).Returns(_messageConfiguration.Object);
-        _serviceProvider.Setup(x => x.GetService(typeof(IEnvelopeSerializer))).Returns(_envelopeSerializer.Object);
         _messageConfiguration.Setup(x => x.GetPublisherMapping(typeof(ChatMessage))).Returns(publisherMapping);
+
+        var services = new ServiceCollection();
+        services.AddSingleton<IAmazonSimpleNotificationService>(_snsClient.Object);
+        services.AddSingleton<ILogger<IMessagePublisher>>(_logger.Object);
+        services.AddSingleton<IMessageConfiguration>(_messageConfiguration.Object);
+        services.AddSingleton<IEnvelopeSerializer>(_envelopeSerializer.Object);
+        services.AddSingleton<ITelemetryWriter, DefaultTelemetryWriter>();
+
+        return services.BuildServiceProvider();
     }
 
     [Fact]
     public async Task SNSPublisher_HappyPath()
     {
-        SetupSNSPublisherDIServices();
+        var serviceProvider = SetupSNSPublisherDIServices();
 
         _snsClient.Setup(x => x.PublishAsync(It.IsAny<PublishRequest>(), It.IsAny<CancellationToken>()));
 
         var messagePublisher = new MessageRoutingPublisher(
-            _serviceProvider.Object,
+            serviceProvider,
             _messageConfiguration.Object,
             _logger.Object,
-            new DefaultTelemetryWriter(_serviceProvider.Object)
+            new DefaultTelemetryWriter(serviceProvider)
             );
 
         await messagePublisher.PublishAsync(_chatMessage);
@@ -170,42 +181,46 @@ public class MessagePublisherTests
     [Fact]
     public async Task SNSPublisher_InvalidMessage()
     {
-        SetupSNSPublisherDIServices();
+        var serviceProvider = SetupSNSPublisherDIServices();
 
         var messagePublisher = new MessageRoutingPublisher(
-            _serviceProvider.Object,
+            serviceProvider,
             _messageConfiguration.Object,
             _logger.Object,
-            new DefaultTelemetryWriter(_serviceProvider.Object)
+            new DefaultTelemetryWriter(serviceProvider)
             );
 
         await Assert.ThrowsAsync<InvalidMessageException>(() => messagePublisher.PublishAsync<ChatMessage?>(null));
     }
 
-    private void SetupEventBridgePublisherDIServices()
+    private IServiceProvider SetupEventBridgePublisherDIServices()
     {
         var publisherConfiguration = new EventBridgePublisherConfiguration("endpoint");
         var publisherMapping = new PublisherMapping(typeof(ChatMessage), publisherConfiguration, PublisherTargetType.EVENTBRIDGE_PUBLISHER);
-
-        _serviceProvider.Setup(x => x.GetService(typeof(IAmazonEventBridge))).Returns(_eventBridgeClient.Object);
-        _serviceProvider.Setup(x => x.GetService(typeof(ILogger<IMessagePublisher>))).Returns(_logger.Object);
-        _serviceProvider.Setup(x => x.GetService(typeof(IMessageConfiguration))).Returns(_messageConfiguration.Object);
-        _serviceProvider.Setup(x => x.GetService(typeof(IEnvelopeSerializer))).Returns(_envelopeSerializer.Object);
         _messageConfiguration.Setup(x => x.GetPublisherMapping(typeof(ChatMessage))).Returns(publisherMapping);
+
+        var services = new ServiceCollection();
+        services.AddSingleton<IAmazonEventBridge>(_eventBridgeClient.Object);
+        services.AddSingleton<ILogger<IMessagePublisher>>(_logger.Object);
+        services.AddSingleton<IMessageConfiguration>(_messageConfiguration.Object);
+        services.AddSingleton<IEnvelopeSerializer>(_envelopeSerializer.Object);
+        services.AddSingleton<ITelemetryWriter, DefaultTelemetryWriter>();
+
+        return services.BuildServiceProvider();
     }
 
     [Fact]
     public async Task EventBridgePublisher_HappyPath()
     {
-        SetupEventBridgePublisherDIServices();
+        var serviceProvider = SetupEventBridgePublisherDIServices();
 
         _eventBridgeClient.Setup(x => x.PutEventsAsync(It.IsAny<PutEventsRequest>(), It.IsAny<CancellationToken>()));
 
         var messagePublisher = new MessageRoutingPublisher(
-            _serviceProvider.Object,
+            serviceProvider,
             _messageConfiguration.Object,
             _logger.Object,
-            new DefaultTelemetryWriter(_serviceProvider.Object)
+            new DefaultTelemetryWriter(serviceProvider)
             );
 
         await messagePublisher.PublishAsync(_chatMessage);
@@ -220,7 +235,7 @@ public class MessagePublisherTests
     [Fact]
     public async Task EventBridgePublisher_OptionSource()
     {
-        SetupEventBridgePublisherDIServices();
+        var serviceProvider = SetupEventBridgePublisherDIServices();
 
         _eventBridgeClient.Setup(x => x.PutEventsAsync(It.IsAny<PutEventsRequest>(), It.IsAny<CancellationToken>()));
 
@@ -276,13 +291,13 @@ public class MessagePublisherTests
     [Fact]
     public async Task EventBridgePublisher_InvalidMessage()
     {
-        SetupEventBridgePublisherDIServices();
+        var serviceProvider = SetupEventBridgePublisherDIServices();
 
         var messagePublisher = new MessageRoutingPublisher(
-            _serviceProvider.Object,
+            serviceProvider,
             _messageConfiguration.Object,
             _logger.Object,
-            new DefaultTelemetryWriter(_serviceProvider.Object)
+            new DefaultTelemetryWriter(serviceProvider)
             );
 
         await Assert.ThrowsAsync<InvalidMessageException>(() => messagePublisher.PublishAsync<ChatMessage?>(null));
