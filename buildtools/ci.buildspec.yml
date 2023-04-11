@@ -1,0 +1,17 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      dotnet: 6.x
+
+  build:
+    commands:
+      - dotnet build AWS.Messaging.sln -c Release
+      - dotnet test AWS.Messaging.sln -c Release --no-build --logger trx --results-directory ./testresults
+reports:
+    aws-dotnet-messaging-tests:
+        file-format: VisualStudioTrx
+        files:
+            - '**/*'
+        base-directory: './testresults'
