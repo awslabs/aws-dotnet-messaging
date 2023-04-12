@@ -36,18 +36,18 @@ internal class SQSMessagePoller : IMessagePoller
     /// </summary>
     /// <param name="logger">Logger for debugging information.</param>
     /// <param name="messageManagerFactory">The factory to create the message manager for processing messages.</param>
-    /// <param name="sqsClient">SQS service client to use for service API calls.</param>
+    /// <param name="awsClientProvider">Provides the AWS service client from the DI container.</param>
     /// <param name="configuration">The SQS message poller configuration.</param>
     /// <param name="envelopeSerializer">Serializer used to deserialize the SQS messages</param>
     public SQSMessagePoller(
         ILogger<SQSMessagePoller> logger,
         IMessageManagerFactory messageManagerFactory,
-        IAmazonSQS sqsClient,
+        IAWSClientProvider awsClientProvider,
         SQSMessagePollerConfiguration configuration,
         IEnvelopeSerializer envelopeSerializer)
     {
         _logger = logger;
-        _sqsClient = sqsClient;
+        _sqsClient = awsClientProvider.GetServiceClient<IAmazonSQS>();
         _configuration = configuration;
         _envelopeSerializer = envelopeSerializer;
 

@@ -23,12 +23,12 @@ internal class SQSPublisher : IMessagePublisher, ISQSPublisher
     /// Creates an instance of <see cref="SQSPublisher"/>.
     /// </summary>
     public SQSPublisher(
-        IAmazonSQS sqsClient,
+        IAWSClientProvider awsClientProvider,
         ILogger<IMessagePublisher> logger,
         IMessageConfiguration messageConfiguration,
         IEnvelopeSerializer envelopeSerializer)
     {
-        _sqsClient = sqsClient;
+        _sqsClient = awsClientProvider.GetServiceClient<IAmazonSQS>();
         _logger = logger;
         _messageConfiguration = messageConfiguration;
         _envelopeSerializer = envelopeSerializer;

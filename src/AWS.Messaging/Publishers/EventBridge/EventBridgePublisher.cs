@@ -23,12 +23,12 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
     /// Creates an instance of <see cref="EventBridgePublisher"/>.
     /// </summary>
     public EventBridgePublisher(
-        IAmazonEventBridge eventBridgeClient,
+        IAWSClientProvider awsClientProvider,
         ILogger<IMessagePublisher> logger,
         IMessageConfiguration messageConfiguration,
         IEnvelopeSerializer envelopeSerializer)
     {
-        _eventBridgeClient = eventBridgeClient;
+        _eventBridgeClient = awsClientProvider.GetServiceClient<IAmazonEventBridge>();
         _logger = logger;
         _messageConfiguration = messageConfiguration;
         _envelopeSerializer = envelopeSerializer;
