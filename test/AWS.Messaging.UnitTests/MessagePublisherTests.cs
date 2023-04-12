@@ -104,12 +104,14 @@ public class MessagePublisherTests
     {
         var publisherConfiguration = new SQSPublisherConfiguration("endpoint");
         var publisherMapping = new PublisherMapping(typeof(ChatMessage), publisherConfiguration, PublisherTargetType.SQS_PUBLISHER);
+        var awsClientProvider = new AWSClientProvider(_serviceProvider.Object);
 
         _serviceProvider.Setup(x => x.GetService(typeof(IAmazonSQS))).Returns(_sqsClient.Object);
         _serviceProvider.Setup(x => x.GetService(typeof(ILogger<IMessagePublisher>))).Returns(_logger.Object);
         _serviceProvider.Setup(x => x.GetService(typeof(IMessageConfiguration))).Returns(_messageConfiguration.Object);
         _serviceProvider.Setup(x => x.GetService(typeof(IEnvelopeSerializer))).Returns(_envelopeSerializer.Object);
         _messageConfiguration.Setup(x => x.GetPublisherMapping(typeof(ChatMessage))).Returns(publisherMapping);
+        _serviceProvider.Setup(x => x.GetService(typeof(IAWSClientProvider))).Returns(awsClientProvider);
     }
 
     [Fact]
@@ -131,12 +133,14 @@ public class MessagePublisherTests
     {
         var publisherConfiguration = new SNSPublisherConfiguration("endpoint");
         var publisherMapping = new PublisherMapping(typeof(ChatMessage), publisherConfiguration, PublisherTargetType.SNS_PUBLISHER);
+        var awsClientProvider = new AWSClientProvider(_serviceProvider.Object);
 
         _serviceProvider.Setup(x => x.GetService(typeof(IAmazonSimpleNotificationService))).Returns(_snsClient.Object);
         _serviceProvider.Setup(x => x.GetService(typeof(ILogger<IMessagePublisher>))).Returns(_logger.Object);
         _serviceProvider.Setup(x => x.GetService(typeof(IMessageConfiguration))).Returns(_messageConfiguration.Object);
         _serviceProvider.Setup(x => x.GetService(typeof(IEnvelopeSerializer))).Returns(_envelopeSerializer.Object);
         _messageConfiguration.Setup(x => x.GetPublisherMapping(typeof(ChatMessage))).Returns(publisherMapping);
+        _serviceProvider.Setup(x => x.GetService(typeof(IAWSClientProvider))).Returns(awsClientProvider);
     }
 
     [Fact]
@@ -183,12 +187,14 @@ public class MessagePublisherTests
         };
 
         var publisherMapping = new PublisherMapping(typeof(ChatMessage), publisherConfiguration, PublisherTargetType.EVENTBRIDGE_PUBLISHER);
+        var awsClientProvider = new AWSClientProvider(_serviceProvider.Object);
 
         _serviceProvider.Setup(x => x.GetService(typeof(IAmazonEventBridge))).Returns(_eventBridgeClient.Object);
         _serviceProvider.Setup(x => x.GetService(typeof(ILogger<IMessagePublisher>))).Returns(_logger.Object);
         _serviceProvider.Setup(x => x.GetService(typeof(IMessageConfiguration))).Returns(_messageConfiguration.Object);
         _serviceProvider.Setup(x => x.GetService(typeof(IEnvelopeSerializer))).Returns(_envelopeSerializer.Object);
         _messageConfiguration.Setup(x => x.GetPublisherMapping(typeof(ChatMessage))).Returns(publisherMapping);
+        _serviceProvider.Setup(x => x.GetService(typeof(IAWSClientProvider))).Returns(awsClientProvider);
     }
     
     [Fact]
@@ -245,7 +251,7 @@ public class MessagePublisherTests
         _eventBridgeClient.Setup(x => x.PutEventsAsync(It.IsAny<PutEventsRequest>(), It.IsAny<CancellationToken>()));
 
         var messagePublisher = new EventBridgePublisher(
-            _eventBridgeClient.Object,
+            (IAWSClientProvider)_serviceProvider.Object.GetService(typeof(IAWSClientProvider))!,
             _logger.Object,
             _messageConfiguration.Object,
             _envelopeSerializer.Object
@@ -272,7 +278,7 @@ public class MessagePublisherTests
         _eventBridgeClient.Setup(x => x.PutEventsAsync(It.IsAny<PutEventsRequest>(), It.IsAny<CancellationToken>()));
 
         var messagePublisher = new EventBridgePublisher(
-            _eventBridgeClient.Object,
+            (IAWSClientProvider)_serviceProvider.Object.GetService(typeof(IAWSClientProvider))!,
             _logger.Object,
             _messageConfiguration.Object,
             _envelopeSerializer.Object

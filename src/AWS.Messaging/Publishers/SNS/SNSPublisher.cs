@@ -23,12 +23,12 @@ internal class SNSPublisher : IMessagePublisher, ISNSPublisher
     /// Creates an instance of <see cref="SNSPublisher"/>.
     /// </summary>
     public SNSPublisher(
-        IAmazonSimpleNotificationService snsClient,
+        IAWSClientProvider awsClientProvider,
         ILogger<IMessagePublisher> logger,
         IMessageConfiguration messageConfiguration,
         IEnvelopeSerializer envelopeSerializer)
     {
-        _snsClient = snsClient;
+        _snsClient = awsClientProvider.GetServiceClient<IAmazonSimpleNotificationService>();
         _logger = logger;
         _messageConfiguration = messageConfiguration;
         _envelopeSerializer = envelopeSerializer;

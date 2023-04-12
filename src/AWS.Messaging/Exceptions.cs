@@ -193,3 +193,14 @@ public class InvalidMessageHandlerSignatureException : AWSMessagingException
     /// </summary>
     public InvalidMessageHandlerSignatureException(string message, Exception? innerException = null) : base(message, innerException) { }
 }
+
+/// <summary>
+/// Thrown if could not retrieve the AWS service client from the DI container.
+/// </summary>
+public class FailedToFindAWSServiceClientException : AWSMessagingException
+{
+    /// <summary>
+    /// Creates an instance of <see cref="InvalidMessageHandlerSignatureException"/>.
+    /// </summary>
+    public FailedToFindAWSServiceClientException(string message, Exception? innerException = null) : base(message, innerException) { }
+}

@@ -113,6 +113,7 @@ public class MessageBusBuilder : IMessageBusBuilder
         services.TryAddSingleton<IEnvelopeSerializer, EnvelopeSerializer>();
         services.TryAddSingleton<IDateTimeHandler, DateTimeHandler>();
         services.TryAddSingleton<IMessageIdGenerator, MessageIdGenerator>();
+        services.TryAddSingleton<IAWSClientProvider, AWSClientProvider>();
 
         if (_messageConfiguration.PublisherMappings.Any())
         {
