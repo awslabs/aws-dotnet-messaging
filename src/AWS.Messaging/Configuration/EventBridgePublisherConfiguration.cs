@@ -21,7 +21,7 @@ public class EventBridgePublisherConfiguration : IMessagePublisherConfiguration
     /// <summary>
     /// Creates an instance of <see cref="EventBridgePublisherConfiguration"/>.
     /// </summary>
-    /// <param name="eventBusName">The name or the ARN of the event bus where the mesasge is published</param>
+    /// <param name="eventBusName">The name or the ARN of the event bus where the message is published</param>
     public EventBridgePublisherConfiguration(string eventBusName)
     {
         if (string.IsNullOrEmpty(eventBusName))
