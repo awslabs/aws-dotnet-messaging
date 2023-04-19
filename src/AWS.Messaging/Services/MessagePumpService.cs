@@ -46,14 +46,14 @@ internal class MessagePumpService : BackgroundService
             {
                 var messagePoller = _messagePollerFactory.CreateMessagePoller(pollerConfiguration);
 
-                _logger.LogInformation("Starting polling: {subscriberEndpoint}", pollerConfiguration.SubscriberEndpoint);
+                _logger.LogInformation("Starting polling: {SubscriberEndpoint}", pollerConfiguration.SubscriberEndpoint);
 
                 var task = messagePoller.StartPollingAsync(stoppingToken);
                 task.ContinueWith(completedPollerTask =>
                 {
                     if (completedPollerTask.IsFaulted && !stoppingToken.IsCancellationRequested )
                     {
-                        _logger.LogError(completedPollerTask.Exception, "Poller for {subscriberEndpoint} failed for an unexpected reason.", pollerConfiguration.SubscriberEndpoint);
+                        _logger.LogError(completedPollerTask.Exception, "Poller for {SubscriberEndpoint} failed for an unexpected reason.", pollerConfiguration.SubscriberEndpoint);
                     }
                 });
                 tasks.Add(task);

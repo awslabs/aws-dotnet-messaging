@@ -110,7 +110,7 @@ public class DefaultMessageManager : IMessageManager
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "An unknown exception occurred while processing message ID {subscriberEndpoint}", messageEnvelope.Id);
+            _logger.LogError(ex, "An unknown exception occurred while processing message ID {SubscriberEndpoint}", messageEnvelope.Id);
         }
 
         _runningHandlerTasks.Remove(handlerTask, out _);
@@ -124,12 +124,12 @@ public class DefaultMessageManager : IMessageManager
             }
             else // the handler still finished, but returned MessageProcessStatus.Failed
             {
-                _logger.LogError("Message handling completed unsuccessfully for message ID {messageId}", messageEnvelope.Id);
+                _logger.LogError("Message handling completed unsuccessfully for message ID {MessageId}", messageEnvelope.Id);
             }
         }
         else if (handlerTask.IsFaulted)
         {
-            _logger.LogError(handlerTask.Exception, "Message handling failed unexpectedly for message ID {messageId}", messageEnvelope.Id);
+            _logger.LogError(handlerTask.Exception, "Message handling failed unexpectedly for message ID {MessageId}", messageEnvelope.Id);
         }
 
         ActiveMessageCount--;

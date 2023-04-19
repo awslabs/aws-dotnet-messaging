@@ -56,24 +56,24 @@ internal class SQSPublisher : IMessagePublisher, ISQSPublisher
     /// <exception cref="MissingMessageTypeConfigurationException">If cannot find the publisher configuration for the message type.</exception>
     public async Task PublishAsync<T>(T message, SQSOptions? sqsOptions, CancellationToken token = default)
     {
-        _logger.LogDebug("Publishing the message of type '{messageType}' using the {publisherType}.", typeof(T), nameof(SQSPublisher));
+        _logger.LogDebug("Publishing the message of type '{MessageType}' using the {PublisherType}.", typeof(T), nameof(SQSPublisher));
 
         if (message == null)
         {
-            _logger.LogError("A message of type '{messageType}' has a null value.", typeof(T));
+            _logger.LogError("A message of type '{MessageType}' has a null value.", typeof(T));
             throw new InvalidMessageException("The message cannot be null.");
         }
 
         var publisherEndpoint = GetPublisherEndpoint(typeof(T));
 
-        _logger.LogDebug("Creating the message envelope for the message of type '{messageType}'.", typeof(T));
+        _logger.LogDebug("Creating the message envelope for the message of type '{MessageType}'.", typeof(T));
         var messageEnvelope = await _envelopeSerializer.CreateEnvelopeAsync(message);
         var messageBody = await _envelopeSerializer.SerializeAsync(messageEnvelope);
 
-        _logger.LogDebug("Sending the message of type '{messageType}' to SQS. Publisher Endpoint: {endpoint}", typeof(T), publisherEndpoint);
+        _logger.LogDebug("Sending the message of type '{MessageType}' to SQS. Publisher Endpoint: {Endpoint}", typeof(T), publisherEndpoint);
         var sendMessageRequest = CreateSendMessageRequest(publisherEndpoint, messageBody, sqsOptions);
         await _sqsClient.SendMessageAsync(sendMessageRequest, token);
-        _logger.LogDebug("The message of type '{messageType}' has been pushed to SQS.", typeof(T));
+        _logger.LogDebug("The message of type '{MessageType}' has been pushed to SQS.", typeof(T));
     }
 
     private SendMessageRequest CreateSendMessageRequest(string queueUrl, string messageBody, SQSOptions? sqsOptions)
@@ -107,12 +107,12 @@ internal class SQSPublisher : IMessagePublisher, ISQSPublisher
         var mapping = _messageConfiguration.GetPublisherMapping(messageType);
         if (mapping is null)
         {
-            _logger.LogError("Cannot find a configuration for the message of type '{messageType}'.", messageType.FullName);
+            _logger.LogError("Cannot find a configuration for the message of type '{MessageType}'.", messageType.FullName);
             throw new MissingMessageTypeConfigurationException($"The framework is not configured to accept messages of type '{messageType.FullName}'.");
         }
         if (mapping.PublishTargetType != PublisherTargetType.SQS_PUBLISHER)
         {
-            _logger.LogError("Messages of type '{messageType}' are not configured for publishing to SQS.", messageType.FullName);
+            _logger.LogError("Messages of type '{MessageType}' are not configured for publishing to SQS.", messageType.FullName);
             throw new MissingMessageTypeConfigurationException($"Messages of type '{messageType.FullName}' are not configured for publishing to SQS.");
         }
         return mapping.PublisherConfiguration.PublisherEndpoint;

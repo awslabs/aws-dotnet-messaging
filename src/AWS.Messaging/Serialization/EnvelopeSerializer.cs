@@ -108,7 +108,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             var subscriberMapping = _messageConfiguration.GetSubscriberMapping(messageTypeIdentifier);
             if (subscriberMapping is null)
             {
-                _logger.LogError("{messageConfiguration} does not have a valid subscriber mapping for message ID '{messageTypeIdentifier}'", nameof(_messageConfiguration), messageTypeIdentifier);
+                _logger.LogError("{MessageConfiguration} does not have a valid subscriber mapping for message ID '{MessageTypeIdentifier}'", nameof(_messageConfiguration), messageTypeIdentifier);
                 throw new InvalidDataException($"{nameof(_messageConfiguration)} does not have a valid subscriber mapping for {nameof(messageTypeIdentifier)} '{messageTypeIdentifier}'");
             }
 
@@ -118,7 +118,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
 
             if (Activator.CreateInstance(messageEnvelopeType) is not MessageEnvelope finalMessageEnvelope)
             {
-                _logger.LogError("Failed to create a messageEnvelope of type '{messageEnvelopeType}'", messageEnvelopeType.FullName);
+                _logger.LogError("Failed to create a messageEnvelope of type '{MessageEnvelopeType}'", messageEnvelopeType.FullName);
                 throw new InvalidOperationException($"Failed to create a {nameof(MessageEnvelope)} of type '{messageEnvelopeType.FullName}'");
             }
 
@@ -136,12 +136,12 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             await InvokePostDeserializationCallback(finalMessageEnvelope);
             var result = new ConvertToEnvelopeResult(finalMessageEnvelope, subscriberMapping);
 
-            _logger.LogTrace("Created a generic {messageEnvelopeName} of type '{messageEnvelopeType}'", nameof(MessageEnvelope), result.Envelope.GetType());
+            _logger.LogTrace("Created a generic {MessageEnvelopeName} of type '{MessageEnvelopeType}'", nameof(MessageEnvelope), result.Envelope.GetType());
             return result;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to create a {messageEnvelopeName}", nameof(MessageEnvelope));
+            _logger.LogError(ex, "Failed to create a {MessageEnvelopeName}", nameof(MessageEnvelope));
             throw new FailedToCreateMessageEnvelopeException($"Failed to create {nameof(MessageEnvelope)}", ex);
         }
     }
@@ -150,7 +150,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
     {
         if (messageEnvelope is null)
         {
-            _logger.LogError("{messageEnvelope} cannot be null", nameof(messageEnvelope));
+            _logger.LogError("{MessageEnvelope} cannot be null", nameof(messageEnvelope));
             throw new InvalidDataException($"{nameof(messageEnvelope)} cannot be null");
         }
 
@@ -177,7 +177,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
         var validationFailures = strBuilder.ToString();
         if (!string.IsNullOrEmpty(validationFailures))
         {
-            _logger.LogError("MessageEnvelope instance is not valid{newline}{errorMessage}", Environment.NewLine, validationFailures);
+            _logger.LogError("MessageEnvelope instance is not valid" + Environment.NewLine +"{ValidationFailures}", validationFailures);
             throw new InvalidDataException($"MessageEnvelope instance is not valid{Environment.NewLine}{validationFailures}");
         }
     }
