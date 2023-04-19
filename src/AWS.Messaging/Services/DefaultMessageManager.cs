@@ -48,7 +48,7 @@ public class DefaultMessageManager : IMessageManager
         {
             lock (_activeMessageCountLock)
             {
-                _logger.LogTrace("Updating {activeMessageCount} from {before} to {after}", nameof(ActiveMessageCount), ActiveMessageCount, value);
+                _logger.LogTrace("Updating {ActiveMessageCount} from {Before} to {After}", nameof(ActiveMessageCount), ActiveMessageCount, value);
 
                 var isDecrementing = value < _activeMessageCount;
                 _activeMessageCount = value;
@@ -66,7 +66,7 @@ public class DefaultMessageManager : IMessageManager
     /// <inheritdoc/>
     public Task WaitAsync(TimeSpan timeout)
     {
-        _logger.LogTrace("Beginning wait for {name} for a maximum of {timeout} seconds", nameof(_activeMessageCountDecrementedEvent), timeout.TotalSeconds);
+        _logger.LogTrace("Beginning wait for {Name} for a maximum of {Timeout} seconds", nameof(_activeMessageCountDecrementedEvent), timeout.TotalSeconds);
 
         // TODO: Rework to avoid this synchronous wait.
         // See https://github.com/dotnet/runtime/issues/35962 for potential workarounds
@@ -75,12 +75,12 @@ public class DefaultMessageManager : IMessageManager
         // Don't reset if we hit the timeout
         if (wasSet)
         {
-            _logger.LogTrace("{name} was set, resetting the event", nameof(_activeMessageCountDecrementedEvent));
+            _logger.LogTrace("{Name} was set, resetting the event", nameof(_activeMessageCountDecrementedEvent));
             _activeMessageCountDecrementedEvent.Reset();
         }
         else
         {
-            _logger.LogTrace("Timed out at {timeout} seconds while waiting for {name}, returning.", timeout.TotalSeconds, nameof(_activeMessageCountDecrementedEvent));
+            _logger.LogTrace("Timed out at {Timeout} seconds while waiting for {Name}, returning.", timeout.TotalSeconds, nameof(_activeMessageCountDecrementedEvent));
         }
 
         return Task.CompletedTask;

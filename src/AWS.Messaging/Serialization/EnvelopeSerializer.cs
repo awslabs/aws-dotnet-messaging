@@ -61,7 +61,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
     /// <summary>
     /// Serializes the <see cref="MessageEnvelope{T}"/> into a raw string representing a JSON blob
     /// </summary>
-    /// <typeparam name="T">The .NET type of the uderlying application message held by <see cref="MessageEnvelope{T}.Message"/></typeparam>
+    /// <typeparam name="T">The .NET type of the underlying application message held by <see cref="MessageEnvelope{T}.Message"/></typeparam>
     /// <param name="envelope">The <see cref="MessageEnvelope{T}"/> instance that will be serialized</param>
     public async ValueTask<string> SerializeAsync<T>(MessageEnvelope<T> envelope)
     {
@@ -71,7 +71,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             var message = envelope.Message ?? throw new ArgumentNullException("The underlying application message cannot be null");
 
             // This blob serves as an intermediate data container because the underlying application message
-            // must be serialized seperately as the _messageSerializer can have a user injected implementation.
+            // must be serialized separately as the _messageSerializer can have a user injected implementation.
             var blob = new JsonObject
             {
                 ["id"] = envelope.Id,
@@ -79,13 +79,13 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
                 ["specversion"] = envelope.Version,
                 ["type"] = envelope.MessageTypeIdentifier,
                 ["time"] = envelope.TimeStamp,
-                ["data"] = _messageSerializer.Serialize(envelope.Message)
+                ["data"] = _messageSerializer.Serialize(message)
             };
 
             var jsonString = blob.ToJsonString();
             var serializedMessage = await InvokePostSerializationCallback(jsonString);
 
-            _logger.LogTrace("Serialized the MessageEnvelope object as the following raw string:\n{serializedMessage}", serializedMessage);
+            _logger.LogTrace("Serialized the MessageEnvelope object as the following raw string:\n{SerializedMessage}", serializedMessage);
             return serializedMessage;
         }
         catch (Exception ex)
