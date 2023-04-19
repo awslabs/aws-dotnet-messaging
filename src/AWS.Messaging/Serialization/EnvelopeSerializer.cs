@@ -230,13 +230,13 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             MessageAttributes = sqsMessage.MessageAttributes,
             ReceiptHandle = sqsMessage.ReceiptHandle
         };
-        if (sqsMessage.Attributes.ContainsKey("MessageGroupId"))
+        if (sqsMessage.Attributes.TryGetValue("MessageGroupId", out var attribute))
         {
-            envelopeConfiguration.SQSMetadata.MessageGroupId = sqsMessage.Attributes["MessageGroupId"];
+            envelopeConfiguration.SQSMetadata.MessageGroupId = attribute;
         }
-        if (sqsMessage.Attributes.ContainsKey("MessageDeduplicationId"))
+        if (sqsMessage.Attributes.TryGetValue("MessageDeduplicationId", out var messageAttribute))
         {
-            envelopeConfiguration.SQSMetadata.MessageDeduplicationId = sqsMessage.Attributes["MessageDeduplicationId"];
+            envelopeConfiguration.SQSMetadata.MessageDeduplicationId = messageAttribute;
         }
     }
 

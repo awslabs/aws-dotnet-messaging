@@ -66,9 +66,8 @@ internal class MessageRoutingPublisher : IMessagePublisher
             throw new MissingMessageTypeConfigurationException($"The framework is not configured to publish messages of type '{typeof(T).FullName}'.");
         }
 
-        if (_publisherTypeMapping.ContainsKey(mapping.PublishTargetType))
+        if (_publisherTypeMapping.TryGetValue(mapping.PublishTargetType, out var publisherType))
         {
-            var publisherType = _publisherTypeMapping[mapping.PublishTargetType];
             if (!typeof(IMessagePublisher).IsAssignableFrom(publisherType))
             {
                 _logger.LogError("The message publisher corresponding to the type '{0}' is invalid " +
