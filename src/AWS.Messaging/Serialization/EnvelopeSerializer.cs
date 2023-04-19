@@ -33,7 +33,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
         _messageIdGenerator = messageIdGenerator;
     }
 
-    // <inheritdoc/>
+    /// <inheritdoc/>
     public async ValueTask<MessageEnvelope<T>> CreateEnvelopeAsync<T>(T message)
     {
         var messageId = await _messageIdGenerator.GenerateIdAsync();
@@ -84,7 +84,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
 
             var jsonString = blob.ToJsonString();
             var serializedMessage = await InvokePostSerializationCallback(jsonString);
-            
+
             _logger.LogTrace("Serialized the MessageEnvelope object as the following raw string:\n{serializedMessage}", serializedMessage);
             return serializedMessage;
         }
@@ -95,7 +95,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
         }
     }
 
-    // <inheritdoc/>
+    /// <inheritdoc/>
     public async ValueTask<ConvertToEnvelopeResult> ConvertToEnvelopeAsync(Message sqsMessage)
     {
         try
