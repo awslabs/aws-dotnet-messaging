@@ -43,7 +43,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
         var publisherMapping = _messageConfiguration.GetPublisherMapping(typeof(T));
         if (publisherMapping is null)
         {
-            _logger.LogError("Failed to create a message envelope because a valid publisher mapping for message type '{0}' does not exist.", typeof(T));
+            _logger.LogError("Failed to create a message envelope because a valid publisher mapping for message type '{MessageType}' does not exist.", typeof(T));
             throw new FailedToCreateMessageEnvelopeException($"Failed to create a message envelope because a valid publisher mapping for message type '{typeof(T)}' does not exist.");
         }
 
