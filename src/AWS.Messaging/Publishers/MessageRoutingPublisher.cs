@@ -62,7 +62,7 @@ internal class MessageRoutingPublisher : IMessagePublisher
         var mapping = _messageConfiguration.GetPublisherMapping(typeof(T));
         if (mapping == null)
         {
-            _logger.LogError("The framework is not configured to publish messages of type '{0}'.", typeof(T).FullName);
+            _logger.LogError("The framework is not configured to publish messages of type '{MessageType}'.", typeof(T).FullName);
             throw new MissingMessageTypeConfigurationException($"The framework is not configured to publish messages of type '{typeof(T).FullName}'.");
         }
 
