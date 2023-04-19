@@ -70,8 +70,8 @@ internal class MessageRoutingPublisher : IMessagePublisher
         {
             if (!typeof(IMessagePublisher).IsAssignableFrom(publisherType))
             {
-                _logger.LogError("The message publisher corresponding to the type '{0}' is invalid " +
-                    "and does not implement the interface '{1}'.", mapping.PublishTargetType, typeof(IMessagePublisher));
+                _logger.LogError("The message publisher corresponding to the type '{PublishTargetType}' is invalid " +
+                    "and does not implement the interface '{InterfaceType}'.", mapping.PublishTargetType, typeof(IMessagePublisher));
                 throw new InvalidPublisherTypeException($"The message publisher corresponding to the type '{mapping.PublishTargetType}' is invalid " +
                     $"and does not implement the interface '{typeof(IMessagePublisher)}'.");
             }
@@ -81,7 +81,7 @@ internal class MessageRoutingPublisher : IMessagePublisher
         }
         else
         {
-            _logger.LogError("The publisher type '{0}' is not supported.", mapping.PublishTargetType);
+            _logger.LogError("The publisher type '{PublishTargetType}' is not supported.", mapping.PublishTargetType);
             throw new UnsupportedPublisherException($"The publisher type '{mapping.PublishTargetType}' is not supported.");
         }
     }
