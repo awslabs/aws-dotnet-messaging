@@ -56,7 +56,7 @@ internal class SQSMessagePollerConfiguration : IMessagePollerConfiguration
 
     /// <summary>
     /// How often in seconds to extend the visibility timeout of messages that have been
-    /// received from SQS but are still being proceessed
+    /// received from SQS but are still being processed
     /// </summary>
     /// <remarks>
     /// <inheritdoc cref="DEFAULT_VISIBILITY_TIMEOUT_EXTENSION_INTERVAL_SECONDS" path="//remarks"/>
