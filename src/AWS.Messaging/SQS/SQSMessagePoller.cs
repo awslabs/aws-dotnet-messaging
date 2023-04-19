@@ -57,7 +57,7 @@ internal class SQSMessagePoller : IMessagePoller
 
     /// <inheritdoc/>
     public int VisibilityTimeoutExtensionInterval => _configuration.VisibilityTimeoutExtensionInterval;
-    
+
 
     /// <inheritdoc/>
     public async Task StartPollingAsync(CancellationToken token = default)
@@ -133,7 +133,7 @@ internal class SQSMessagePoller : IMessagePoller
                 // TODO: explore a "cool down mode" for repeated exceptions
                 if (IsSQSExceptionFatal(ex))
                 {
-                    throw ex;
+                    throw;
                 }
             }
             catch (Exception ex)
@@ -189,7 +189,7 @@ internal class SQSMessagePoller : IMessagePoller
 
             foreach (var failedMessage in response.Failed)
             {
-                _logger.LogError("Failed to delete message {failedMessageId} from queue {subscriberEndpoint}: {failedMessage}", 
+                _logger.LogError("Failed to delete message {failedMessageId} from queue {subscriberEndpoint}: {failedMessage}",
                     failedMessage.Id, _configuration.SubscriberEndpoint, failedMessage.Message);
             }
         }
@@ -201,7 +201,7 @@ internal class SQSMessagePoller : IMessagePoller
             // Rethrow the exception to fail fast for invalid configuration, permissioning, etc.
             if (IsSQSExceptionFatal(ex))
             {
-                throw ex;
+                throw;
             }
         }
         catch (Exception ex)
@@ -268,7 +268,7 @@ internal class SQSMessagePoller : IMessagePoller
             // Rethrow the exception to fail fast for invalid configuration, permissioning, etc.
             if (IsSQSExceptionFatal(ex))
             {
-                throw ex;
+                throw;
             }
         }
         catch (Exception ex)
