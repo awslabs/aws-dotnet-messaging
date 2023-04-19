@@ -1,5 +1,7 @@
 # AWS Message Processing Framework for .NET
 
+**Notice:** *This library is still in early active development and is not ready for use beyond experimentation.*
+
 The AWS Message Processing Framework for .NET is an AWS native framework that simplifies development of .NET message processing applications using AWS services. 
 
 The purpose of the framework is to reduce the amount of boiler-plate code developers need to write. The primary responsibilities of the framework are:
