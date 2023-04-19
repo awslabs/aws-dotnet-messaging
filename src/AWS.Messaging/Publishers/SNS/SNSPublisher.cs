@@ -66,7 +66,7 @@ internal class SNSPublisher : IMessagePublisher, ISNSPublisher
 
         var publisherEndpoint = GetPublisherEndpoint(typeof(T));
 
-        _logger.LogDebug("Creating the message envelope for the message of tyspe '{MessageType}'.", typeof(T));
+        _logger.LogDebug("Creating the message envelope for the message of type '{MessageType}'.", typeof(T));
         var messageEnvelope = await _envelopeSerializer.CreateEnvelopeAsync(message);
         var messageBody = await _envelopeSerializer.SerializeAsync(messageEnvelope);
 
