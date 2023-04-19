@@ -147,7 +147,7 @@ internal class SQSMessagePoller : IMessagePoller
     /// <inheritdoc/>
     public async Task DeleteMessagesAsync(IEnumerable<MessageEnvelope> messages, CancellationToken token = default)
     {
-        if (messages.Count() == 0)
+        if (!messages.Any())
         {
             return;
         }
@@ -213,7 +213,7 @@ internal class SQSMessagePoller : IMessagePoller
     /// <inheritdoc/>
     public async Task ExtendMessageVisibilityTimeoutAsync(IEnumerable<MessageEnvelope> messages, CancellationToken token = default)
     {
-        if (messages.Count() == 0)
+        if (!messages.Any())
         {
             return;
         }

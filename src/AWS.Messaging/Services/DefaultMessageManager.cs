@@ -175,6 +175,6 @@ public class DefaultMessageManager : IMessageManager
             // TODO: Handle the race condition where a message could have finished handling and be deleted concurrently
             await _messagePoller.ExtendMessageVisibilityTimeoutAsync(unfinishedMessages);
 
-        } while (unfinishedMessages.Count() > 0 && !token.IsCancellationRequested);
+        } while (unfinishedMessages.Any() && !token.IsCancellationRequested);
     }
 }
