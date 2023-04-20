@@ -38,10 +38,9 @@ public class HandlerInvoker : IHandlerInvoker
 
         if (handler == null)
         {
-            var message = $"Unable to resolve a handler for {subscriberMapping.HandlerType} " +
-                $"while handling message ID {messageEnvelope.Id}.";
-            _logger.LogError(message);
-            throw new InvalidMessageHandlerSignatureException(message);
+            _logger.LogError("Unable to resolve a handler for {HandlerType} while handling message ID {MessageEnvelopeId}.", subscriberMapping.HandlerType, messageEnvelope.Id);
+            throw new InvalidMessageHandlerSignatureException($"Unable to resolve a handler for {subscriberMapping.HandlerType} " +
+                                                              $"while handling message ID {messageEnvelope.Id}.");
         }
 
         var method = _handlerMethods.GetOrAdd(subscriberMapping.MessageType, x =>
@@ -53,10 +52,8 @@ public class HandlerInvoker : IHandlerInvoker
 
         if (method == null)
         {
-            var message = $"Unable to resolve a compatible HandleAsync method for {subscriberMapping.HandlerType} " +
-                $"while handling message ID {messageEnvelope.Id}.";
-            _logger.LogError(message);
-            throw new InvalidMessageHandlerSignatureException(message);
+            _logger.LogError("Unable to resolve a compatible HandleAsync method for {HandlerType} while handling message ID {MessageEnvelopeId}.", subscriberMapping.HandlerType, messageEnvelope.Id);
+            throw new InvalidMessageHandlerSignatureException($"Unable to resolve a compatible HandleAsync method for {subscriberMapping.HandlerType} while handling message ID {messageEnvelope.Id}.");
         }
 
         try
@@ -65,10 +62,8 @@ public class HandlerInvoker : IHandlerInvoker
 
             if (task == null)
             {
-                var message = $"Unexpected return type for the HandleAsync method on {subscriberMapping.HandlerType} " +
-                    $"while handling message ID {messageEnvelope.Id}. Expected {nameof(Task<MessageProcessStatus>)}";
-                _logger.LogError(message);
-                throw new InvalidMessageHandlerSignatureException(message);
+                _logger.LogError("Unexpected return type for the HandleAsync method on {HandlerType} while handling message ID {MessageEnvelopeId}. Expected {ExpectedType}", subscriberMapping.HandlerType, messageEnvelope.Id, nameof(Task<MessageProcessStatus>));
+                throw new InvalidMessageHandlerSignatureException($"Unexpected return type for the HandleAsync method on {subscriberMapping.HandlerType} while handling message ID {messageEnvelope.Id}. Expected {nameof(Task<MessageProcessStatus>)}");
             }
 
             return await task;
@@ -79,18 +74,18 @@ public class HandlerInvoker : IHandlerInvoker
         {
             if (ex.InnerException != null)
             {
-                _logger.LogError(ex.InnerException, "A handler exception occurred while handling message ID {messageId}.", messageEnvelope.Id);
+                _logger.LogError(ex.InnerException, "A handler exception occurred while handling message ID {MessageId}.", messageEnvelope.Id);
                 return MessageProcessStatus.Failed();
             }
             else
             {
-                _logger.LogError(ex, "An unexpected exception occurred while handling message ID {messageId}.", messageEnvelope.Id);
+                _logger.LogError(ex, "An unexpected exception occurred while handling message ID {MessageId}.", messageEnvelope.Id);
                 return MessageProcessStatus.Failed();
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "An unexpected exception occurred while handling message ID {messageId}.", messageEnvelope.Id);
+            _logger.LogError(ex, "An unexpected exception occurred while handling message ID {MessageId}.", messageEnvelope.Id);
             return MessageProcessStatus.Failed();
         }
     }

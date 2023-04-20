@@ -62,17 +62,16 @@ internal class MessageRoutingPublisher : IMessagePublisher
         var mapping = _messageConfiguration.GetPublisherMapping(typeof(T));
         if (mapping == null)
         {
-            _logger.LogError("The framework is not configured to publish messages of type '{0}'.", typeof(T).FullName);
+            _logger.LogError("The framework is not configured to publish messages of type '{MessageType}'.", typeof(T).FullName);
             throw new MissingMessageTypeConfigurationException($"The framework is not configured to publish messages of type '{typeof(T).FullName}'.");
         }
 
-        if (_publisherTypeMapping.ContainsKey(mapping.PublishTargetType))
+        if (_publisherTypeMapping.TryGetValue(mapping.PublishTargetType, out var publisherType))
         {
-            var publisherType = _publisherTypeMapping[mapping.PublishTargetType];
             if (!typeof(IMessagePublisher).IsAssignableFrom(publisherType))
             {
-                _logger.LogError("The message publisher corresponding to the type '{0}' is invalid " +
-                    "and does not implement the interface '{1}'.", mapping.PublishTargetType, typeof(IMessagePublisher));
+                _logger.LogError("The message publisher corresponding to the type '{PublishTargetType}' is invalid " +
+                    "and does not implement the interface '{InterfaceType}'.", mapping.PublishTargetType, typeof(IMessagePublisher));
                 throw new InvalidPublisherTypeException($"The message publisher corresponding to the type '{mapping.PublishTargetType}' is invalid " +
                     $"and does not implement the interface '{typeof(IMessagePublisher)}'.");
             }
@@ -82,7 +81,7 @@ internal class MessageRoutingPublisher : IMessagePublisher
         }
         else
         {
-            _logger.LogError("The publisher type '{0}' is not supported.", mapping.PublishTargetType);
+            _logger.LogError("The publisher type '{PublishTargetType}' is not supported.", mapping.PublishTargetType);
             throw new UnsupportedPublisherException($"The publisher type '{mapping.PublishTargetType}' is not supported.");
         }
     }
