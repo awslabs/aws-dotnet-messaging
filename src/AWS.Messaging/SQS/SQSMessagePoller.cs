@@ -161,7 +161,7 @@ internal class SQSMessagePoller : IMessagePoller
         {
             if (!string.IsNullOrEmpty(message.SQSMetadata?.ReceiptHandle))
             {
-                _logger.LogTrace("Preparing to delete message {MessageId} with SQS receipt handle {ReceiptHandle} from queue {subscriberEndpoint}",
+                _logger.LogTrace("Preparing to delete message {MessageId} with SQS receipt handle {ReceiptHandle} from queue {SubscriberEndpoint}",
                     message.Id, message.SQSMetadata.ReceiptHandle, _configuration.SubscriberEndpoint);
                 request.Entries.Add(new DeleteMessageBatchRequestEntry()
                 {
@@ -187,7 +187,7 @@ internal class SQSMessagePoller : IMessagePoller
 
             foreach (var failedMessage in response.Failed)
             {
-                _logger.LogError("Failed to delete message {FailedMessageId} from queue {SubscriberEndpoint}: {failedMessage}",
+                _logger.LogError("Failed to delete message {FailedMessageId} from queue {SubscriberEndpoint}: {FailedMessage}",
                     failedMessage.Id, _configuration.SubscriberEndpoint, failedMessage.Message);
             }
         }
