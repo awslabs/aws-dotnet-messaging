@@ -57,6 +57,9 @@ namespace AWS.Messaging.UnitTests
             Assert.Equal(0, manager.ActiveMessageCount);
         }
 
+        /// <summary>
+        /// Happy path test for a failed message handling, that it is not deleted from the queue at the end
+        /// </summary>
         [Fact]
         public async Task DefaultMessageManager_ManagesMessageFailed()
         {
@@ -93,6 +96,10 @@ namespace AWS.Messaging.UnitTests
             Assert.Equal(0, manager.ActiveMessageCount);
         }
 
+        /// <summary>
+        /// Tests that the manager extends the visibility timeout when the message handler
+        /// takes longer than the refresh interval
+        /// </summary>
         [Fact]
         public async Task DefaultMessageManager_RefreshesLongHandler()
         {
@@ -130,6 +137,36 @@ namespace AWS.Messaging.UnitTests
                     It.Is<IEnumerable<MessageEnvelope>>(x => x.Count() == 1 && x.First() == messsageEnvelope),
                     It.IsAny<CancellationToken>()),
                 Times.Between(2, 3, Moq.Range.Inclusive));
+
+            // Verify that the active message count was deprecated back to 0
+            Assert.Equal(0, manager.ActiveMessageCount);
+        }
+
+        /// <summary>
+        /// Queues many message handling tasks for a single message manager to ensure that it
+        /// is managing its active message count in a thread safe manner
+        /// </summary>
+        [Fact]
+        public async Task DefaultMessageManager_CountsActiveMessagesCorrectly()
+        {
+            var mockPoller = CreateMockPoller(messageVisibilityRefreshInterval: 1);
+            var mockHandlerInvoker = CreateMockHandlerInvoker(MessageProcessStatus.Success(), TimeSpan.FromSeconds(1));
+
+            var manager = new DefaultMessageManager(mockPoller.Object, mockHandlerInvoker.Object, new NullLogger<DefaultMessageManager>());
+            var subscriberMapping = new SubscriberMapping(typeof(ChatMessageHandler), typeof(ChatMessage));
+           
+            var tasks = new List<Task>();
+
+            for (int i = 0; i < 100; i++)
+            {
+                var messsageEnvelope = new MessageEnvelope<ChatMessage>()
+                {
+                    Id = i.ToString()
+                };
+                tasks.Add(manager.ProcessMessageAsync(messsageEnvelope, subscriberMapping));
+            }
+
+            await Task.WhenAll(tasks);
 
             // Verify that the active message count was deprecated back to 0
             Assert.Equal(0, manager.ActiveMessageCount);
