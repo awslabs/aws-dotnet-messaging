@@ -36,7 +36,8 @@ public class DefaultMessageManager : IMessageManager
     }
 
     /// <inheritdoc/>
-    public int ActiveMessageCount {
+    public int ActiveMessageCount
+    {
         get
         {
             lock (_activeMessageCountLock)
@@ -44,22 +45,30 @@ public class DefaultMessageManager : IMessageManager
                 return _activeMessageCount;
             }
         }
-        set
+    }
+
+    /// <summary>
+    /// Updates <see cref="ActiveMessageCount"/> in a thread safe manner
+    /// </summary>
+    /// <param name="delta">Difference to apply to the current active message count</param>
+    /// <returns>Updated <see cref="ActiveMessageCount"/></returns>
+    private int UpdateActiveMessageCount(int delta)
+    {
+        lock (_activeMessageCountLock)
         {
-            lock (_activeMessageCountLock)
+            var newValue = _activeMessageCount + delta;
+            _logger.LogTrace("Updating {ActiveMessageCount} from {Before} to {After}", nameof(ActiveMessageCount), _activeMessageCount, newValue);
+
+            _activeMessageCount = newValue;
+
+            // If we just decremented the active message count, signal to the poller
+            // that there may be more capacity available again.
+            if (delta < 0)
             {
-                _logger.LogTrace("Updating {ActiveMessageCount} from {Before} to {After}", nameof(ActiveMessageCount), ActiveMessageCount, value);
-
-                var isDecrementing = value < _activeMessageCount;
-                _activeMessageCount = value;
-
-                // If we just decremented the active message count, signal to the poller
-                // that there may be more capacity available again.
-                if (isDecrementing)
-                {
-                    _activeMessageCountDecrementedEvent.Set();
-                }
+                _activeMessageCountDecrementedEvent.Set();
             }
+
+            return _activeMessageCount;
         }
     }
 
@@ -86,11 +95,10 @@ public class DefaultMessageManager : IMessageManager
         return Task.CompletedTask;
     }
 
-
     /// <inheritdoc/>
     public async Task ProcessMessageAsync(MessageEnvelope messageEnvelope, SubscriberMapping subscriberMapping, CancellationToken token = default)
     {
-        ActiveMessageCount++;
+        UpdateActiveMessageCount(1);
 
         var handlerTask = _handlerInvoker.InvokeAsync(messageEnvelope, subscriberMapping, token);
 
@@ -132,7 +140,7 @@ public class DefaultMessageManager : IMessageManager
             _logger.LogError(handlerTask.Exception, "Message handling failed unexpectedly for message ID {MessageId}", messageEnvelope.Id);
         }
 
-        ActiveMessageCount--;
+        UpdateActiveMessageCount(-1);
     }
 
     /// <summary>
@@ -149,6 +157,8 @@ public class DefaultMessageManager : IMessageManager
                 if (_visibilityTimeoutExtensionTask == null || _visibilityTimeoutExtensionTask.IsCompleted)
                 {
                     _visibilityTimeoutExtensionTask = ExtendUnfinishedMessageVisibilityTimeoutBatch(token);
+
+                    _logger.LogTrace("Started task with id {id} to extend the visibility timeout of in flight messages", _visibilityTimeoutExtensionTask.Id);
                 }
             }
         }
