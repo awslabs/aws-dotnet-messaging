@@ -42,7 +42,7 @@ internal class DefaultMessagePollerFactory : IMessagePollerFactory
         IMessagePoller poller;
         if(pollerConfiguration is SQSMessagePollerConfiguration sqsPollerConfiguration)
         {
-            poller = ActivatorUtilities.CreateInstance<SQSMessagePoller>(_serviceProvider, sqsPollerConfiguration);
+            poller = ActivatorUtilities.CreateInstance<DefaultMessagePoller>(_serviceProvider, sqsPollerConfiguration);
         }
         else
         {

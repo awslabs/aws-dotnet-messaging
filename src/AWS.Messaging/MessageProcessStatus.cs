@@ -11,10 +11,10 @@ namespace AWS.Messaging;
 
 /// <summary>
 /// Status returned after processing messages from the <see cref="AWS.Messaging.IMessageHandler{T}"/>.
-/// The status informs the <see cref="AWS.Messaging.Services.IMessageManager"/> what should be done with the message
+/// The status determines what should be done with the message
 /// after the message has been attempted to be processed.
 ///
-/// For example using the <see cref="MessageProcessStatus.Success()"/> would tell the <see cref="AWS.Messaging.Services.IMessageManager"/> to delete
+/// For example using the <see cref="MessageProcessStatus.Success()"/> would  delete
 /// the message from the underlying service like SQS.
 /// </summary>
 public sealed class MessageProcessStatus

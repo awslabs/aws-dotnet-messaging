@@ -150,7 +150,9 @@ public class MessageBusBuilder : IMessageBusBuilder
             services.AddHostedService<MessagePumpService>();
             services.TryAddSingleton<IHandlerInvoker, HandlerInvoker>();
             services.TryAddSingleton<IMessagePollerFactory, DefaultMessagePollerFactory>();
-            services.TryAddSingleton<IMessageManagerFactory, DefaultMessageManagerFactory>();
+
+            // TODO - this is where we would switch to Lambda
+            services.TryAddSingleton<ISQSCommunicator, SQSPoller>();
 
             if (_messageConfiguration.MessagePollerConfigurations.OfType<SQSMessagePollerConfiguration>().Any())
             {
