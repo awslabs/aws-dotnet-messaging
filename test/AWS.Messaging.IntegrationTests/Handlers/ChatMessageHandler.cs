@@ -23,3 +23,22 @@ public class ChatMessageHandler : IMessageHandler<ChatMessage>
         return Task.FromResult(MessageProcessStatus.Success());
     }
 }
+
+public class ChatMessageHandler_10sDelay : IMessageHandler<ChatMessage>
+{
+    private readonly TempStorage<ChatMessage> _tempStorage;
+
+    public ChatMessageHandler_10sDelay(TempStorage<ChatMessage> tempStorage)
+    {
+        _tempStorage = tempStorage;
+    }
+
+    public async Task<MessageProcessStatus> HandleAsync(MessageEnvelope<ChatMessage> messageEnvelope, CancellationToken token = default)
+    {
+        await Task.Delay(10000);
+
+        _tempStorage.Messages.Add(messageEnvelope);
+
+        return MessageProcessStatus.Success();
+    }
+}
