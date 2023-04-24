@@ -16,12 +16,14 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Moq;
 using Xunit;
+using AWS.Messaging.Tests.Common.Services;
 
 namespace AWS.Messaging.UnitTests;
 
 public class SQSMessagePollerTests
 {
     private const string TEST_QUEUE_URL = "queueUrl";
+    private InMemoryLogger? _inMemoryLogger;
 
     /// <summary>
     /// Tests that starting an SQS poller with default settings begins polling SQS
@@ -122,6 +124,33 @@ public class SQSMessagePollerTests
     }
 
     /// <summary>
+    /// Tests that calling <see cref="IMessagePoller.ExtendMessageVisibilityTimeoutAsync"/> calls
+    /// SQS's ChangeMessageVisibilityBatch with a request that has more than 10 entires.
+    /// <see cref="ExtendMessageVisibilityTimeoutAsync"/> is expected create multiple <see cref="ChangeMessageVisibilityBatchRequest"/>
+    /// when there are more than 10 messages since <see cref="ChangeMessageVisibilityBatchRequest"/> can only handle 10 entries.
+    /// </summary>
+    [Fact]
+    public async Task SQSMessagePoller_ExtendMessageVisibility_RequestHasMoreThan10Entries()
+    {
+        var client = new Mock<IAmazonSQS>();
+
+        client.Setup(x => x.ChangeMessageVisibilityBatchAsync(It.Is<ChangeMessageVisibilityBatchRequest>(x => x.Entries.Count > 10), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new AmazonSQSException("Request contains more than 10 entries.") { ErrorCode = "AWS.SimpleQueueService.TooManyEntriesInBatchRequest" });
+
+        client.Setup(x => x.ChangeMessageVisibilityBatchAsync(It.Is<ChangeMessageVisibilityBatchRequest>(x => x.Entries.Count <= 10), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChangeMessageVisibilityBatchResponse { Failed = new List<BatchResultErrorEntry>() }, TimeSpan.FromMilliseconds(50));
+
+        var messagePoller = CreateSQSMessagePoller(client);
+
+        var messageEnvelopes = Enumerable.Range(0, 15).Select(x => new MessageEnvelope<ChatMessage> { Id = $"{x + 1}", SQSMetadata = new SQSMetadata { ReceiptHandle = $"rh{x + 1}" } }).Cast<MessageEnvelope>().ToList();
+
+        await messagePoller.ExtendMessageVisibilityTimeoutAsync(messageEnvelopes);
+
+        Assert.NotNull(_inMemoryLogger);
+        Assert.Empty(_inMemoryLogger.Logs.Where(x => x.Exception is AmazonSQSException ex && ex.ErrorCode.Equals("AWS.SimpleQueueService.TooManyEntriesInBatchRequest")));
+    }
+
+    /// <summary>
     /// Helper function that initializes and starts a <see cref="MessagePumpService"/> with
     /// a mocked SQS client, then cancels after 500ms
     /// </summary>
@@ -162,7 +191,7 @@ public class SQSMessagePollerTests
     private IMessagePoller CreateSQSMessagePoller(Mock<IAmazonSQS> mockSqsClient)
     {
         var serviceCollection = new ServiceCollection();
-        serviceCollection.AddLogging();
+        serviceCollection.AddLogging(x => x.AddInMemoryLogger());
 
         serviceCollection.AddAWSMessageBus(builder =>
         {
@@ -174,6 +203,7 @@ public class SQSMessagePollerTests
 
         var serviceProvider = serviceCollection.BuildServiceProvider();
 
+        _inMemoryLogger = serviceProvider.GetRequiredService<InMemoryLogger>();
         var messagePollerFactory = serviceProvider.GetService<IMessagePollerFactory>();
         Assert.NotNull(messagePollerFactory);
 

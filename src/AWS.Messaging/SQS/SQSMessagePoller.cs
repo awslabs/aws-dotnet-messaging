@@ -27,6 +27,11 @@ internal class SQSMessagePoller : IMessagePoller
     private const int SQS_MAX_NUMBER_MESSAGES_TO_READ = 10;
 
     /// <summary>
+    /// Maximum valid value for number of messages in <see cref="ChangeMessageVisibilityBatchRequest"/>
+    /// </summary>
+    private const int SQS_MAX_MESSAGE_CHANGE_VISIBILITY = 10;
+
+    /// <summary>
     /// The maximum amount of time a polling iteration should pause for while waiting
     /// for in flight messages to finish processing
     /// </summary>
@@ -216,18 +221,27 @@ internal class SQSMessagePoller : IMessagePoller
             return;
         }
 
-        var request = new ChangeMessageVisibilityBatchRequest
+        var requestBatches = new List<ChangeMessageVisibilityBatchRequest>();
+
+        var currentRequest = new ChangeMessageVisibilityBatchRequest
         {
             QueueUrl = _configuration.SubscriberEndpoint
         };
-
         foreach (var message in messages)
         {
             if (!string.IsNullOrEmpty(message.SQSMetadata?.ReceiptHandle))
             {
                 _logger.LogTrace("Preparing to extend the visibility of {MessageId} with SQS receipt handle {ReceiptHandle} by {VisibilityTimeout} seconds",
                     message.Id, message.SQSMetadata.ReceiptHandle, _configuration.VisibilityTimeout);
-                request.Entries.Add(new ChangeMessageVisibilityBatchRequestEntry
+                if (currentRequest.Entries.Count >= SQS_MAX_MESSAGE_CHANGE_VISIBILITY)
+                {
+                    requestBatches.Add(currentRequest);
+                    currentRequest = new ChangeMessageVisibilityBatchRequest
+                    {
+                        QueueUrl = _configuration.SubscriberEndpoint
+                    };
+                }
+                currentRequest.Entries.Add(new ChangeMessageVisibilityBatchRequestEntry
                 {
                     Id = message.Id,
                     ReceiptHandle = message.SQSMetadata.ReceiptHandle,
@@ -240,36 +254,56 @@ internal class SQSMessagePoller : IMessagePoller
                 throw new MissingSQSReceiptHandleException($"Attempted to change the visibility of message {message.Id} from {_configuration.SubscriberEndpoint} without an SQS receipt handle.");
             }
         }
+        requestBatches.Add(currentRequest);
+
+        List<Task<ChangeMessageVisibilityBatchResponse>> changeMessageVisibilityBatchTasks =
+            requestBatches
+            .Select(request => _sqsClient.ChangeMessageVisibilityBatchAsync(request, token))
+            .ToList();
 
         try
         {
-            var response = await _sqsClient.ChangeMessageVisibilityBatchAsync(request, token);
-
-            foreach (var successMessage in response.Successful)
-            {
-                _logger.LogTrace("Extended the visibility of message {MessageId} on queue {SubscriberEndpoint} successfully", successMessage.Id, _configuration.SubscriberEndpoint);
-            }
-
-            foreach (var failedMessage in response.Failed)
-            {
-                _logger.LogError("Failed to extend the visibility of message {FailedMessageId} on queue {SubscriberEndpoint}: {FailedMessage}",
-                    failedMessage.Id, _configuration.SubscriberEndpoint, failedMessage.Message);
-            }
-        }
-        catch (AmazonSQSException ex)
-        {
-            _logger.LogError(ex, "Failed to extend the visibility of message(s) [{MessageIds}] on queue {SubscriberEndpoint}",
-               string.Join(", ", messages.Select(x => x.Id)), _configuration.SubscriberEndpoint);
-
-            // Rethrow the exception to fail fast for invalid configuration, permissioning, etc.
-            if (IsSQSExceptionFatal(ex))
-            {
-                throw;
-            }
+            var responses = await Task.WhenAll(changeMessageVisibilityBatchTasks);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "An unexpected exception occurred while extending message visibility on queue {SubscriberEndpoint}", _configuration.SubscriberEndpoint);
+        }
+
+        foreach (var changeMessageVisibilityBatchTask in changeMessageVisibilityBatchTasks)
+        {
+            if (!changeMessageVisibilityBatchTask.IsFaulted)
+            {
+                var response = changeMessageVisibilityBatchTask.Result;
+                foreach (var successMessage in response.Successful)
+                {
+                    _logger.LogTrace("Extended the visibility of message {MessageId} on queue {SubscriberEndpoint} successfully", successMessage.Id, _configuration.SubscriberEndpoint);
+                }
+
+                foreach (var failedMessage in response.Failed)
+                {
+                    _logger.LogError("Failed to extend the visibility of message {FailedMessageId} on queue {SubscriberEndpoint}: {FailedMessage}",
+                        failedMessage.Id, _configuration.SubscriberEndpoint, failedMessage.Message);
+                }
+            }
+            else
+            {
+                if (changeMessageVisibilityBatchTask.Exception?.InnerException is AmazonSQSException amazonEx)
+                {
+                    _logger.LogError(amazonEx, "Failed to extend the visibility of message(s) [{MessageIds}] on queue {SubscriberEndpoint}",
+                        string.Join(", ", messages.Select(x => x.Id)), _configuration.SubscriberEndpoint);
+
+                    // Rethrow the exception to fail fast for invalid configuration, permissioning, etc.
+                    if (IsSQSExceptionFatal(amazonEx))
+                    {
+                        throw amazonEx;
+                    }
+                }
+                else if (changeMessageVisibilityBatchTask.Exception?.InnerException is Exception ex)
+                {
+                    _logger.LogError(ex, "An unexpected exception occurred while extending message visibility on queue {SubscriberEndpoint}", _configuration.SubscriberEndpoint);
+                }
+            }
         }
     }
 
