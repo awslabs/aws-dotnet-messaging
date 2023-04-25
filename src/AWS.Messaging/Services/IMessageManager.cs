@@ -6,7 +6,7 @@ using AWS.Messaging.Configuration;
 namespace AWS.Messaging.Services;
 
 /// <summary>
-/// Instances of <see cref="AWS.Messaging.Services.IMessageManager" /> manage the lifecycle of a message being processed.
+/// Instances of <see cref="IMessageManager" /> manage the lifecycle of a message being processed.
 /// </summary>
 /// <remarks>
 /// Responsibilities:

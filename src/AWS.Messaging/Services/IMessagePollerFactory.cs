@@ -2,29 +2,27 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using AWS.Messaging.Configuration;
-using AWS.Messaging.SQS;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AWS.Messaging.Services;
 
 /// <summary>
-/// Factory for creating instances of <see cref="AWS.Messaging.Services.IMessagePollerFactory" />. Users that want to use a custom <see cref="AWS.Messaging.Services.IMessagePoller" />
-/// can inject into the <see cref="Microsoft.Extensions.DependencyInjection.IServiceCollection" /> their own implementation of <see cref="AWS.Messaging.Services.IMessagePollerFactory" /> to construct
-/// a custom <see cref="AWS.Messaging.Services.IMessagePoller" /> instance.
+/// Factory for creating instances of <see cref="IMessagePollerFactory" />. Users that want to use a custom <see cref="AWS.Messaging.Services.IMessagePoller" />
+/// can inject into the <see cref="IServiceCollection" /> their own implementation of <see cref="AWS.Messaging.Services.IMessagePollerFactory" /> to construct
+/// a custom <see cref="IMessagePoller" /> instance.
 /// </summary>
 public interface IMessagePollerFactory
 {
     /// <summary>
-    /// Create an instance of <see cref="AWS.Messaging.Services.IMessagePoller" /> for the given resource type.
+    /// Create an instance of <see cref="IMessagePoller" /> for the given resource type.
     /// </summary>
     /// <param name="pollerConfiguration">The configuration for the poller.</param>
-    /// <returns></returns>
     IMessagePoller CreateMessagePoller(IMessagePollerConfiguration pollerConfiguration);
 }
 
 /// <summary>
-/// Implementation of <see cref="AWS.Messaging.Services.IMessagePollerFactory" /> that is the default registered factory into
-/// the <see cref="Microsoft.Extensions.DependencyInjection.IServiceCollection" /> unless a user has registered their own implementation.
+/// Implementation of <see cref="IMessagePollerFactory" /> that is the default registered factory into
+/// the <see cref="IServiceCollection" /> unless a user has registered their own implementation.
 /// </summary>
 internal class DefaultMessagePollerFactory : IMessagePollerFactory
 {

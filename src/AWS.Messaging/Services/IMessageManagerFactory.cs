@@ -1,23 +1,24 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using AWS.Messaging.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AWS.Messaging.Services;
 
 /// <summary>
-/// Factory for creating instances of <see cref="AWS.Messaging.Services.IMessageManager" />. Users that want to use a custom <see cref="AWS.Messaging.Services.IMessageManager" />
-/// can inject into the <see cref="Microsoft.Extensions.DependencyInjection.IServiceCollection" /> their own implementation of <see cref="AWS.Messaging.Services.IMessageManagerFactory" /> to construct
-/// a custom <see cref="AWS.Messaging.Services.IMessageManager" /> instance.
+/// Factory for creating instances of <see cref="IMessageManager" />. Users that want to use a custom <see cref="IMessageManager" />
+/// can inject into the <see cref="IServiceCollection" /> their own implementation of <see cref="IMessageManagerFactory" /> to construct
+/// a custom <see cref="IMessageManager" /> instance.
 /// </summary>
 public interface IMessageManagerFactory
 {
     /// <summary>
-    /// Create an instance of <see cref="AWS.Messaging.Services.IMessageManager" />
+    /// Create an instance of <see cref="IMessageManager" />
     /// </summary>
-    /// <param name="poller">The <see cref="AWS.Messaging.Services.IMessagePoller" /> that the <see cref="AWS.Messaging.Services.IMessageManager" /> to make lifecycle changes to the message.</param>
+    /// <param name="pollerConfiguration">This configuration controls the polling process and lifecycle of SQS messages</param>
     /// <returns></returns>
-    IMessageManager CreateMessageManager(IMessagePoller poller);
+    IMessageManager CreateMessageManager(IMessagePollerConfiguration pollerConfiguration);
 }
 
 /// <summary>
@@ -35,8 +36,18 @@ internal class DefaultMessageManagerFactory : IMessageManagerFactory
     }
 
     /// <inheritdoc/>
-    public IMessageManager CreateMessageManager(IMessagePoller poller)
+    public IMessageManager CreateMessageManager(IMessagePollerConfiguration pollerConfiguration)
     {
-        return ActivatorUtilities.CreateInstance<DefaultMessageManager>(_serviceProvider, poller);
+        IMessageManager messageManager;
+        if (pollerConfiguration is SQSMessagePollerConfiguration sqsPollerConfiguration)
+        {
+            messageManager = ActivatorUtilities.CreateInstance<DefaultMessageManager>(_serviceProvider, sqsPollerConfiguration);
+        }
+        else
+        {
+            throw new ConfigurationException($"Invalid poller configuration type: {pollerConfiguration.GetType().FullName}");
+        }
+
+        return messageManager;
     }
 }

@@ -155,6 +155,7 @@ public class MessageBusBuilder : IMessageBusBuilder
             if (_messageConfiguration.MessagePollerConfigurations.OfType<SQSMessagePollerConfiguration>().Any())
             {
                 services.TryAddAWSService<Amazon.SQS.IAmazonSQS>();
+                services.TryAddSingleton<ISQSHandler, SQSHandler>();
             }
         }
     }

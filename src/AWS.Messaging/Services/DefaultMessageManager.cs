@@ -7,10 +7,13 @@ using Microsoft.Extensions.Logging;
 
 namespace AWS.Messaging.Services;
 
-/// <inheritdoc cref="IMessageManager"/>
-public class DefaultMessageManager : IMessageManager
+/// <summary>
+/// This is an implementation of <see cref="IMessageManager"/>. It processes and controls the lifecycle of SQS messages.
+/// </summary>
+internal class DefaultMessageManager : IMessageManager
 {
-    private readonly IMessagePoller _messagePoller;
+    private readonly SQSMessagePollerConfiguration _configuration;
+    private readonly ISQSHandler _sqsHandler;
     private readonly IHandlerInvoker _handlerInvoker;
     private readonly ILogger<DefaultMessageManager> _logger;
 
@@ -25,13 +28,15 @@ public class DefaultMessageManager : IMessageManager
     /// <summary>
     /// Constructs an instance of <see cref="DefaultMessageManager"/>
     /// </summary>
-    /// <param name="messagePoller">The poller that this manager is managing messages for</param>
+    /// <param name="sqsHandler">Contains helper methods to interact with Amazon SQS.</param>
     /// <param name="handlerInvoker">Used to look up and invoke the correct handler for each message</param>
+    /// <param name="configuration">This configuration contains settings that control the lifecycle of SQS messages.</param>
     /// <param name="logger">Logger for debugging information</param>
-    public DefaultMessageManager(IMessagePoller messagePoller, IHandlerInvoker handlerInvoker, ILogger<DefaultMessageManager> logger)
+    public DefaultMessageManager(ISQSHandler sqsHandler, IHandlerInvoker handlerInvoker, SQSMessagePollerConfiguration configuration, ILogger<DefaultMessageManager> logger)
     {
-        _messagePoller = messagePoller;
+        _sqsHandler = sqsHandler;
         _handlerInvoker = handlerInvoker;
+        _configuration = configuration;
         _logger = logger;
     }
 
@@ -120,7 +125,7 @@ public class DefaultMessageManager : IMessageManager
             if (handlerTask.Result.IsSuccess)
             {
                 // Delete the message from the queue if it was processed successfully
-                await _messagePoller.DeleteMessagesAsync(new MessageEnvelope[] { messageEnvelope });
+                await _sqsHandler.DeleteMessagesAsync(new MessageEnvelope[] { messageEnvelope }, _configuration.SubscriberEndpoint, token);
             }
             else // the handler still finished, but returned MessageProcessStatus.Failed
             {
@@ -165,7 +170,7 @@ public class DefaultMessageManager : IMessageManager
         do
         {
             // Wait for the configured interval before extending visibility
-            await Task.Delay(_messagePoller.VisibilityTimeoutExtensionInterval * 1000, token);
+            await Task.Delay(_configuration.VisibilityTimeoutExtensionInterval * 1000, token);
 
             // Select the message envelopes whose corresponding handler task is not yet complete
              unfinishedMessages = _runningHandlerTasks.Values;
@@ -173,7 +178,7 @@ public class DefaultMessageManager : IMessageManager
             // TODO: The envelopes in _runningHandlerTasks may have been received at different times, we could track + extend visibility separately
             // TODO: The underlying ChangeMessageVisibilityBatch only takes up to 10 messages, we may need to slice and make multiple calls
             // TODO: Handle the race condition where a message could have finished handling and be deleted concurrently
-            await _messagePoller.ExtendMessageVisibilityTimeoutAsync(unfinishedMessages);
+            await _sqsHandler.ExtendMessageVisibilityTimeoutAsync(unfinishedMessages, _configuration.SubscriberEndpoint, _configuration.VisibilityTimeout, token);
 
         } while (unfinishedMessages.Any() && !token.IsCancellationRequested);
     }

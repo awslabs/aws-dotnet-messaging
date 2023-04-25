@@ -256,6 +256,10 @@ public class MessageBusBuilderTests
         var sqsClient = serviceProvider.GetService<IAmazonSQS>();
         Assert.NotNull(sqsClient);
 
+        // Verify that an instance of ISQSHandler was added
+        var sqsHandler = serviceProvider.GetRequiredService<ISQSHandler>();
+        Assert.NotNull(sqsHandler);
+
         // Verify that the default factories used for subscribing to messages were added
         var messageManagerFactory = serviceProvider.GetService<IMessageManagerFactory>();
         Assert.NotNull(messageManagerFactory);
