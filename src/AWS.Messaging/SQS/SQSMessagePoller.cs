@@ -61,6 +61,9 @@ internal class SQSMessagePoller : IMessagePoller
     }
 
     /// <inheritdoc/>
+    public bool ShouldExtendVisibilityTimeout => true;
+
+    /// <inheritdoc/>
     public int VisibilityTimeoutExtensionInterval => _configuration.VisibilityTimeoutExtensionInterval;
 
 

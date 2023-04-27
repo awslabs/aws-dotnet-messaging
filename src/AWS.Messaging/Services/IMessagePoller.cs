@@ -14,6 +14,11 @@ namespace AWS.Messaging.Services;
 public interface IMessagePoller
 {
     /// <summary>
+    /// Indicates whether the message poller should extend the visibility timeout for in-flight messages.
+    /// </summary>
+    bool ShouldExtendVisibilityTimeout { get; }
+
+    /// <summary>
     /// How frequently message visibility should be extended in seconds
     /// via <see cref="ExtendMessageVisibilityTimeoutAsync"/> while the message is still being processed
     /// </summary>

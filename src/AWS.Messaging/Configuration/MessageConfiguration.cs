@@ -45,4 +45,17 @@ public class MessageConfiguration : IMessageConfiguration
 
     /// <inheritdoc/>
     public IList<ISerializationCallback> SerializationCallbacks { get; } = new List<ISerializationCallback>();
+
+    /// <inheritdoc/>
+    public IMessagePollerConfiguration? GetLambdaMessagePollerConfiguration(string queueUrl)
+    {
+        foreach (var pollerConfiguration in MessagePollerConfigurations)
+        {
+            if (pollerConfiguration is LambdaMessagePollerConfiguration && pollerConfiguration.SubscriberEndpoint == queueUrl)
+            {
+                return pollerConfiguration;
+            }
+        }
+        return null;
+    }
 } 

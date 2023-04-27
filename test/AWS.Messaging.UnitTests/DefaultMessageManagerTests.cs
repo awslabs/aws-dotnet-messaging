@@ -187,6 +187,7 @@ namespace AWS.Messaging.UnitTests
                 .Returns(Task.CompletedTask);
 
             mockPoller.Setup(x => x.VisibilityTimeoutExtensionInterval).Returns(messageVisibilityRefreshInterval);
+            mockPoller.Setup(x => x.ShouldExtendVisibilityTimeout).Returns(true);
 
             return mockPoller;
         }

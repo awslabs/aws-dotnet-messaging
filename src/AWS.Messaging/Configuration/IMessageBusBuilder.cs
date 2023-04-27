@@ -51,6 +51,13 @@ public interface IMessageBusBuilder
     IMessageBusBuilder AddSQSPoller(string queueUrl, Action<SQSMessagePollerOptions>? options = null);
 
     /// <summary>
+    /// Adds an Lambda message poller to process messages from an SQS queue.
+    /// </summary>
+    /// <param name="queueUrl">The SQS queue which acts as an event trigger for the Lambda function.</param>
+    /// <param name="options">Optional configuration for polling message from SQS.</param>
+    IMessageBusBuilder AddLambdaMessagePoller(string queueUrl, Action<LambdaMessagePollerOptions>? options = null);
+
+    /// <summary>
     /// Configures an instance of <see cref="SerializationOptions"/> to control the serialization/de-serialization logic for the application message.
     /// </summary>
     IMessageBusBuilder ConfigureSerializationOptions(Action<SerializationOptions> options);

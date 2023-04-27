@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using AWS.Messaging.Publishers.SQS;
 using AWS.Messaging.Publishers.SNS;
 using AWS.Messaging.Publishers.EventBridge;
+using AWS.Messaging.Lambda;
 
 namespace AWS.Messaging.Configuration;
 
@@ -94,6 +95,29 @@ public class MessageBusBuilder : IMessageBusBuilder
     }
 
     /// <inheritdoc/>
+    public IMessageBusBuilder AddLambdaMessagePoller(string queueUrl, Action<LambdaMessagePollerOptions>? options = null)
+    {
+        // Create the user-provided options class
+        var lambdaMessagePollerOptions = new LambdaMessagePollerOptions();
+
+        if (options != null)
+        {
+            options.Invoke(lambdaMessagePollerOptions);
+        }
+
+        lambdaMessagePollerOptions.Validate();
+
+        // Copy that to our internal options class
+        var lambdaMessagePollerConfiguration = new LambdaMessagePollerConfiguration(queueUrl)
+        {
+            MaxNumberOfConcurrentMessages = lambdaMessagePollerOptions.MaxNumberOfConcurrentMessages
+        };
+
+        _messageConfiguration.MessagePollerConfigurations.Add(lambdaMessagePollerConfiguration);
+        return this;
+    }
+
+    /// <inheritdoc/>
     public IMessageBusBuilder ConfigureSerializationOptions(Action<SerializationOptions> options)
     {
         options(_messageConfiguration.SerializationOptions);
@@ -155,6 +179,11 @@ public class MessageBusBuilder : IMessageBusBuilder
             if (_messageConfiguration.MessagePollerConfigurations.OfType<SQSMessagePollerConfiguration>().Any())
             {
                 services.TryAddAWSService<Amazon.SQS.IAmazonSQS>();
+            }
+            if (_messageConfiguration.MessagePollerConfigurations.OfType<LambdaMessagePollerConfiguration>().Any())
+            {
+                services.TryAddAWSService<Amazon.SQS.IAmazonSQS>();
+                services.TryAddSingleton<ILambdaMessagePump, LambdaMessagePump>();
             }
         }
     }

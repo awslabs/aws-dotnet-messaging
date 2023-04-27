@@ -55,4 +55,11 @@ public interface IMessageConfiguration
     /// Holds instances of <see cref="ISerializationCallback"/> that lets users inject their own metadata to incoming and outgoing messages.
     /// </summary>
     IList<ISerializationCallback> SerializationCallbacks { get; }
+
+    /// <summary>
+    /// Returns the <see cref="LambdaMessagePollerConfiguration"/> with the given SQS queue URL
+    /// </summary>
+    /// <param name="queueUrl"></param>
+    /// <returns></returns>
+    IMessagePollerConfiguration? GetLambdaMessagePollerConfiguration(string queueUrl);
 }

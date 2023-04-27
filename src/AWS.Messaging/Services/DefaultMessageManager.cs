@@ -105,7 +105,8 @@ public class DefaultMessageManager : IMessageManager
         // Add it to the dictionary of running task, used to extend the visibility timeout if necessary
         _runningHandlerTasks.TryAdd(handlerTask, messageEnvelope);
 
-        StartMessageVisibilityExtensionTaskIfNotRunning(token);
+        if (_messagePoller.ShouldExtendVisibilityTimeout)
+            StartMessageVisibilityExtensionTaskIfNotRunning(token);
 
         // Wait for the handler to finish processing the message
         try
