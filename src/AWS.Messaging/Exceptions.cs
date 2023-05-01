@@ -204,14 +204,3 @@ public class FailedToFindAWSServiceClientException : AWSMessagingException
     /// </summary>
     public FailedToFindAWSServiceClientException(string message, Exception? innerException = null) : base(message, innerException) { }
 }
-
-/// <summary>
-/// Thrown when an <see cref="LambdaMessagePollerOptions" /> is configured with one or more invalid values
-/// </summary>
-public class InvalidLambdaMessagePollerOptionsException : AWSMessagingException
-{
-    /// <summary>
-    /// Creates an instance of <see cref="InvalidLambdaMessagePollerOptionsException"/>.
-    /// </summary>
-    public InvalidLambdaMessagePollerOptionsException(string message, Exception? innerException = null) : base(message, innerException) { }
-}

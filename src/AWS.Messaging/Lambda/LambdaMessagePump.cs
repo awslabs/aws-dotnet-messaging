@@ -42,26 +42,13 @@ internal class LambdaMessagePump : ILambdaMessagePump
 
         var sqsQueueArn = sqsEvent.Records[0].EventSourceArn;
         var sqsQueueUrl = await GetSQSQueueUrl(sqsQueueArn);
-
-        var pollerConfiguration = _messageConfiguration.GetLambdaMessagePollerConfiguration(sqsQueueUrl);
-        if (pollerConfiguration is null)
+        var lambdaMessagePollerConfiguration = new LambdaMessagePollerConfiguration(sqsQueueUrl)
         {
-            _logger.LogError("Could not find any lambdaMessagePollerConfiguration with {queueUrl} as the subscriber endpoint", sqsQueueUrl);
-            return;
-        }
+            SQSEvent = sqsEvent
+        };
 
-        var lambdaMessagePollerConfiguration = (LambdaMessagePollerConfiguration)pollerConfiguration;
-        lambdaMessagePollerConfiguration.SQSEvent = sqsEvent;
         var lambdaMessagePoller = _messagePollerFactory.CreateMessagePoller(lambdaMessagePollerConfiguration);
-        var task = lambdaMessagePoller.StartPollingAsync(stoppingToken);
-
-        await task.ContinueWith(completedPollerTask =>
-        {
-            if (completedPollerTask.IsFaulted && !stoppingToken.IsCancellationRequested)
-            {
-                _logger.LogError(completedPollerTask.Exception, "Lambda message poller for {SubscriberEndpoint} failed for an unexpected reason.", pollerConfiguration.SubscriberEndpoint);
-            }
-        });
+        await lambdaMessagePoller.StartPollingAsync(stoppingToken);
     }
 
     /// <inheritdoc/>
@@ -69,16 +56,6 @@ internal class LambdaMessagePump : ILambdaMessagePump
     {
         if (!sqsEvent.Records.Any())
             return new SQSBatchResponse();
-
-        var sqsQueueArn = sqsEvent.Records[0].EventSourceArn;
-        var sqsQueueUrl = await GetSQSQueueUrl(sqsQueueArn);
-
-        var pollerConfiguration = _messageConfiguration.GetLambdaMessagePollerConfiguration(sqsQueueUrl);
-        if (pollerConfiguration is null)
-        {
-            _logger.LogError("Could not find any lambdaMessagePollerConfiguration with {queueUrl} as the subscriber endpoint", sqsQueueUrl);
-            return new SQSBatchResponse();
-        }
 
         // Mark all messages as failed initially. Messages that are successfully process will be removed from the list.
         var sqsBatchResponse = new SQSBatchResponse();
@@ -89,19 +66,16 @@ internal class LambdaMessagePump : ILambdaMessagePump
             sqsBatchResponse.BatchItemFailures.Add(batchItemFailure);
         }
 
-        var lambdaMessagePollerConfiguration = (LambdaMessagePollerConfiguration)pollerConfiguration;
-        lambdaMessagePollerConfiguration.SQSEvent = sqsEvent;
-        lambdaMessagePollerConfiguration.SQSBatchResponse = sqsBatchResponse;
-        var lambdaMessagePoller = _messagePollerFactory.CreateMessagePoller(lambdaMessagePollerConfiguration);
-        var task = lambdaMessagePoller.StartPollingAsync(stoppingToken);
-
-        await task.ContinueWith(completedPollerTask =>
+        var sqsQueueArn = sqsEvent.Records[0].EventSourceArn;
+        var sqsQueueUrl = await GetSQSQueueUrl(sqsQueueArn);
+        var lambdaMessagePollerConfiguration = new LambdaMessagePollerConfiguration(sqsQueueUrl)
         {
-            if (completedPollerTask.IsFaulted && !stoppingToken.IsCancellationRequested)
-            {
-                _logger.LogError(completedPollerTask.Exception, "Lambda message poller for {SubscriberEndpoint} failed for an unexpected reason.", pollerConfiguration.SubscriberEndpoint);
-            }
-        });
+            SQSEvent = sqsEvent,
+            SQSBatchResponse = sqsBatchResponse
+        };
+        var lambdaMessagePoller = _messagePollerFactory.CreateMessagePoller(lambdaMessagePollerConfiguration);
+
+        await lambdaMessagePoller.StartPollingAsync(stoppingToken);
 
         return sqsBatchResponse;
     }

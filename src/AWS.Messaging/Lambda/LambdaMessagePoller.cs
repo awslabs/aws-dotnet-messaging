@@ -54,12 +54,6 @@ internal class LambdaMessagePoller : IMessagePoller
     /// </remarks>
     public int VisibilityTimeoutExtensionInterval => 0;
 
-    /// <summary>
-    /// The maximum amount of time a polling iteration should pause for while waiting
-    /// for in flight messages to finish processing
-    /// </summary>
-    private static readonly TimeSpan CONCURRENT_CAPACITY_WAIT_TIMEOUT = TimeSpan.FromSeconds(10);
-
     /// <inheritdoc/>
     public async Task StartPollingAsync(CancellationToken token = default)
     {
@@ -74,19 +68,6 @@ internal class LambdaMessagePoller : IMessagePoller
 
         while (!token.IsCancellationRequested && index < sqsEvent.Records.Count)
         {
-            var numberOfMessagesToRead = _configuration.MaxNumberOfConcurrentMessages - _messageManager.ActiveMessageCount;
-
-            // If already processing the maximum number of messages, wait for at least one to complete and then try again
-            if (numberOfMessagesToRead <= 0)
-            {
-                _logger.LogTrace("The maximum number of {Max} concurrent messages is already being processed. " +
-                    "Waiting for one or more to complete for a maximum of {Timeout} seconds before attempting to poll again.",
-                    _configuration.MaxNumberOfConcurrentMessages, CONCURRENT_CAPACITY_WAIT_TIMEOUT.TotalSeconds);
-
-                await _messageManager.WaitAsync(CONCURRENT_CAPACITY_WAIT_TIMEOUT);
-                continue;
-            }
-
             var message = ConvertToStandardSQSMessage(sqsEvent.Records[index]);
             var messageEnvelopeResult = await _envelopeSerializer.ConvertToEnvelopeAsync(message);
 
