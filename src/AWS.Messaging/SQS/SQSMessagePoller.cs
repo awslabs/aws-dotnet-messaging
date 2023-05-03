@@ -108,6 +108,8 @@ internal class SQSMessagePoller : IMessagePoller
                 MessageAttributeNames = new List<string> { "All" }
             };
 
+            List<Message>? receivedMessages = null;
+
             try
             {
                 _logger.LogTrace("Retrieving up to {NumberOfMessagesToRead} messages from {QueueUrl}",
@@ -118,17 +120,7 @@ internal class SQSMessagePoller : IMessagePoller
                 _logger.LogTrace("Retrieved {MessagesCount} messages from {QueueUrl} via request ID {RequestId}",
                     receiveMessageResponse.Messages.Count, receiveMessageRequest.QueueUrl, receiveMessageResponse.ResponseMetadata.RequestId);
 
-                foreach (var message in receiveMessageResponse.Messages)
-                {
-                    var messageEnvelopeResult = await _envelopeSerializer.ConvertToEnvelopeAsync(message);
-
-                    // Don't await this result, we want to process multiple messages concurrently
-                    _ = _messageManager.ProcessMessageAsync(messageEnvelopeResult.Envelope, messageEnvelopeResult.Mapping, token);
-                }
-            }
-            catch (AWSMessagingException)
-            {
-                // Swallow exceptions thrown by the framework, and rely on the thrower to log
+                receivedMessages = receiveMessageResponse.Messages;
             }
             catch (AmazonSQSException ex)
             {
@@ -145,6 +137,29 @@ internal class SQSMessagePoller : IMessagePoller
             {
                 // TODO: explore a "cool down mode" for repeated exceptions
                 _logger.LogError(ex, "An unknown exception occurred while polling {SubscriberEndpoint}", _configuration.SubscriberEndpoint);
+            }
+
+            if (receivedMessages is null)
+                continue;
+
+            foreach (var message in receivedMessages)
+            {
+                try
+                {
+                    var messageEnvelopeResult = await _envelopeSerializer.ConvertToEnvelopeAsync(message);
+
+                    // Don't await this result, we want to process multiple messages concurrently
+                    _ = _messageManager.ProcessMessageAsync(messageEnvelopeResult.Envelope, messageEnvelopeResult.Mapping, token);
+                }
+                catch (AWSMessagingException)
+                {
+                    // Swallow exceptions thrown by the framework, and rely on the thrower to log
+                }
+                catch (Exception ex)
+                {
+                    // TODO: explore a "cool down mode" for repeated exceptions
+                    _logger.LogError(ex, "An unknown exception occurred while polling {SubscriberEndpoint}", _configuration.SubscriberEndpoint);
+                }
             }
         }
     }
