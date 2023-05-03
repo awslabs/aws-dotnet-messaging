@@ -31,6 +31,12 @@ public interface IMessagePoller
     Task StartPollingAsync(CancellationToken token = default);
 
     /// <summary>
+    /// Handles messages that were not processed correctly.
+    /// </summary>
+    /// <param name="message">The <see cref="MessageEnvelope"/> that was not processed correctly.</param>
+    ValueTask HandleMessageProcessingFailureAsync(MessageEnvelope message);
+
+    /// <summary>
     /// Delete the message in the underlying service.
     /// </summary>
     /// <param name="messages">The messages to delete.</param>

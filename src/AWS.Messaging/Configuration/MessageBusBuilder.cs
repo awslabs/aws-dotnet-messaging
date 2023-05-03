@@ -140,8 +140,7 @@ public class MessageBusBuilder : IMessageBusBuilder
 
         if (_messageConfiguration.SubscriberMappings.Any())
         {
-            // The Lambda message pump can be used without adding any MessagePollerConfigurations upfront since
-            // since the LambdaMessagePollerConfiguration object is created at runtime
+            // Adding the Lambda message pump upfront since there is no state on the IMessageConfiguration to indicate whether we want to include the lambda message pump.
             services.TryAddSingleton<ILambdaMessagePump, LambdaMessagePump>();
             services.TryAddAWSService<Amazon.SQS.IAmazonSQS>();
 

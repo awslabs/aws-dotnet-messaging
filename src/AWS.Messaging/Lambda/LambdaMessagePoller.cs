@@ -54,6 +54,12 @@ internal class LambdaMessagePoller : IMessagePoller
     /// </remarks>
     public int VisibilityTimeoutExtensionInterval => 0;
 
+    /// <summary>
+    /// The maximum amount of time a polling iteration should pause for while waiting
+    /// for in flight messages to finish processing
+    /// </summary>
+    private static readonly TimeSpan CONCURRENT_CAPACITY_WAIT_TIMEOUT = TimeSpan.FromSeconds(30);
+
     /// <inheritdoc/>
     public async Task StartPollingAsync(CancellationToken token = default)
     {
@@ -63,34 +69,104 @@ internal class LambdaMessagePoller : IMessagePoller
             return;
         }
 
-        var taskList = new List<Task>();
+        var taskList = new List<Task>(sqsEvent.Records.Count);
         var index = 0;
-
-        while (!token.IsCancellationRequested && index < sqsEvent.Records.Count)
-        {
-            var message = ConvertToStandardSQSMessage(sqsEvent.Records[index]);
-            var messageEnvelopeResult = await _envelopeSerializer.ConvertToEnvelopeAsync(message);
-
-            // Don't await this result, we want to process multiple messages concurrently
-            var task = _messageManager.ProcessMessageAsync(messageEnvelopeResult.Envelope, messageEnvelopeResult.Mapping, token);
-            taskList.Add(task);
-            index++;
-        }
-
-        await Task.WhenAll(taskList);
-    }
-
-    public async Task DeleteMessagesAsync(IEnumerable<MessageEnvelope> messages, CancellationToken token = default)
-    {
         try
         {
-            // SQSBatchResponse will be pre-filled when a user invokes the Lambda message pump with ExecuteWithSQSBatchResponseAsync.
-            if (_configuration.SQSBatchResponse is not null)
+            while (!token.IsCancellationRequested && index < sqsEvent.Records.Count)
             {
-                DeleteMessagesFromSQSBatchResponse(messages);
-                return;
+                var numberOfMessagesToRead = _configuration.MaxNumberOfConcurrentMessages - _messageManager.ActiveMessageCount;
+
+                // If already processing the maximum number of messages, wait for at least one to complete and then try again
+                if (numberOfMessagesToRead <= 0)
+                {
+                    _logger.LogTrace("The maximum number of {Max} concurrent messages is already being processed. " +
+                        "Waiting for one or more to complete for a maximum of {Timeout} seconds before attempting to poll again.",
+                        _configuration.MaxNumberOfConcurrentMessages, CONCURRENT_CAPACITY_WAIT_TIMEOUT.TotalSeconds);
+
+                    await _messageManager.WaitAsync(CONCURRENT_CAPACITY_WAIT_TIMEOUT);
+                    continue;
+                }
+
+                var message = ConvertToStandardSQSMessage(sqsEvent.Records[index]);
+                var messageEnvelopeResult = await _envelopeSerializer.ConvertToEnvelopeAsync(message);
+
+                // Don't await this result, we want to process multiple messages concurrently.
+                var task = _messageManager.ProcessMessageAsync(messageEnvelopeResult.Envelope, messageEnvelopeResult.Mapping, token);
+                taskList.Add(task);
+                index++;
             }
-            await DeleteMessagesFromSQSQueue(messages, token);
+
+            await Task.WhenAll(taskList);
+        }
+        catch (AWSMessagingException)
+        {
+            // Swallow exceptions thrown by the framework, and rely on the thrower to log
+        }
+        catch (AmazonSQSException ex)
+        {
+            _logger.LogError(ex, "An {ExceptionName} occurred while polling", nameof(AmazonSQSException));
+
+            // Rethrow the exception to fail fast for invalid configuration, permissioning, etc.
+            // TODO: explore a "cool down mode" for repeated exceptions
+            if (IsSQSExceptionFatal(ex))
+            {
+                throw;
+            }
+        }
+        catch (Exception ex)
+        {
+            // TODO: explore a "cool down mode" for repeated exceptions
+            _logger.LogError(ex, "An unknown exception occurred while polling {SubscriberEndpoint}", _configuration.SubscriberEndpoint);
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task DeleteMessagesAsync(IEnumerable<MessageEnvelope> messages, CancellationToken token = default)
+    {
+        if (!messages.Any())
+        {
+            return;
+        }
+
+        var request = new DeleteMessageBatchRequest
+        {
+            QueueUrl = _configuration.SubscriberEndpoint
+        };
+
+        foreach (var message in messages)
+        {
+            if (!string.IsNullOrEmpty(message.SQSMetadata?.ReceiptHandle))
+            {
+                _logger.LogTrace("Preparing to delete message {MessageId} with SQS receipt handle {ReceiptHandle} from queue {SubscriberEndpoint}",
+                    message.Id, message.SQSMetadata.ReceiptHandle, _configuration.SubscriberEndpoint);
+                request.Entries.Add(new DeleteMessageBatchRequestEntry()
+                {
+                    Id = message.Id,
+                    ReceiptHandle = message.SQSMetadata.ReceiptHandle
+                });
+            }
+            else
+            {
+                _logger.LogError("Attempted to delete message {MessageId} from {SubscriberEndpoint} without an SQS receipt handle.", message.Id, _configuration.SubscriberEndpoint);
+                throw new MissingSQSMetadataException($"Attempted to delete message {message.Id} from {_configuration.SubscriberEndpoint} without an SQS receipt handle.");
+            }
+        }
+
+        try
+        {
+            var response = await _sqsClient.DeleteMessageBatchAsync(request, token);
+
+            foreach (var successMessage in response.Successful)
+            {
+                _logger.LogTrace("Deleted message {MessageId} from queue {SubscriberEndpoint} successfully", successMessage.Id, _configuration.SubscriberEndpoint);
+            }
+
+            foreach (var failedMessage in response.Failed)
+            {
+                _logger.LogError("Failed to delete message {FailedMessageId} from queue {SubscriberEndpoint}: {FailedMessage}",
+                    failedMessage.Id, _configuration.SubscriberEndpoint, failedMessage.Message);
+            }
         }
         catch (AmazonSQSException ex)
         {
@@ -118,68 +194,33 @@ internal class LambdaMessagePoller : IMessagePoller
         return Task.CompletedTask;
     }
 
-    private void DeleteMessagesFromSQSBatchResponse(IEnumerable<MessageEnvelope> messages)
+    /// <inheritdoc/>
+    /// <remarks>
+    /// This is a no-op when SQS event source mapping is not configured to use <see href="https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html#services-sqs-batchfailurereporting">partial batch responses.</see>
+    /// </remarks>
+    public ValueTask HandleMessageProcessingFailureAsync(MessageEnvelope message)
     {
+        // If partial batch response is not enabled then we don't do anything.
+        // The message that was failed to process will not be deleted from the SQS queue and it will be retried after its visibility timeout expires.
+        if (!_configuration.IsPartialBatchResponseEnabled)
+            return ValueTask.CompletedTask;
+
         lock (_sqsBatchResponseLock)
         {
-            var batchItemFailures = _configuration.SQSBatchResponse!.BatchItemFailures;
-            foreach (var message in messages)
+            if (string.IsNullOrEmpty(message.SQSMetadata?.MessageID))
             {
-                var messageID = message.SQSMetadata?.MessageID ?? throw new InvalidDataException($"message envelope with ID '{message.Id}' contains an null SQS message ID");
-                var index = batchItemFailures.FindIndex(x => string.Equals(x.ItemIdentifier, messageID));
-                if (index == -1)
-                {
-                    _logger.LogError("Could not find an entry with message ID '{messageID}' in the batchItemFailures list", messageID);
-                    continue;
-                }
-
-                _logger.LogTrace("Removing message with ID '{messageID}' from the batchItemFailures list since it was successfully processed", messageID);
-                batchItemFailures.RemoveAt(index);
-            }
-        }
-    }
-
-    private async Task DeleteMessagesFromSQSQueue(IEnumerable<MessageEnvelope> messages, CancellationToken token = default)
-    {
-        if (!messages.Any())
-        {
-            return;
-        }
-
-        var request = new DeleteMessageBatchRequest
-        {
-            QueueUrl = _configuration.SubscriberEndpoint
-        };
-
-        foreach (var message in messages)
-        {
-            if (string.IsNullOrEmpty(message.SQSMetadata?.ReceiptHandle))
-            {
-                _logger.LogError("Attempted to delete message {MessageId} from {SubscriberEndpoint} without an SQS receipt handle.", message.Id, _configuration.SubscriberEndpoint);
-                throw new MissingSQSReceiptHandleException($"Attempted to delete message {message.Id} from {_configuration.SubscriberEndpoint} without an SQS receipt handle.");
+                _logger.LogError("The message envelope with ID {MessageEnvelopeID} was not added to the batchFailureItems list since it did not have a valid SQS message ID.", message.Id);
+                throw new MissingSQSMetadataException($"The message envelope with ID {message.Id} was not added to the batchFailureItems list since it did not have a valid SQS message ID.");
             }
 
-            _logger.LogTrace("Preparing to delete message {MessageId} with SQS receipt handle {ReceiptHandle} from queue {SubscriberEndpoint}",
-                   message.Id, message.SQSMetadata.ReceiptHandle, _configuration.SubscriberEndpoint);
-            request.Entries.Add(new DeleteMessageBatchRequestEntry()
+            var batchItemFailure = new SQSBatchResponse.BatchItemFailure
             {
-                Id = message.Id,
-                ReceiptHandle = message.SQSMetadata.ReceiptHandle
-            });
+                ItemIdentifier = message.SQSMetadata.MessageID
+            };
+            _configuration.SQSBatchResponse.BatchItemFailures.Add(batchItemFailure);
         }
 
-        var response = await _sqsClient.DeleteMessageBatchAsync(request, token);
-
-        foreach (var successMessage in response.Successful)
-        {
-            _logger.LogTrace("Deleted message {MessageId} from queue {SubscriberEndpoint} successfully", successMessage.Id, _configuration.SubscriberEndpoint);
-        }
-
-        foreach (var failedMessage in response.Failed)
-        {
-            _logger.LogError("Failed to delete message {FailedMessageId} from queue {SubscriberEndpoint}: {FailedMessage}",
-                failedMessage.Id, _configuration.SubscriberEndpoint, failedMessage.Message);
-        }
+        return ValueTask.CompletedTask;
     }
 
     private Message ConvertToStandardSQSMessage(SQSEvent.SQSMessage sqsEventMessage)

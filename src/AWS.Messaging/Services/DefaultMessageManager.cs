@@ -134,11 +134,13 @@ public class DefaultMessageManager : IMessageManager
             else // the handler still finished, but returned MessageProcessStatus.Failed
             {
                 _logger.LogError("Message handling completed unsuccessfully for message ID {MessageId}", messageEnvelope.Id);
+                await _messagePoller.HandleMessageProcessingFailureAsync(messageEnvelope);
             }
         }
         else if (handlerTask.IsFaulted)
         {
             _logger.LogError(handlerTask.Exception, "Message handling failed unexpectedly for message ID {MessageId}", messageEnvelope.Id);
+            await _messagePoller.HandleMessageProcessingFailureAsync(messageEnvelope);
         }
 
         UpdateActiveMessageCount(-1);

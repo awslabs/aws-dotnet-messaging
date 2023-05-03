@@ -180,7 +180,7 @@ internal class SQSMessagePoller : IMessagePoller
             else
             {
                 _logger.LogError("Attempted to delete message {MessageId} from {SubscriberEndpoint} without an SQS receipt handle.", message.Id, _configuration.SubscriberEndpoint);
-                throw new MissingSQSReceiptHandleException($"Attempted to delete message {message.Id} from {_configuration.SubscriberEndpoint} without an SQS receipt handle.");
+                throw new MissingSQSMetadataException($"Attempted to delete message {message.Id} from {_configuration.SubscriberEndpoint} without an SQS receipt handle.");
             }
         }
 
@@ -254,7 +254,7 @@ internal class SQSMessagePoller : IMessagePoller
             else
             {
                 _logger.LogError("Attempted to change the visibility of message {MessageId} from {SubscriberEndpoint} without an SQS receipt handle.", message.Id, _configuration.SubscriberEndpoint);
-                throw new MissingSQSReceiptHandleException($"Attempted to change the visibility of message {message.Id} from {_configuration.SubscriberEndpoint} without an SQS receipt handle.");
+                throw new MissingSQSMetadataException($"Attempted to change the visibility of message {message.Id} from {_configuration.SubscriberEndpoint} without an SQS receipt handle.");
             }
         }
         requestBatches.Add(currentRequest);
@@ -308,6 +308,13 @@ internal class SQSMessagePoller : IMessagePoller
                 }
             }
         }
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>This is a no-op since we currently do not have any special logic to handle messages that failed to process in <see cref="SQSMessagePoller"/></remarks>
+    public ValueTask HandleMessageProcessingFailureAsync(MessageEnvelope message)
+    {
+        return ValueTask.CompletedTask;
     }
 
     /// <summary>

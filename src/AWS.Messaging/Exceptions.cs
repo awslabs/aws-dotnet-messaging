@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using AWS.Messaging.Configuration;
+using AWS.Messaging.Lambda;
 using AWS.Messaging.Serialization;
 
 namespace AWS.Messaging;
@@ -161,14 +162,14 @@ public class FailedToCreateMessageEnvelopeConfigurationException : AWSMessagingE
 }
 
 /// <summary>
-/// Thrown when attempting to perform an SQS operation on a message without a valid receipt handle in the <see cref="MessageEnvelope.SQSMetadata"/>
+/// Thrown when attempting to perform an SQS operation on a message without a valid <see cref="MessageEnvelope.SQSMetadata"/>
 /// </summary>
-public class MissingSQSReceiptHandleException : AWSMessagingException
+public class MissingSQSMetadataException : AWSMessagingException
 {
     /// <summary>
-    /// Creates an instance of <see cref="MissingSQSReceiptHandleException"/>.
+    /// Creates an instance of <see cref="MissingSQSMetadataException"/>.
     /// </summary>
-    public MissingSQSReceiptHandleException(string message, Exception? innerException = null) : base(message, innerException) { }
+    public MissingSQSMetadataException(string message, Exception? innerException = null) : base(message, innerException) { }
 }
 
 /// <summary>
@@ -203,4 +204,26 @@ public class FailedToFindAWSServiceClientException : AWSMessagingException
     /// Creates an instance of <see cref="InvalidMessageHandlerSignatureException"/>.
     /// </summary>
     public FailedToFindAWSServiceClientException(string message, Exception? innerException = null) : base(message, innerException) { }
+}
+
+/// <summary>
+/// Thrown when an <see cref="LambdaMessagePollerOptions" /> is configured with one or more invalid values
+/// </summary>
+public class InvalidLambdaMessagePollerOptionsException : AWSMessagingException
+{
+    /// <summary>
+    /// Creates an instance of <see cref="InvalidLambdaMessagePollerOptionsException"/>.
+    /// </summary>
+    public InvalidLambdaMessagePollerOptionsException(string message, Exception? innerException = null) : base(message, innerException) { }
+}
+
+/// <summary>
+/// Thrown when an invalid SQS queue ARN is encountered.
+/// </summary>
+public class InvalidSQSQueueArnException : AWSMessagingException
+{
+    /// <summary>
+    /// Creates an instance of <see cref="InvalidSQSQueueArnException"/>.
+    /// </summary>
+    public InvalidSQSQueueArnException(string message, Exception? innerException = null) : base(message, innerException) { }
 }

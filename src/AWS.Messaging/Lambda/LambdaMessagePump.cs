@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using Amazon.Lambda.SQSEvents;
-using Amazon.SQS;
 using AWS.Messaging.Configuration;
 using AWS.Messaging.Services;
 using Microsoft.Extensions.Logging;
@@ -14,79 +13,78 @@ namespace AWS.Messaging.Lambda;
 /// </summary>
 internal class LambdaMessagePump : ILambdaMessagePump
 {
-    private readonly IAmazonSQS _sqsClient;
     private readonly ILogger<MessagePumpService> _logger;
-    private readonly IMessageConfiguration _messageConfiguration;
     private readonly IMessagePollerFactory _messagePollerFactory;
 
     /// <summary>
     /// Creates an instance of <see cref="LambdaMessagePump" />
     /// </summary>
-    /// <param name="clientProvider">Provides the AWS service client from the DI container</param>
     /// <param name="logger">Logger for debugging information</param>
-    /// <param name="messageConfiguration">Configuration containing one or more <see cref="IMessagePollerConfiguration"/> instances to poll</param>
     /// <param name="messagePollerFactory">Factory for creating a <see cref="IMessagePoller"/> for each configuration</param>
-    public LambdaMessagePump(IAWSClientProvider clientProvider, ILogger<MessagePumpService> logger, IMessageConfiguration messageConfiguration, IMessagePollerFactory messagePollerFactory)
+    public LambdaMessagePump(ILogger<MessagePumpService> logger, IMessagePollerFactory messagePollerFactory)
     {
-        _sqsClient = clientProvider.GetServiceClient<IAmazonSQS>();
         _logger = logger;
-        _messageConfiguration = messageConfiguration;
         _messagePollerFactory = messagePollerFactory;
     }
 
     /// <inheritdoc/>
-    public async Task ExecuteAsync(SQSEvent sqsEvent, CancellationToken stoppingToken)
+    public async Task ExecuteAsync(SQSEvent sqsEvent, CancellationToken stoppingToken, LambdaMessagePollerOptions? options = null)
     {
         if (!sqsEvent.Records.Any())
             return;
 
-        var sqsQueueArn = sqsEvent.Records[0].EventSourceArn;
-        var sqsQueueUrl = await GetSQSQueueUrl(sqsQueueArn);
-        var lambdaMessagePollerConfiguration = new LambdaMessagePollerConfiguration(sqsQueueUrl)
-        {
-            SQSEvent = sqsEvent
-        };
-
+        var lambdaMessagePollerConfiguration = CreatelambdaMessagePollerConfiguration(sqsEvent, isPartialBatchResponseEnabled: false, options);
         var lambdaMessagePoller = _messagePollerFactory.CreateMessagePoller(lambdaMessagePollerConfiguration);
         await lambdaMessagePoller.StartPollingAsync(stoppingToken);
     }
 
     /// <inheritdoc/>
-    public async Task<SQSBatchResponse> ExecuteWithSQSBatchResponseAsync(SQSEvent sqsEvent, CancellationToken stoppingToken)
+    public async Task<SQSBatchResponse> ExecuteWithSQSBatchResponseAsync(SQSEvent sqsEvent, CancellationToken stoppingToken, LambdaMessagePollerOptions? options = null)
     {
         if (!sqsEvent.Records.Any())
             return new SQSBatchResponse();
 
-        // Mark all messages as failed initially. Messages that are successfully process will be removed from the list.
-        var sqsBatchResponse = new SQSBatchResponse();
-        foreach (var message in sqsEvent.Records)
-        {
-            var batchItemFailure = new SQSBatchResponse.BatchItemFailure();
-            batchItemFailure.ItemIdentifier = message.MessageId;
-            sqsBatchResponse.BatchItemFailures.Add(batchItemFailure);
-        }
+        var lambdaMessagePollerConfiguration = CreatelambdaMessagePollerConfiguration(sqsEvent, isPartialBatchResponseEnabled: true, options);
+        var lambdaMessagePoller = _messagePollerFactory.CreateMessagePoller(lambdaMessagePollerConfiguration);
+        await lambdaMessagePoller.StartPollingAsync(stoppingToken);
+        return lambdaMessagePollerConfiguration.SQSBatchResponse;
+    }
 
+    private LambdaMessagePollerConfiguration CreatelambdaMessagePollerConfiguration(SQSEvent sqsEvent, bool isPartialBatchResponseEnabled, LambdaMessagePollerOptions? options = null)
+    {
+        if (options is null)
+        {
+            options = new LambdaMessagePollerOptions();
+        }
+        options.Validate();
         var sqsQueueArn = sqsEvent.Records[0].EventSourceArn;
-        var sqsQueueUrl = await GetSQSQueueUrl(sqsQueueArn);
+        var sqsQueueUrl = GetSQSQueueUrl(sqsQueueArn);
         var lambdaMessagePollerConfiguration = new LambdaMessagePollerConfiguration(sqsQueueUrl)
         {
             SQSEvent = sqsEvent,
-            SQSBatchResponse = sqsBatchResponse
+            IsPartialBatchResponseEnabled = isPartialBatchResponseEnabled,
+            // TODO: This will value should be set differently when working with FIFO queues.
+            MaxNumberOfConcurrentMessages = options.MaxNumberOfConcurrentMessages
         };
-        var lambdaMessagePoller = _messagePollerFactory.CreateMessagePoller(lambdaMessagePollerConfiguration);
 
-        await lambdaMessagePoller.StartPollingAsync(stoppingToken);
-
-        return sqsBatchResponse;
+        return lambdaMessagePollerConfiguration;
     }
 
-    private async Task<string> GetSQSQueueUrl(string queueArn)
+    private string GetSQSQueueUrl(string queueArn)
     {
-        // Example ARN - arn:aws:sqs:us-west-2:888888888888:LambdaSQSDemo
-        // The last segment is the queue name
+        // ARN structure - arn:aws:sqs:{REGION}:{ACCOUNT-ID}:{QUEUE-NAME}
+        // URL structure - https://sqs.{REGION}.amazonaws.com/{ACCOUNT-ID}/{QUEUE-NAME}
         var arnSegments = queueArn.Split(':');
-        var queueName = arnSegments[arnSegments.Length - 1];
-        var response = await _sqsClient.GetQueueUrlAsync(queueName);
-        return response.QueueUrl;
+        if (arnSegments.Length != 6)
+        {
+            _logger.LogError("{queueArn} is not a valid SQS queue ARN", queueArn);
+            throw new InvalidSQSQueueArnException($"{queueArn} is not a valid SQS queue ARN");
+        }
+        var region = arnSegments[3];
+        var accountId = arnSegments[4];
+        var queueName = arnSegments[5];
+
+        var queueUrl = $"https://sqs.{region}.amazonaws.com/{accountId}/{queueName}";
+        return queueUrl;
     }
 }
