@@ -19,14 +19,20 @@ internal class SQSMessagePollerConfiguration : IMessagePollerConfiguration
     /// <summary>
     /// Default value for <see cref="VisibilityTimeout"/>
     /// </summary>
-    /// <remarks>The default value is 20 seconds.</remarks>
-    public const int DEFAULT_VISIBILITY_TIMEOUT_SECONDS = 20;
+    /// <remarks>The default value is 30 seconds.</remarks>
+    public const int DEFAULT_VISIBILITY_TIMEOUT_SECONDS = 30;
 
     /// <summary>
-    /// Default value for <see cref="VisibilityTimeoutExtensionInterval"/>
+    /// Default value for <see cref="VisibilityTimeoutExtensionThreshold"/>
     /// </summary>
-    /// <remarks>The default value is 18 seconds.</remarks>
-    public const int DEFAULT_VISIBILITY_TIMEOUT_EXTENSION_INTERVAL_SECONDS = 18;
+    /// <remarks>The default value is 5 seconds.</remarks>
+    public const int DEFAULT_VISIBILITY_TIMEOUT_EXTENSION_THRESHOLD_SECONDS = 5;
+
+    /// <summary>
+    /// Default value for <see cref="VisibilityTimeoutExtensionHeartbeatInterval"/>
+    /// </summary>
+    /// <remarks>The default value is 1 second.</remarks>
+    public static TimeSpan DEFAULT_VISIBILITY_TIMEOUT_EXTENSION_HEARTBEAT_INTERVAL = TimeSpan.FromSeconds(1);
 
     /// <summary>
     /// Default value for <see cref="WaitTimeSeconds"/>
@@ -55,13 +61,22 @@ internal class SQSMessagePollerConfiguration : IMessagePollerConfiguration
     public int VisibilityTimeout { get; init; } = DEFAULT_VISIBILITY_TIMEOUT_SECONDS;
 
     /// <summary>
-    /// How often in seconds to extend the visibility timeout of messages that have been
-    /// received from SQS but are still being processed
+    /// When an in flight message is within this many seconds of becoming visible again, the framework will extend its visibility timeout automatically.
+    /// The new visibility timeout will be set to <see cref="VisibilityTimeout"/> seconds relative to now.
     /// </summary>
     /// <remarks>
-    /// <inheritdoc cref="DEFAULT_VISIBILITY_TIMEOUT_EXTENSION_INTERVAL_SECONDS" path="//remarks"/>
+    /// <inheritdoc cref="DEFAULT_VISIBILITY_TIMEOUT_EXTENSION_THRESHOLD_SECONDS" path="//remarks"/>
     /// </remarks>
-    public int VisibilityTimeoutExtensionInterval { get; init; } = DEFAULT_VISIBILITY_TIMEOUT_EXTENSION_INTERVAL_SECONDS;
+    public int VisibilityTimeoutExtensionThreshold { get; init; } = DEFAULT_VISIBILITY_TIMEOUT_EXTENSION_THRESHOLD_SECONDS;
+
+    /// <summary>
+    /// How frequently the framework will check in flight messages and extend the the visibility
+    /// timeout of messages that will expire within the <see cref="VisibilityTimeoutExtensionThreshold"/>.
+    /// </summary>
+    /// /// <remarks>
+    /// <inheritdoc cref="DEFAULT_VISIBILITY_TIMEOUT_EXTENSION_HEARTBEAT_INTERVAL" path="//remarks"/>
+    /// </remarks>
+    public TimeSpan VisibilityTimeoutExtensionHeartbeatInterval { get; init; } = DEFAULT_VISIBILITY_TIMEOUT_EXTENSION_HEARTBEAT_INTERVAL;
 
     /// <summary>
     /// <inheritdoc cref="ReceiveMessageRequest.WaitTimeSeconds"/>
@@ -82,5 +97,18 @@ internal class SQSMessagePollerConfiguration : IMessagePollerConfiguration
             throw new InvalidSubscriberEndpointException("The SQS Queue URL cannot be empty.");
 
         SubscriberEndpoint = queueUrl;
+    }
+
+    /// <summary>
+    /// Converts this instance to a <see cref="MessageManagerConfiguration"/>
+    /// </summary>
+    /// <returns></returns>
+    internal MessageManagerConfiguration ToMessageManagerConfiguration()
+    {
+        return new MessageManagerConfiguration
+        {
+            VisibilityTimeoutExtensionThreshold = VisibilityTimeoutExtensionThreshold,
+            VisibilityTimeoutExtensionHeartbeatInterval = VisibilityTimeoutExtensionHeartbeatInterval
+        };
     }
 }

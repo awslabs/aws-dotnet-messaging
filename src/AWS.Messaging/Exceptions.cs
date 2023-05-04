@@ -161,14 +161,14 @@ public class FailedToCreateMessageEnvelopeConfigurationException : AWSMessagingE
 }
 
 /// <summary>
-/// Thrown when attempting to perform an SQS operation on a message without a valid receipt handle in the <see cref="MessageEnvelope.SQSMetadata"/>
+/// Thrown when attempting to perform an SQS operation on a message without a valid <see cref="MessageEnvelope.SQSMetadata"/>
 /// </summary>
-public class MissingSQSReceiptHandleException : AWSMessagingException
+public class MissingSQSMetadataException : AWSMessagingException
 {
     /// <summary>
-    /// Creates an instance of <see cref="MissingSQSReceiptHandleException"/>.
+    /// Creates an instance of <see cref="MissingSQSMetadataException"/>.
     /// </summary>
-    public MissingSQSReceiptHandleException(string message, Exception? innerException = null) : base(message, innerException) { }
+    public MissingSQSMetadataException(string message, Exception? innerException = null) : base(message, innerException) { }
 }
 
 /// <summary>

@@ -13,6 +13,7 @@ public class DefaultMessageManager : IMessageManager
     private readonly IMessagePoller _messagePoller;
     private readonly IHandlerInvoker _handlerInvoker;
     private readonly ILogger<DefaultMessageManager> _logger;
+    private readonly MessageManagerConfiguration _configuration;
 
     private readonly object _activeMessageCountLock = new object();
     private int _activeMessageCount;
@@ -28,11 +29,13 @@ public class DefaultMessageManager : IMessageManager
     /// <param name="messagePoller">The poller that this manager is managing messages for</param>
     /// <param name="handlerInvoker">Used to look up and invoke the correct handler for each message</param>
     /// <param name="logger">Logger for debugging information</param>
-    public DefaultMessageManager(IMessagePoller messagePoller, IHandlerInvoker handlerInvoker, ILogger<DefaultMessageManager> logger)
+    /// <param name="configuration">The configuration for the message manager</param>
+    public DefaultMessageManager(IMessagePoller messagePoller, IHandlerInvoker handlerInvoker, ILogger<DefaultMessageManager> logger, MessageManagerConfiguration configuration)
     {
         _messagePoller = messagePoller;
         _handlerInvoker = handlerInvoker;
         _logger = logger;
+        _configuration = configuration;
     }
 
     /// <inheritdoc/>
@@ -175,16 +178,41 @@ public class DefaultMessageManager : IMessageManager
         do
         {
             // Wait for the configured interval before extending visibility
-            await Task.Delay(_messagePoller.VisibilityTimeoutExtensionInterval * 1000, token);
+            await Task.Delay(_configuration.VisibilityTimeoutExtensionHeartbeatInterval, token);
 
             // Select the message envelopes whose corresponding handler task is not yet complete
-             unfinishedMessages = _runningHandlerTasks.Values;
+            unfinishedMessages = _runningHandlerTasks.Values.Where(message => IsMessageVisibilityTimeoutExpiring(message));
 
-            // TODO: The envelopes in _runningHandlerTasks may have been received at different times, we could track + extend visibility separately
-            // TODO: The underlying ChangeMessageVisibilityBatch only takes up to 10 messages, we may need to slice and make multiple calls
             // TODO: Handle the race condition where a message could have finished handling and be deleted concurrently
-            await _messagePoller.ExtendMessageVisibilityTimeoutAsync(unfinishedMessages);
+            if (unfinishedMessages.Any())
+            {
+                await _messagePoller.ExtendMessageVisibilityTimeoutAsync(unfinishedMessages, token);
+            }
 
-        } while (unfinishedMessages.Any() && !token.IsCancellationRequested);
+        } while (_runningHandlerTasks.Any() && !token.IsCancellationRequested);
+    }
+
+    /// <summary>
+    /// Determines if a given message's visibility timeout expiration timestamp is within the
+    /// threshold where the framework should extend it
+    /// </summary>
+    /// <param name="message">In flight message envelope</param>
+    /// <returns>True if the message's visibility timeout should be extended per the configured threshold, false otherwise</returns>
+    private bool IsMessageVisibilityTimeoutExpiring(MessageEnvelope message)
+    {
+        if (message.SQSMetadata == null || message.SQSMetadata.ExpectedVisibilityTimeoutExpiration == null)
+        {
+            _logger.LogError("Attempted to manage the expected visibility timeout of message {MessageId} without SQS metadata.", message.Id);
+            throw new MissingSQSMetadataException($"Attempted to manage the expected visibility timeout of message {message.Id} without SQS metadata.");
+        }
+
+        var timeUntilExpiration = message.SQSMetadata.ExpectedVisibilityTimeoutExpiration - DateTimeOffset.UtcNow;
+
+        if (timeUntilExpiration.Value.TotalSeconds <= _configuration.VisibilityTimeoutExtensionThreshold)
+        {
+            return true;
+        }
+
+        return false;
     }
 }

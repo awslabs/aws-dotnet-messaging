@@ -13,6 +13,7 @@ using AWS.Messaging.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Xunit;
+using Microsoft.Extensions.Logging;
 
 namespace AWS.Messaging.IntegrationTests;
 
@@ -27,7 +28,7 @@ public class SubscriberTests : IAsyncLifetime
         _sqsClient = new AmazonSQSClient();
         _serviceCollection = new ServiceCollection();
         _serviceCollection.AddSingleton<TempStorage<ChatMessage>>();
-        _serviceCollection.AddLogging(x => x.AddInMemoryLogger());
+        _serviceCollection.AddLogging(x => x.AddInMemoryLogger().SetMinimumLevel(LogLevel.Trace));
         _sqsQueueUrl = string.Empty;
     }
 
@@ -45,7 +46,7 @@ public class SubscriberTests : IAsyncLifetime
             builder.AddSQSPublisher<ChatMessage>(_sqsQueueUrl);
             builder.AddSQSPoller(_sqsQueueUrl, options =>
             {
-                options.VisibilityTimeoutExtensionInterval = 3;
+                options.VisibilityTimeoutExtensionThreshold = 3;
             });
             builder.AddMessageHandler<ChatMessageHandler, ChatMessage>();
         });
@@ -86,21 +87,22 @@ public class SubscriberTests : IAsyncLifetime
 
     [Theory]
     // Tests that the visibility is extended without needing multiple batch requests
-    [InlineData(5, 1, 5)]
+    [InlineData(5, 5)]
     // Tests that the visibility is extended with the need for multiple batch requests
-    [InlineData(8, 1, 5)]
+    [InlineData(8, 5)]
     // Increasing the number of messages processed to ensure stability at load
-    [InlineData(15, 1, 15)]
+    [InlineData(15, 15)]
     // Increasing the number of messages processed with batching required to extend visibility
-    [InlineData(20, 3, 15)]
-    public async Task SendAndReceiveMultipleMessages(int numberOfMessages, int visibilityTimeoutExtension, int maxConcurrentMessages)
+    [InlineData(20, 15)]
+    public async Task SendAndReceiveMultipleMessages(int numberOfMessages, int maxConcurrentMessages)
     {
         _serviceCollection.AddAWSMessageBus(builder =>
         {
             builder.AddSQSPublisher<ChatMessage>(_sqsQueueUrl);
             builder.AddSQSPoller(_sqsQueueUrl, options =>
             {
-                options.VisibilityTimeoutExtensionInterval = visibilityTimeoutExtension;
+                options.VisibilityTimeout = 5; // 5s will require a visibility timeout extension due to the 10s handler below
+                options.VisibilityTimeoutExtensionThreshold = 3; // and a message is eligible for extension after it's been processing at least 3 seconds
                 options.MaxNumberOfConcurrentMessages = maxConcurrentMessages;
             });
             builder.AddMessageHandler<ChatMessageHandler_10sDelay, ChatMessage>();
@@ -124,19 +126,19 @@ public class SubscriberTests : IAsyncLifetime
 
         await pump.StartAsync(source.Token);
 
-        var tempStorage = serviceProvider.GetRequiredService<TempStorage<ChatMessage>>();
-        var numberOfBatches = (int)Math.Ceiling((decimal)numberOfMessages / (decimal)maxConcurrentMessages);
-        source.CancelAfter(numberOfBatches * 12000); 
+        var numberOfBatches = (int)Math.Ceiling((decimal)numberOfMessages / maxConcurrentMessages);
+
+        // Wait for the pump to shut down after processing the expected number of messages,
+        // with some padding to ensure messages aren't being processed more than once
+        source.CancelAfter(numberOfBatches * 12000);
         while (!source.IsCancellationRequested)
         {
-            if (tempStorage.Messages.Count == numberOfMessages)
-            {
-                source.Cancel();
-                break;
-            }
+            await Task.Delay(1000);
         }
 
         var inMemoryLogger = serviceProvider.GetRequiredService<InMemoryLogger>();
+        var tempStorage = serviceProvider.GetRequiredService<TempStorage<ChatMessage>>();
+
         Assert.Empty(inMemoryLogger.Logs.Where(x => x.Exception is AmazonSQSException ex && ex.ErrorCode.Equals("AWS.SimpleQueueService.TooManyEntriesInBatchRequest")));
         Assert.Equal(numberOfMessages, tempStorage.Messages.Count);
         for (int i = 0; i < numberOfMessages; i++)
