@@ -4,7 +4,6 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Amazon.SQS;
 using Amazon.SQS.Model;
 using AWS.Messaging.Configuration;
 using AWS.Messaging.Services;
@@ -231,24 +230,14 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             MessageAttributes = sqsMessage.MessageAttributes,
             ReceiptHandle = sqsMessage.ReceiptHandle
         };
-        if (sqsMessage.Attributes.TryGetValue(MessageSystemAttributeName.MessageGroupId, out var attribute))
+        if (sqsMessage.Attributes.TryGetValue("MessageGroupId", out var attribute))
         {
             envelopeConfiguration.SQSMetadata.MessageGroupId = attribute;
         }
-        if (sqsMessage.Attributes.TryGetValue(MessageSystemAttributeName.MessageDeduplicationId, out var messageAttribute))
+        if (sqsMessage.Attributes.TryGetValue("MessageDeduplicationId", out var messageAttribute))
         {
             envelopeConfiguration.SQSMetadata.MessageDeduplicationId = messageAttribute;
         }
-        if (sqsMessage.Attributes.TryGetValue(MessageSystemAttributeName.ApproximateFirstReceiveTimestamp, out var approximateFirstReceiveTimestampString) &&
-            long.TryParse(approximateFirstReceiveTimestampString, out var approximateFirstReceiveTimestampLong))
-        {
-            envelopeConfiguration.SQSMetadata.ApproximateFirstReceiveTimestamp = DateTimeOffset.FromUnixTimeMilliseconds(approximateFirstReceiveTimestampLong);
-        }
-        else // ApproximateFirstReceiveTimestamp is always expected to be set since the framework requests all attributes, but in case not default to now
-        {
-            envelopeConfiguration.SQSMetadata.ApproximateFirstReceiveTimestamp = DateTimeOffset.UtcNow;
-        }
-        
     }
 
     private void SetSNSMetadata(MessageEnvelopeConfiguration envelopeConfiguration, JsonElement root)

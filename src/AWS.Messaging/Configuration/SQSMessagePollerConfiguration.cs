@@ -70,7 +70,7 @@ internal class SQSMessagePollerConfiguration : IMessagePollerConfiguration
     public int VisibilityTimeoutExtensionThreshold { get; init; } = DEFAULT_VISIBILITY_TIMEOUT_EXTENSION_THRESHOLD_SECONDS;
 
     /// <summary>
-    /// How frequently the framework will check in flight messages and extend the the visibility
+    /// How frequently the framework will check in flight messages and extend the visibility
     /// timeout of messages that will expire within the <see cref="VisibilityTimeoutExtensionThreshold"/>.
     /// </summary>
     /// /// <remarks>
@@ -107,6 +107,7 @@ internal class SQSMessagePollerConfiguration : IMessagePollerConfiguration
     {
         return new MessageManagerConfiguration
         {
+            VisibilityTimeout = VisibilityTimeout,
             VisibilityTimeoutExtensionThreshold = VisibilityTimeoutExtensionThreshold,
             VisibilityTimeoutExtensionHeartbeatInterval = VisibilityTimeoutExtensionHeartbeatInterval
         };

@@ -29,32 +29,26 @@ namespace AWS.Messaging.UnitTests
 
             var manager = new DefaultMessageManager(mockPoller.Object, mockHandlerInvoker.Object, new NullLogger<DefaultMessageManager>(), new MessageManagerConfiguration());
 
-            var messsageEnvelope = new MessageEnvelope<ChatMessage>();
+            var messsageEnvelope = new MessageEnvelope<ChatMessage> { Id = "1" };
             var subscriberMapping = new SubscriberMapping(typeof(ChatMessageHandler), typeof(ChatMessage));
 
             await manager.ProcessMessageAsync(messsageEnvelope, subscriberMapping);
 
             // Verify that the handler was invoked once with the expected message and mapping
-            mockHandlerInvoker.Verify(x => x.InvokeAsync(
-                    It.Is<MessageEnvelope>(actualEnvelope => actualEnvelope == messsageEnvelope),
-                    It.Is<SubscriberMapping>(actualMapping => actualMapping == subscriberMapping),
-                    It.IsAny<CancellationToken>()),
-                Times.Once());
+            mockHandlerInvoker.VerifyInvokeAsyncWasCalledWith(messsageEnvelope, subscriberMapping, Times.Once());
 
             // Since the mock handler invoker returns success, verify that delete was called
-            mockPoller.Verify(poller => poller.DeleteMessagesAsync(
-                    It.Is<IEnumerable<MessageEnvelope>>(x => x.Count() == 1 && x.First() == messsageEnvelope),
-                    It.IsAny<CancellationToken>()),
-                Times.Once());
+            mockPoller.VerifyDeleteMessagesAsyncWasCalledWith(messsageEnvelope, Times.Once());
 
             // Since the handler succeeds right away, verify the visiblity was never extended
-            mockPoller.Verify(poller => poller.ExtendMessageVisibilityTimeoutAsync(
-                    It.IsAny<IEnumerable<MessageEnvelope>>(),
-                    It.IsAny<CancellationToken>()),
-                Times.Never());
+            mockPoller.VerifyExtendMessageVisibilityTimeoutAsync(new[] { messsageEnvelope }, Times.Never());
 
             // Verify that the active message count was deprecated back to 0
             Assert.Equal(0, manager.ActiveMessageCount);
+
+            // Verify that there were no expected poller/handler calls
+            mockPoller.VerifyNoOtherCalls();
+            mockHandlerInvoker.VerifyNoOtherCalls();
         }
 
         /// <summary>
@@ -68,117 +62,136 @@ namespace AWS.Messaging.UnitTests
 
             var manager = new DefaultMessageManager(mockPoller.Object, mockHandlerInvoker.Object, new NullLogger<DefaultMessageManager>(), new MessageManagerConfiguration());
 
-            var messsageEnvelope = new MessageEnvelope<ChatMessage>();
+            var messsageEnvelope = new MessageEnvelope<ChatMessage> { Id = "1" };
             var subscriberMapping = new SubscriberMapping(typeof(ChatMessageHandler), typeof(ChatMessage));
 
             await manager.ProcessMessageAsync(messsageEnvelope, subscriberMapping);
 
             // Verify that the handler was invoked once with the expected message and mapping
-            mockHandlerInvoker.Verify(x => x.InvokeAsync(
-                    It.Is<MessageEnvelope>(actualEnvelope => actualEnvelope == messsageEnvelope),
-                    It.Is<SubscriberMapping>(actualMapping => actualMapping == subscriberMapping),
-                    It.IsAny<CancellationToken>()),
-                Times.Once());
+            mockHandlerInvoker.VerifyInvokeAsyncWasCalledWith(messsageEnvelope, subscriberMapping, Times.Once());
 
             // Since the message handling failed, verify that delete was never called
-            mockPoller.Verify(poller => poller.DeleteMessagesAsync(
-                    It.IsAny<IEnumerable<MessageEnvelope>>(),
-                    It.IsAny<CancellationToken>()),
-                Times.Never());
+            mockPoller.VerifyDeleteMessagesAsyncWasCalledWith(messsageEnvelope, Times.Never());
 
             // Since the handler fails right away, verify the visiblity was never extended
-            mockPoller.Verify(poller => poller.ExtendMessageVisibilityTimeoutAsync(
-                    It.IsAny<IEnumerable<MessageEnvelope>>(),
-                    It.IsAny<CancellationToken>()),
-                Times.Never());
+            mockPoller.VerifyExtendMessageVisibilityTimeoutAsync(new[] { messsageEnvelope }, Times.Never());
 
             // Verify that the active message count was deprecated back to 0
             Assert.Equal(0, manager.ActiveMessageCount);
+
+            // Verify that there were no expected poller/handler calls
+            mockPoller.VerifyNoOtherCalls();
+            mockHandlerInvoker.VerifyNoOtherCalls();
         }
 
         /// <summary>
-        /// Tests that the manager extends the visibility timeout when the message handler takes longer than the
-        /// refresh interval and the message is within the visibility timeout exipration threshold
+        /// Tests that the manager extends the visibility timeout when appropriate for a batch of in flight messages
         /// </summary>
         [Fact]
-        public async Task DefaultMessageManager_RefreshesLongHandlerWhenNecessary()
+        public async Task DefaultMessageManager_ExtendsVisibilityTimeout_Batch()
         {
             var mockPoller = CreateMockPoller();
             var mockHandlerInvoker = CreateMockHandlerInvoker(MessageProcessStatus.Success(), messageHandlingDelay: TimeSpan.FromSeconds(3));
 
             var manager = new DefaultMessageManager(mockPoller.Object, mockHandlerInvoker.Object, new NullLogger<DefaultMessageManager>(), new MessageManagerConfiguration
             {
+                VisibilityTimeout = 2,
                 VisibilityTimeoutExtensionThreshold = 1,
                 VisibilityTimeoutExtensionHeartbeatInterval = TimeSpan.FromSeconds(1)
             });
 
-            var expiringMessage = new MessageEnvelope<ChatMessage>()
-            {
-                Id = "1",
-                SQSMetadata = new SQSMetadata()
-                {
-                    ApproximateFirstReceiveTimestamp = DateTimeOffset.UtcNow,
-                    ExpectedVisibilityTimeoutExpiration = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(1) // will need to refresh relative to the 3 second handler
-                }
-            };
-
-            var longerTimeoutMessage = new MessageEnvelope<ChatMessage>()
-            {
-                Id = "2",
-                SQSMetadata = new SQSMetadata()
-                {
-                    ApproximateFirstReceiveTimestamp = DateTimeOffset.UtcNow,
-                    ExpectedVisibilityTimeoutExpiration = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(10) // will NOT need to refresh relative to the 3 second handler
-                }
-            };
             var subscriberMapping = new SubscriberMapping(typeof(ChatMessageHandler), typeof(ChatMessage));
 
-            // Don't await the tasks, but start them so we can assert ActiveMessageCount was incremented while the handler is still processing
-            var expiringTask = manager.ProcessMessageAsync(expiringMessage, subscriberMapping);
-            var longerTimeoutTask = manager.ProcessMessageAsync(longerTimeoutMessage, subscriberMapping);
+            // Start handling two messages at roughly the same time
+            var message1 = new MessageEnvelope<ChatMessage>() { Id = "1" };
+            var message2 = new MessageEnvelope<ChatMessage>() { Id = "2" };
+
+            var message1Task = manager.ProcessMessageAsync(message1, subscriberMapping);
+            var message2Task = manager.ProcessMessageAsync(message2, subscriberMapping);
+
+            // Don't await the tasks yet,so we can assert that ActiveMessageCount was incremented while the handlers are still processing
             Assert.Equal(2, manager.ActiveMessageCount);
 
-            // Now finish awaiting the handler
-            await Task.WhenAll(expiringTask, longerTimeoutTask);
+            // Now finish awaiting the handlers
+            await Task.WhenAll(message1Task, message2Task);
 
             // Verify that the handler was invoked with the expected messages and mapping
-            mockHandlerInvoker.Verify(x => x.InvokeAsync(
-                        It.Is<MessageEnvelope>(actualEnvelope => actualEnvelope == expiringMessage),
-                        It.Is<SubscriberMapping>(actualMapping => actualMapping == subscriberMapping),
-                        It.IsAny<CancellationToken>()),
-                Times.Once());
-            mockHandlerInvoker.Verify(x => x.InvokeAsync(
-                       It.Is<MessageEnvelope>(actualEnvelope => actualEnvelope == longerTimeoutMessage),
-                       It.Is<SubscriberMapping>(actualMapping => actualMapping == subscriberMapping),
-                       It.IsAny<CancellationToken>()),
-               Times.Once());
+            mockHandlerInvoker.VerifyInvokeAsyncWasCalledWith(message1, subscriberMapping, Times.Once());
+            mockHandlerInvoker.VerifyInvokeAsyncWasCalledWith(message2, subscriberMapping, Times.Once());
 
             // Since the mock handler invoker returns success, verify that delete was called
-            mockPoller.Verify(poller => poller.DeleteMessagesAsync(
-                    It.Is<IEnumerable<MessageEnvelope>>(x => x.Count() == 1 && x.First() == expiringMessage),
-                    It.IsAny<CancellationToken>()),
-                Times.Once());
-            mockPoller.Verify(poller => poller.DeleteMessagesAsync(
-                    It.Is<IEnumerable<MessageEnvelope>>(x => x.Count() == 1 && x.First() == longerTimeoutMessage),
-                    It.IsAny<CancellationToken>()),
-                Times.Once());
+            mockPoller.VerifyDeleteMessagesAsyncWasCalledWith(message1, Times.Once());
+            mockPoller.VerifyDeleteMessagesAsyncWasCalledWith(message2, Times.Once());
 
-            // Since the message handler takes 3 seconds, verify the the visibility was extended
-            // TODO: the 2 to 3 allows for some instability
-            mockPoller.Verify(poller => poller.ExtendMessageVisibilityTimeoutAsync(
-                    It.Is<IEnumerable<MessageEnvelope>>(x => x.Count() == 1 && x.First() == expiringMessage),
-                    It.IsAny<CancellationToken>()),
-                Times.Between(2, 3, Moq.Range.Inclusive));
+            // Since the message handler takes 3 seconds, verify that the visibility was extended
+            // The 1 to 3 allows for some instability around the second boundaries
+            mockPoller.VerifyExtendMessageVisibilityTimeoutAsync(new[] { message2, message1 }, Times.Between(1, 3, Moq.Range.Inclusive));
 
-            // Verify that there were no other calls, which is guarding against ExtendMessageVisibilityTimeoutAsync
-            // with longerTimeoutTask since we don't expect its visibility timeout to be extended
-            mockPoller.VerifyNoOtherCalls();
+            // Verify that there were no other calls, which is guarding against
+            // ExtendMessageVisibilityTimeoutAsync being called with only a single message since
+            // we expect these to have the same lifecycle
+            mockHandlerInvoker.VerifyNoOtherCalls();
 
             // Verify that the active message count was deprecated back to 0
             Assert.Equal(0, manager.ActiveMessageCount);
         }
 
+        /// <summary>
+        /// Tests that the manager extends the visibility timeout when appropriate for in flight messages
+        /// that were received at different timestamps
+        /// </summary>
+        [Fact]
+        public async Task DefaultMessageManager_ExtendsVisibilityTimeout_OnlyWhenNecessary()
+        {
+            var mockPoller = CreateMockPoller();
+            var mockHandlerInvoker = CreateMockHandlerInvoker(MessageProcessStatus.Success(), messageHandlingDelay: TimeSpan.FromSeconds(4));
 
+            var manager = new DefaultMessageManager(mockPoller.Object, mockHandlerInvoker.Object, new NullLogger<DefaultMessageManager>(), new MessageManagerConfiguration
+            {
+                VisibilityTimeout = 2,
+                VisibilityTimeoutExtensionThreshold = 1,
+                VisibilityTimeoutExtensionHeartbeatInterval = TimeSpan.FromSeconds(1)
+            });
+
+            var subscriberMapping = new SubscriberMapping(typeof(ChatMessageHandler), typeof(ChatMessage));
+
+            // Start handling a single message
+            var earlyMessage = new MessageEnvelope<ChatMessage>() { Id = "1" };
+            var earlyTask = manager.ProcessMessageAsync(earlyMessage, subscriberMapping);
+
+            // Delay, then start handling another message
+            await Task.Delay(TimeSpan.FromSeconds(3));
+
+            var laterMessage = new MessageEnvelope<ChatMessage>() { Id = "2" };
+            var laterTask = manager.ProcessMessageAsync(laterMessage, subscriberMapping);
+
+            // Now finish awaiting the handlers
+            await Task.WhenAll(earlyTask, laterTask);
+
+            // Verify that the handler was invoked with the expected messages and mapping
+            mockHandlerInvoker.VerifyInvokeAsyncWasCalledWith(earlyMessage, subscriberMapping, Times.Once());
+            mockHandlerInvoker.VerifyInvokeAsyncWasCalledWith(laterMessage, subscriberMapping, Times.Once());
+
+            // Since the mock handler invoker returns success, verify that delete was called
+            mockPoller.VerifyDeleteMessagesAsyncWasCalledWith(earlyMessage, Times.Once());
+            mockPoller.VerifyDeleteMessagesAsyncWasCalledWith(laterMessage, Times.Once());
+
+            // Since the message handler takes 3 seconds, verify the the visibility was extended
+            // The 1 to 3 allows for some instability around the second boundaries
+            mockPoller.VerifyExtendMessageVisibilityTimeoutAsync(new[] { earlyMessage }, Times.Between(1, 3, Moq.Range.Inclusive));
+            mockPoller.VerifyExtendMessageVisibilityTimeoutAsync(new[] { laterMessage }, Times.Between(1, 3, Moq.Range.Inclusive));
+
+            // Verify that there were no other calls, which is guarding against ExtendMessageVisibilityTimeoutAsync
+            // being called with both messages since we never expect them to be batched together
+            // T  | T+0   | T+1    | T+2    | T+3    | T+4    | T+5    | T + 6  | T + 7  |
+            // M1 | Start |        | Extend | Extend | Finish |        |        |        |
+            // M2 |       |                 | Start  |        | Extend | Extend | Finish |
+            mockPoller.VerifyNoOtherCalls();
+            mockHandlerInvoker.VerifyNoOtherCalls();
+
+            // Verify that the active message count was deprecated back to 0
+            Assert.Equal(0, manager.ActiveMessageCount);
+        }
 
         /// <summary>
         /// Queues many message handling tasks for a single message manager to ensure that it
@@ -255,6 +268,46 @@ namespace AWS.Messaging.UnitTests
             }
 
             return mockHandlerInvoker;
+        }
+    }
+
+    /// <summary>
+    /// Extension methods for mocked <see cref="IMessagePoller"/> and <see cref="IHandlerInvoker"/> objects to be able to verify more concisely above
+    /// </summary>
+    public static class MockSQSMessagePollerExtensions
+    {
+        /// <summary>
+        /// Verifies that <see cref="IMessagePoller.DeleteMessagesAsync"/> was called with a specified message a specified number of times
+        /// </summary>
+        public static void VerifyDeleteMessagesAsyncWasCalledWith(this Mock<IMessagePoller> mockPoller, MessageEnvelope expectedMessage, Times times)
+        {
+            mockPoller.Verify(poller => poller.DeleteMessagesAsync(
+                    It.Is<IEnumerable<MessageEnvelope>>(x => x.Count() == 1 && x.First() == expectedMessage),
+                    It.IsAny<CancellationToken>()),
+                times);
+        }
+
+        /// <summary>
+        /// Verifies that <see cref="IHandlerInvoker.InvokeAsync"/> was called with a specified message and mapping a specified number of times
+        /// </summary>
+        public static void VerifyInvokeAsyncWasCalledWith(this Mock<IHandlerInvoker> mockHandlerInvoker, MessageEnvelope expectedMessage, SubscriberMapping expectedSubscriberMapping, Times times)
+        {
+            mockHandlerInvoker.Verify(x => x.InvokeAsync(
+                    It.Is<MessageEnvelope>(actualEnvelope => actualEnvelope == expectedMessage),
+                    It.Is<SubscriberMapping>(actualMapping => actualMapping == expectedSubscriberMapping),
+                    It.IsAny<CancellationToken>()),
+                times);
+        }
+
+        /// <summary>
+        /// Verifies that <see cref="IMessagePoller.ExtendMessageVisibilityTimeoutAsync"/> was called with specified message(s) a specified number of times
+        /// </summary>
+        public static void VerifyExtendMessageVisibilityTimeoutAsync(this Mock<IMessagePoller> mockPoller, IEnumerable<MessageEnvelope> messages, Times times)
+        {
+            mockPoller.Verify(poller => poller.ExtendMessageVisibilityTimeoutAsync(
+                    It.Is<IEnumerable<MessageEnvelope>>(x => x.ToHashSet().SetEquals(messages.ToHashSet())), // use HashSets becuase the order may differ
+                    It.IsAny<CancellationToken>()),
+                times);
         }
     }
 }

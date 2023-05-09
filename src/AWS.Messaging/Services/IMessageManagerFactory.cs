@@ -19,7 +19,7 @@ public interface IMessageManagerFactory
     /// <param name="poller">The <see cref="AWS.Messaging.Services.IMessagePoller" /> that the <see cref="AWS.Messaging.Services.IMessageManager" /> to make lifecycle changes to the message.</param>
     /// <param name="configuration">The configuration for the message manager.</param>
     /// <returns>New instance of an <see cref="IMessageManager"/></returns>
-    IMessageManager CreateMessageManager(IMessagePoller poller, MessageManagerConfiguration configuration);
+    internal IMessageManager CreateMessageManager(IMessagePoller poller, MessageManagerConfiguration configuration);
 }
 
 /// <summary>

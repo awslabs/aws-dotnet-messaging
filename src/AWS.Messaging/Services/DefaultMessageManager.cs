@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using AWS.Messaging.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -19,7 +20,7 @@ public class DefaultMessageManager : IMessageManager
     private int _activeMessageCount;
     private readonly ManualResetEventSlim _activeMessageCountDecrementedEvent = new ManualResetEventSlim(false);
 
-    private readonly ConcurrentDictionary<Task, MessageEnvelope> _runningHandlerTasks = new();
+    private readonly ConcurrentDictionary<MessageEnvelope, InFlightMetadata> _inFlightMessageMetadata = new();
     private readonly object _visibilityTimeoutExtensionTaskLock = new object();
     private Task? _visibilityTimeoutExtensionTask;
 
@@ -103,17 +104,21 @@ public class DefaultMessageManager : IMessageManager
     {
         UpdateActiveMessageCount(1);
 
-        var handlerTask = _handlerInvoker.InvokeAsync(messageEnvelope, subscriberMapping, token);
+        // Start the handler task (but not await it), and set the timestamp that the initial visibility timeout window is expected to expire
+        var metadata = new InFlightMetadata(
+            _handlerInvoker.InvokeAsync(messageEnvelope, subscriberMapping, token),
+            DateTimeOffset.UtcNow + TimeSpan.FromSeconds(_configuration.VisibilityTimeout)
+        );
 
-        // Add it to the dictionary of running task, used to extend the visibility timeout if necessary
-        _runningHandlerTasks.TryAdd(handlerTask, messageEnvelope);
+        // Add that metadata to the dictionary of running handlers, used to extend the visibility timeout if necessary
+        _inFlightMessageMetadata.TryAdd(messageEnvelope, metadata);
 
         StartMessageVisibilityExtensionTaskIfNotRunning(token);
 
         // Wait for the handler to finish processing the message
         try
         {
-            await handlerTask;
+            await metadata.HandlerTask;
         }
         catch (AWSMessagingException)
         {
@@ -124,11 +129,11 @@ public class DefaultMessageManager : IMessageManager
             _logger.LogError(ex, "An unknown exception occurred while processing message ID {SubscriberEndpoint}", messageEnvelope.Id);
         }
 
-        _runningHandlerTasks.Remove(handlerTask, out _);
+        _inFlightMessageMetadata.Remove(messageEnvelope, out _);
 
-        if (handlerTask.IsCompletedSuccessfully)
+        if (metadata.HandlerTask.IsCompletedSuccessfully)
         {
-            if (handlerTask.Result.IsSuccess)
+            if (metadata.HandlerTask.Result.IsSuccess)
             {
                 // Delete the message from the queue if it was processed successfully
                 await _messagePoller.DeleteMessagesAsync(new MessageEnvelope[] { messageEnvelope });
@@ -138,9 +143,9 @@ public class DefaultMessageManager : IMessageManager
                 _logger.LogError("Message handling completed unsuccessfully for message ID {MessageId}", messageEnvelope.Id);
             }
         }
-        else if (handlerTask.IsFaulted)
+        else if (metadata.HandlerTask.IsFaulted)
         {
-            _logger.LogError(handlerTask.Exception, "Message handling failed unexpectedly for message ID {MessageId}", messageEnvelope.Id);
+            _logger.LogError(metadata.HandlerTask.Exception, "Message handling failed unexpectedly for message ID {MessageId}", messageEnvelope.Id);
         }
 
         UpdateActiveMessageCount(-1);
@@ -173,46 +178,33 @@ public class DefaultMessageManager : IMessageManager
     /// <param name="token">Cancellation token to stop the visibility timeout extension loop</param>
     private async Task ExtendUnfinishedMessageVisibilityTimeoutBatch(CancellationToken token)
     {
-        IEnumerable<MessageEnvelope> unfinishedMessages;
+        IEnumerable<KeyValuePair<MessageEnvelope, InFlightMetadata>> unfinishedMessages;
 
         do
         {
             // Wait for the configured interval before extending visibility
             await Task.Delay(_configuration.VisibilityTimeoutExtensionHeartbeatInterval, token);
 
-            // Select the message envelopes whose corresponding handler task is not yet complete
-            unfinishedMessages = _runningHandlerTasks.Values.Where(message => IsMessageVisibilityTimeoutExpiring(message));
+            // Select the message envelopes whose corresponding handler task is not yet complete.
+            //
+            //   The .ToList() is important as we want to evaluate their expected expiration relative to the threshold at this instant,
+            //   rather than lazily. Otherwise the batch of messages that are eligible for a visibility timeout extension may change between
+            //   actully extending the timeout and recording that we've done so.
+            unfinishedMessages = _inFlightMessageMetadata.Where(messageAndMetadata =>
+                messageAndMetadata.Value.IsMessageVisibilityTimeoutExpiring(_configuration.VisibilityTimeoutExtensionThreshold)).ToList();
 
             // TODO: Handle the race condition where a message could have finished handling and be deleted concurrently
             if (unfinishedMessages.Any())
             {
-                await _messagePoller.ExtendMessageVisibilityTimeoutAsync(unfinishedMessages, token);
+                // Update the timestamp that the visibility timeout window is expected to expire
+                // Per SQS documentation: "The new timeout period takes effect from the time you call the ChangeMessageVisibility action"
+                foreach (var unfinishedMessage in unfinishedMessages)
+                {
+                    unfinishedMessage.Value.UpdateExpectedVisibilityTimeoutExpiration(_configuration.VisibilityTimeout);
+                }
+
+                await _messagePoller.ExtendMessageVisibilityTimeoutAsync(unfinishedMessages.Select(messageAndMetadata => messageAndMetadata.Key), token);
             }
-
-        } while (_runningHandlerTasks.Any() && !token.IsCancellationRequested);
-    }
-
-    /// <summary>
-    /// Determines if a given message's visibility timeout expiration timestamp is within the
-    /// threshold where the framework should extend it
-    /// </summary>
-    /// <param name="message">In flight message envelope</param>
-    /// <returns>True if the message's visibility timeout should be extended per the configured threshold, false otherwise</returns>
-    private bool IsMessageVisibilityTimeoutExpiring(MessageEnvelope message)
-    {
-        if (message.SQSMetadata == null || message.SQSMetadata.ExpectedVisibilityTimeoutExpiration == null)
-        {
-            _logger.LogError("Attempted to manage the expected visibility timeout of message {MessageId} without SQS metadata.", message.Id);
-            throw new MissingSQSMetadataException($"Attempted to manage the expected visibility timeout of message {message.Id} without SQS metadata.");
-        }
-
-        var timeUntilExpiration = message.SQSMetadata.ExpectedVisibilityTimeoutExpiration - DateTimeOffset.UtcNow;
-
-        if (timeUntilExpiration.Value.TotalSeconds <= _configuration.VisibilityTimeoutExtensionThreshold)
-        {
-            return true;
-        }
-
-        return false;
+        } while (_inFlightMessageMetadata.Any() && !token.IsCancellationRequested);
     }
 }

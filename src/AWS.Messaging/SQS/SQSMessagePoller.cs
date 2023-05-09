@@ -118,9 +118,6 @@ internal class SQSMessagePoller : IMessagePoller
                 {
                     var messageEnvelopeResult = await _envelopeSerializer.ConvertToEnvelopeAsync(message);
 
-                    // Stamp the timestamp that the initial visibility timeout window is expected to expire
-                    UpdateMessageVisibilityTimeoutExpiration(messageEnvelopeResult.Envelope, _configuration.VisibilityTimeout);
-
                     // Don't await this result, we want to process multiple messages concurrently
                     _ = _messageManager.ProcessMessageAsync(messageEnvelopeResult.Envelope, messageEnvelopeResult.Mapping, token);
                 }
@@ -176,7 +173,7 @@ internal class SQSMessagePoller : IMessagePoller
             else
             {
                 _logger.LogError("Attempted to delete message {MessageId} from {SubscriberEndpoint} without an SQS receipt handle.", message.Id, _configuration.SubscriberEndpoint);
-                throw new MissingSQSMetadataException($"Attempted to delete message {message.Id} from {_configuration.SubscriberEndpoint} without an SQS receipt handle.");
+                throw new MissingSQSReceiptHandleException($"Attempted to delete message {message.Id} from {_configuration.SubscriberEndpoint} without an SQS receipt handle.");
             }
         }
 
@@ -233,10 +230,6 @@ internal class SQSMessagePoller : IMessagePoller
                 _logger.LogTrace("Preparing to extend the visibility of {MessageId} with SQS receipt handle {ReceiptHandle} by {VisibilityTimeout} seconds",
                     message.Id, message.SQSMetadata.ReceiptHandle, _configuration.VisibilityTimeout);
 
-                // Update the timestamp that the visibility timeout window is expected to expire
-                // Per SQS documentation: "The new timeout period takes effect from the time you call the ChangeMessageVisibility action"
-                UpdateMessageVisibilityTimeoutExpiration(message, _configuration.VisibilityTimeout);
-
                 if (currentRequest.Entries.Count >= SQS_MAX_MESSAGE_CHANGE_VISIBILITY)
                 {
                     requestBatches.Add(currentRequest);
@@ -255,7 +248,7 @@ internal class SQSMessagePoller : IMessagePoller
             else
             {
                 _logger.LogError("Attempted to change the visibility of message {MessageId} from {SubscriberEndpoint} without an SQS receipt handle.", message.Id, _configuration.SubscriberEndpoint);
-                throw new MissingSQSMetadataException($"Attempted to change the visibility of message {message.Id} from {_configuration.SubscriberEndpoint} without an SQS receipt handle.");
+                throw new MissingSQSReceiptHandleException($"Attempted to change the visibility of message {message.Id} from {_configuration.SubscriberEndpoint} without an SQS receipt handle.");
             }
         }
         requestBatches.Add(currentRequest);
@@ -328,29 +321,5 @@ internal class SQSMessagePoller : IMessagePoller
     private bool IsSQSExceptionFatal(AmazonSQSException sqsException)
     {
         return _fatalSQSErrorCodes.Contains(sqsException.ErrorCode);
-    }
-
-    /// <summary>
-    /// Updates the timestamp that a given message's visbility timeout is expected to expire
-    /// </summary>
-    /// <param name="message">Envelope of the in flight message</param>
-    /// <param name="newVisibilityTimeoutWindowSeconds">How many seconds from now to set the new expected visibility timeout expiration</param>
-    private void UpdateMessageVisibilityTimeoutExpiration(MessageEnvelope message, int newVisibilityTimeoutWindowSeconds)
-    {
-        if (message.SQSMetadata == null)
-        {
-            _logger.LogError("Attempted to track the expected visibility timout of message {MessageId} without SQS metadata.", message.Id);
-            throw new MissingSQSMetadataException($"Attempted to track the expected visibility timout of message {message.Id} without SQS metadata.");
-        }
-
-        // When message is first received, the expected expiration will be null and we can set it relative to the original receive timestamp
-        if (message.SQSMetadata.ExpectedVisibilityTimeoutExpiration == null)
-        {
-            message.SQSMetadata.ExpectedVisibilityTimeoutExpiration = message.SQSMetadata.ApproximateFirstReceiveTimestamp + TimeSpan.FromSeconds(newVisibilityTimeoutWindowSeconds);
-        }
-        else // we're extending the visibility timeout for an inflight message, so set relative to now
-        {
-            message.SQSMetadata.ExpectedVisibilityTimeoutExpiration = DateTimeOffset.UtcNow + TimeSpan.FromSeconds(newVisibilityTimeoutWindowSeconds);
-        }
     }
 }
