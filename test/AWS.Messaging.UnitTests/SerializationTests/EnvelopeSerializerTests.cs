@@ -31,6 +31,7 @@ public class EnvelopeSerializerTests
         {
             builder.AddSQSPublisher<AddressInfo>("sqsQueueUrl", "addressInfo");
             builder.AddMessageHandler<AddressInfoHandler, AddressInfo>("addressInfo");
+            builder.AddMessageSource("/aws/messaging");
         });
 
         var mockDateTimeHandler = new Mock<IDateTimeHandler>();

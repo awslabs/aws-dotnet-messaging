@@ -32,6 +32,7 @@ public class SQSPublisherTests : IAsyncLifetime
         serviceCollection.AddAWSMessageBus(builder =>
         {
             builder.AddSQSPublisher<ChatMessage>(_sqsQueueUrl);
+            builder.AddMessageSource("/aws/messaging");
         });
         _serviceProvider = serviceCollection.BuildServiceProvider();
     }

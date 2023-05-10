@@ -55,4 +55,16 @@ public interface IMessageConfiguration
     /// Holds instances of <see cref="ISerializationCallback"/> that lets users inject their own metadata to incoming and outgoing messages.
     /// </summary>
     IList<ISerializationCallback> SerializationCallbacks { get; }
+
+    /// <summary>
+    /// The relative or absolute Uri to be used as a message source.
+    /// This source is added globally to any message sent through the framework.
+    /// </summary>
+    string? Source { get; set; }
+
+    /// <summary>
+    /// A suffix to append to the user-defined <see cref="Source"/> or
+    /// computed by the framework in the absence of a user-defined one.
+    /// </summary>
+    string? SourceSuffix { get; set; }
 }

@@ -60,4 +60,18 @@ public interface IMessageBusBuilder
     /// </summary>
     /// <param name="serializationCallback">An instance of <see cref="ISerializationCallback"/>that lets users inject their own metadata to incoming and outgoing messages.</param>
     IMessageBusBuilder AddSerializationCallback(ISerializationCallback serializationCallback);
+
+    /// <summary>
+    /// Adds a global message source to the message bus.
+    /// This source will be added to the message envelope of all the messages sent through the framework.
+    /// </summary>
+    /// <param name="messageSource">The relative or absolute Uri to be used as a message source.</param>
+    IMessageBusBuilder AddMessageSource(string messageSource);
+
+    /// <summary>
+    /// Appends a suffix to the message source that is either set using <see cref="AddMessageSource(string)"/>
+    /// or computed by the framework in the absence of a user-defined source.
+    /// </summary>
+    /// <param name="suffix">The suffix to append to the message source.</param>
+    IMessageBusBuilder AddMessageSourceSuffix(string suffix);
 }
