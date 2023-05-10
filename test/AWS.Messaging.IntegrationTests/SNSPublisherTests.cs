@@ -44,6 +44,7 @@ public class SNSPublisherTests : IAsyncLifetime
         serviceCollection.AddAWSMessageBus(builder =>
         {
             builder.AddSNSPublisher<ChatMessage>(_snsTopicArn);
+            builder.AddMessageSource("/aws/messaging");
         });
         _serviceProvider = serviceCollection.BuildServiceProvider();
     }

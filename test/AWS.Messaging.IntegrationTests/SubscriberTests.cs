@@ -50,6 +50,7 @@ public class SubscriberTests : IAsyncLifetime
                 options.VisibilityTimeoutExtensionThreshold = 3;
             });
             builder.AddMessageHandler<ChatMessageHandler, ChatMessage>();
+            builder.AddMessageSource("/aws/messaging");
         });
         var serviceProvider = _serviceCollection.BuildServiceProvider();
 
@@ -101,6 +102,7 @@ public class SubscriberTests : IAsyncLifetime
                 options.MaxNumberOfConcurrentMessages = maxConcurrentMessages;
             });
             builder.AddMessageHandler<ChatMessageHandler_10sDelay, ChatMessage>();
+            builder.AddMessageSource("/aws/messaging");
         });
         var serviceProvider = _serviceCollection.BuildServiceProvider();
 
@@ -160,6 +162,7 @@ public class SubscriberTests : IAsyncLifetime
             builder.AddMessageHandler<ChatMessageHandler, ChatMessage>();
             builder.AddMessageHandler<FoodItemHandler, FoodItem>();
             builder.AddMessageHandler<OrderInfoHandler, OrderInfo>();
+            builder.AddMessageSource("/aws/messaging");
         });
         var serviceProvider = _serviceCollection.BuildServiceProvider();
 
@@ -235,6 +238,7 @@ public class SubscriberTests : IAsyncLifetime
             builder.AddSQSPublisher<ChatMessage>(_sqsQueueUrl);
             builder.AddSQSPoller(_sqsQueueUrl);
             builder.AddMessageHandler<ChatMessageHandler, ChatMessage>();
+            builder.AddMessageSource("/aws/messaging");
         });
         var serviceProvider = _serviceCollection.BuildServiceProvider();
 

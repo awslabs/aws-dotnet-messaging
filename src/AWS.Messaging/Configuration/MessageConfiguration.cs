@@ -45,4 +45,10 @@ public class MessageConfiguration : IMessageConfiguration
 
     /// <inheritdoc/>
     public IList<ISerializationCallback> SerializationCallbacks { get; } = new List<ISerializationCallback>();
+
+    /// <inheritdoc/>
+    public string? Source { get; set; }
+
+    /// <inheritdoc/>
+    public string? SourceSuffix { get; set; }
 } 
