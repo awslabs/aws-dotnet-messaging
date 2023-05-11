@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using AWS.Messaging;
+using AWS.Messaging.Publishers.SQS;
 using Microsoft.AspNetCore.Mvc;
 using PublisherAPI.Models;
 

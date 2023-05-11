@@ -78,9 +78,11 @@ internal class SQSPublisher : IMessagePublisher, ISQSPublisher
 
                 _logger.LogDebug("Creating the message envelope for the message of type '{messageType}'.", typeof(T));
                 var messageEnvelope = await _envelopeSerializer.CreateEnvelopeAsync(message);
-                var messageBody = _envelopeSerializer.Serialize(messageEnvelope);
 
                 trace.AddMetadata(TelemetryKeys.MessageId, messageEnvelope.Id);
+                trace.RecordTelemetryContext(messageEnvelope);
+
+                var messageBody = _envelopeSerializer.Serialize(messageEnvelope);
 
                 _logger.LogDebug("Sending the message of type '{messageType}' to SQS. Publisher Endpoint: {endpoint}", typeof(T), publisherEndpoint);
                 var sendMessageRequest = CreateSendMessageRequest(publisherEndpoint, messageBody, sqsOptions);

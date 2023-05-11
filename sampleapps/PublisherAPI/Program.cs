@@ -8,25 +8,17 @@ using OpenTelemetry;
 using OpenTelemetry.Trace;
 using PublisherAPI.Models;
 
-var provider = new OpenTelemetryProvider();
-
-ActivitySource MyActivitySource = new(
-    "MyCompany.MyProduct.MyLibrary");
-
 var traceProviderBuilder = Sdk.CreateTracerProviderBuilder()
     .AddSource("AWS.Messaging")
-    .AddSource("MyCompany.MyProduct.MyLibrary")
-    .AddConsoleExporter();
+    .AddAWSInstrumentation()
+//    .AddAspNetCoreInstrumentation()
+    .AddConsoleExporter()
+    .AddZipkinExporter(b =>
+    {
+        var zipkinHostName = Environment.GetEnvironmentVariable("ZIPKIN_HOSTNAME") ?? "localhost";
+        b.Endpoint = new Uri($"http://localhost:9411/api/v2/spans");
+    });
 using var tracerProvider = traceProviderBuilder.Build();
-
-
-using (var activity = MyActivitySource.StartActivity("SayHello"))
-{
-    activity?.SetTag("foo", 1);
-    activity?.SetTag("bar", "Hello, World!");
-    activity?.SetTag("baz", new int[] { 1, 2, 3 });
-    activity?.SetStatus(ActivityStatusCode.Ok);
-}
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -35,7 +27,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers();
 builder.Services.AddAWSMessageBus(builder =>
 {
-    builder.AddSQSPublisher<ChatMessage>("https://sqs.us-west-2.amazonaws.com/626492997873/MPFTest");
+    builder.AddSQSPublisher<ChatMessage>("https://sqs.us-west-2.amazonaws.com/626492997873/MPFTest", "ChatMessage");
     builder.AddSNSPublisher<OrderInfo>("arn:aws:sns:us-west-2:012345678910:MPF");
     builder.AddEventBridgePublisher<FoodItem>("arn:aws:events:us-west-2:012345678910:event-bus/default");
     builder.ConfigureSerializationOptions(options =>

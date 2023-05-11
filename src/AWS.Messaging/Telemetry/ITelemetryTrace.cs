@@ -28,4 +28,10 @@ public interface ITelemetryTrace : IDisposable
     /// <param name="exception"></param>
     /// <param name="fatal"></param>
     void AddException(Exception exception, bool fatal = true);
+
+    /// <summary>
+    /// Record in the MessageEnvelope metadata the trace context for downstream services to link with
+    /// </summary>
+    /// <param name="envelope"></param>
+    void RecordTelemetryContext(MessageEnvelope envelope);
 }

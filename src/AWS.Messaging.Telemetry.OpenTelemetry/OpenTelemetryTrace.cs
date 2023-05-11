@@ -9,10 +9,12 @@ namespace AWS.Messaging.Telemetry.OpenTelemetry;
 internal class OpenTelemetryTrace : ITelemetryTrace
 {
     private readonly Activity? _activity;
+    private readonly Activity? _parentToRestore;
 
-    public OpenTelemetryTrace(Activity? activity)
+    public OpenTelemetryTrace(Activity? activity, Activity? parentToRestore = null)
     {
         _activity = activity;
+        _parentToRestore = parentToRestore;
     }
 
     public void AddException(Exception exception, bool fatal = true)
@@ -30,6 +32,20 @@ internal class OpenTelemetryTrace : ITelemetryTrace
         _activity?.SetTag(key, value);
     }
 
+    public void RecordTelemetryContext(MessageEnvelope envelope)
+    {
+        if (_activity == null)
+            return;
+
+        if(_activity.ParentId != null)
+        {
+            envelope.Metadata["otel.traceparent"] = _activity.ParentId;
+        }
+
+        if (!string.IsNullOrEmpty(_activity.TraceStateString))
+            envelope.Metadata["otel.tracestate"] = _activity.TraceStateString;
+    }
+
 
     private bool _disposedValue;
 
@@ -38,6 +54,11 @@ internal class OpenTelemetryTrace : ITelemetryTrace
         if (!_disposedValue)
         {
             _activity?.Dispose();
+            if(_parentToRestore != null)
+            {
+                Activity.Current = _parentToRestore;
+            }
+
             _disposedValue = true;
         }
     }

@@ -48,7 +48,7 @@ public class HandlerInvoker
     /// <returns>Task representing the outcome of the message handler</returns>
     public async Task<MessageProcessStatus> InvokeAsync(MessageEnvelope messageEnvelope, SubscriberMapping subscriberMapping, CancellationToken token = default)
     {
-        using (var trace = _telemetryWriter.Trace("Invoke handler"))
+        using (var trace = _telemetryWriter.StartProcessMessageTrace("Process Message", messageEnvelope))
         {
             try
             {

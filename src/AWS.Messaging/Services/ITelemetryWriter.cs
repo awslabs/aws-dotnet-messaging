@@ -24,6 +24,14 @@ public interface ITelemetryWriter
     /// <param name="traceName">The name of the trace.</param>
     /// <returns>The state of the trace.</returns>
     ITelemetryTrace Trace(string traceName);
+
+    /// <summary>
+    /// Create a root trace for the start of processing a message.
+    /// </summary>
+    /// <param name="traceName"></param>
+    /// <param name="envelope"></param>
+    /// <returns></returns>
+    ITelemetryTrace StartProcessMessageTrace(string traceName, MessageEnvelope envelope);
 }
 
 /// <summary>
@@ -49,7 +57,7 @@ public class DefaultTelemetryWriter : ITelemetryWriter
     /// <inheritdoc/>
     public ITelemetryTrace Trace(string traceName)
     {
-        traceName = TraceNamePrefix + traceName;
+        traceName = PrefixTraceName(traceName);
 
         var traces = new ITelemetryTrace[_telemetryRecorders.Count];
         for (var i = 0; i < _telemetryRecorders.Count; i++)
@@ -59,4 +67,20 @@ public class DefaultTelemetryWriter : ITelemetryWriter
 
         return new CompositeTelemetryTrace(traces);
     }
+
+    /// <inheritdoc/>
+    public ITelemetryTrace StartProcessMessageTrace(string traceName, MessageEnvelope envelope)
+    {
+        traceName = PrefixTraceName(traceName);
+
+        var traces = new ITelemetryTrace[_telemetryRecorders.Count];
+        for (var i = 0; i < _telemetryRecorders.Count; i++)
+        {
+            traces[i] = _telemetryRecorders[i].StartProcessMessageTrace(traceName, envelope);
+        }
+
+        return new CompositeTelemetryTrace(traces);
+    }
+
+    private string PrefixTraceName(string traceName) => TraceNamePrefix + traceName;
 }

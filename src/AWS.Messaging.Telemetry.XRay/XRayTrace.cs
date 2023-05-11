@@ -25,6 +25,11 @@ internal class XRayTrace : ITelemetryTrace
         AWSXRayRecorder.Instance.AddException(exception);
     }
 
+    public void RecordTelemetryContext(MessageEnvelope envelope)
+    {
+        // TODO: Add X-Ray context
+    }
+
     private bool _disposedValue;
     protected virtual void Dispose(bool disposing)
     {

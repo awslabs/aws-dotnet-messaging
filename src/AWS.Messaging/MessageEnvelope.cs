@@ -46,7 +46,8 @@ public abstract class MessageEnvelope
     /// <summary>
     /// This stores different metadata that is not modeled as a top-level property in MessageEnvelope class.
     /// </summary>
-    [JsonExtensionData]
+//   [JsonExtensionData]
+   [JsonPropertyName("metadata")]
     public Dictionary<string, object> Metadata { get; set; } = new Dictionary<string, object>();
 
     /// <summary>

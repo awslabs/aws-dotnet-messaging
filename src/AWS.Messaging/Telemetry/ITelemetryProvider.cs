@@ -14,4 +14,12 @@ public interface ITelemetryProvider
     /// <param name="traceName"></param>
     /// <returns></returns>
     ITelemetryTrace StartTrace(string traceName);
+
+    /// <summary>
+    /// Create a root trace for the start of processing a message.
+    /// </summary>
+    /// <param name="traceName"></param>
+    /// <param name="envelope"></param>
+    /// <returns></returns>
+    ITelemetryTrace StartProcessMessageTrace(string traceName, MessageEnvelope envelope);
 }

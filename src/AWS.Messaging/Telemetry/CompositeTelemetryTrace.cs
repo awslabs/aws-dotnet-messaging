@@ -1,6 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using System;
+
 namespace AWS.Messaging.Telemetry;
 
 internal class CompositeTelemetryTrace : ITelemetryTrace
@@ -27,6 +29,14 @@ internal class CompositeTelemetryTrace : ITelemetryTrace
         foreach (var trace in _traces)
         {
             trace.AddException(exception, fatal);
+        }
+    }
+
+    public void RecordTelemetryContext(MessageEnvelope envelope)
+    {
+        foreach (var trace in _traces)
+        {
+            trace.RecordTelemetryContext(envelope);
         }
     }
 

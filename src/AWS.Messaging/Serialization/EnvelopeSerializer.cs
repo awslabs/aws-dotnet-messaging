@@ -4,6 +4,7 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization;
 using Amazon.SQS.Model;
 using AWS.Messaging.Configuration;
 using AWS.Messaging.Services;
@@ -78,9 +79,16 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
                 ["source"] = envelope.Source?.ToString(),
                 ["specversion"] = envelope.Version,
                 ["type"] = envelope.MessageTypeIdentifier,
-                ["time"] = envelope.TimeStamp,
+                ["time"] = envelope.TimeStamp,                
                 ["data"] = _messageSerializer.Serialize(envelope.Message)
             };
+
+            if(envelope.Metadata.Any())
+            {
+                var jsonMetadata = JsonSerializer.Deserialize<JsonObject>(JsonSerializer.Serialize(envelope.Metadata));
+                blob["metadata"] = jsonMetadata;
+                
+            }
 
             var jsonString = blob.ToJsonString();
             _logger.LogTrace("Serialized the MessageEnvelope object as the following raw string:\n{jsonString}", jsonString);
@@ -99,8 +107,13 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
         try
         {
             var messageEnvelopeConfiguration = GetMessageEnvelopeConfiguration(sqsMessage);
-            var intermediateEnvelope = JsonSerializer.Deserialize<MessageEnvelope<string>>(messageEnvelopeConfiguration.MessageEnvelopeBody!)!;
+
+            var options = new JsonSerializerOptions();
+            options.Converters.Add(new DictionaryStringObjectConverter());
+            var intermediateEnvelope = JsonSerializer.Deserialize<MessageEnvelope<string>>(messageEnvelopeConfiguration.MessageEnvelopeBody!, options)!;
+
             ValidateMessageEnvelope(intermediateEnvelope);
+
             var messageTypeIdentifier = intermediateEnvelope.MessageTypeIdentifier;
             var subscriberMapping = _messageConfiguration.GetSubscriberMapping(messageTypeIdentifier);
             if (subscriberMapping is null)
