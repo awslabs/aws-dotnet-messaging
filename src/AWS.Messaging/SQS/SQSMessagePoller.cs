@@ -57,12 +57,8 @@ internal class SQSMessagePoller : IMessagePoller
         _configuration = configuration;
         _envelopeSerializer = envelopeSerializer;
 
-        _messageManager = messageManagerFactory.CreateMessageManager(this);
+        _messageManager = messageManagerFactory.CreateMessageManager(this, _configuration.ToMessageManagerConfiguration());
     }
-
-    /// <inheritdoc/>
-    public int VisibilityTimeoutExtensionInterval => _configuration.VisibilityTimeoutExtensionInterval;
-
 
     /// <inheritdoc/>
     public async Task StartPollingAsync(CancellationToken token = default)
@@ -248,6 +244,7 @@ internal class SQSMessagePoller : IMessagePoller
             {
                 _logger.LogTrace("Preparing to extend the visibility of {MessageId} with SQS receipt handle {ReceiptHandle} by {VisibilityTimeout} seconds",
                     message.Id, message.SQSMetadata.ReceiptHandle, _configuration.VisibilityTimeout);
+
                 if (currentRequest.Entries.Count >= SQS_MAX_MESSAGE_CHANGE_VISIBILITY)
                 {
                     requestBatches.Add(currentRequest);
@@ -258,7 +255,7 @@ internal class SQSMessagePoller : IMessagePoller
                 }
                 currentRequest.Entries.Add(new ChangeMessageVisibilityBatchRequestEntry
                 {
-                    Id = message.Id,
+                    Id = $"batchNum_{currentRequest.Entries.Count}_messageId_{message.Id}",
                     ReceiptHandle = message.SQSMetadata.ReceiptHandle,
                     VisibilityTimeout = _configuration.VisibilityTimeout
                 });
@@ -282,6 +279,7 @@ internal class SQSMessagePoller : IMessagePoller
         }
         catch (Exception ex)
         {
+            // TODO: this is being hit even for an AmazonSQSException that we want to handle below
             _logger.LogError(ex, "An unexpected exception occurred while extending message visibility on queue {SubscriberEndpoint}", _configuration.SubscriberEndpoint);
         }
 

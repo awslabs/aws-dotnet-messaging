@@ -6,4 +6,6 @@ namespace AWS.Messaging.IntegrationTests.Models;
 public class ChatMessage
 {
     public string MessageDescription { get; set; } = string.Empty;
+
+    public override string ToString() => MessageDescription;
 }
