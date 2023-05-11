@@ -14,12 +14,6 @@ namespace AWS.Messaging.Services;
 public interface IMessagePoller
 {
     /// <summary>
-    /// How frequently message visibility should be extended in seconds
-    /// via <see cref="ExtendMessageVisibilityTimeoutAsync"/> while the message is still being processed
-    /// </summary>
-    int VisibilityTimeoutExtensionInterval { get; }
-
-    /// <summary>
     /// Start polling the underlying service. Polling will run indefinitely till the CancellationToken is cancelled.
     /// </summary>
     /// <param name="token">Optional cancellation token to shutdown the poller.</param>

@@ -42,7 +42,7 @@ public class SQSMessagePollerTests
 
     /// <summary>
     /// Tests that configuring a poller with <see cref="SQSMessagePollerConfiguration.MaxNumberOfConcurrentMessages"/>
-    /// set to a value greater than SQS's current limit of 10 will only recieve 10 messages at a time.
+    /// set to a value greater than SQS's current limit of 10 will only receive 10 messages at a time.
     /// </summary>
     [Fact]
     public async Task SQSMessagePoller_ManyConcurrentMessages_DoesNotExceedSQSMax()
@@ -118,8 +118,8 @@ public class SQSMessagePollerTests
             It.Is<ChangeMessageVisibilityBatchRequest>(request =>
                 request.QueueUrl == TEST_QUEUE_URL &&
                 request.Entries.Count == 2 &&
-                request.Entries.Any(entry => entry.Id == "1" && entry.ReceiptHandle == "rh1") &&
-                request.Entries.Any(entry => entry.Id == "2" && entry.ReceiptHandle == "rh2")),
+                request.Entries.Any(entry => entry.Id == "batchNum_0_messageId_1" && entry.ReceiptHandle == "rh1") &&
+                request.Entries.Any(entry => entry.Id == "batchNum_1_messageId_2" && entry.ReceiptHandle == "rh2")),
             It.IsAny<CancellationToken>()));
     }
 
