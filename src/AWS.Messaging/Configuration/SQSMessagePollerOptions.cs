@@ -21,7 +21,7 @@ public class SQSMessagePollerOptions
     public int VisibilityTimeoutExtensionThreshold { get; set; } = SQSMessagePollerConfiguration.DEFAULT_VISIBILITY_TIMEOUT_EXTENSION_THRESHOLD_SECONDS;
 
     /// <inheritdoc cref="SQSMessagePollerConfiguration.VisibilityTimeoutExtensionHeartbeatInterval"/>
-    public TimeSpan VisibilityTimeoutExtensionHeartbeatInterval { get; set; } = SQSMessagePollerConfiguration.DEFAULT_VISIBILITY_TIMEOUT_EXTENSION_HEARTBEAT_INTERVAL;
+    public int VisibilityTimeoutExtensionHeartbeatInterval { get; set; } = SQSMessagePollerConfiguration.DEFAULT_VISIBILITY_TIMEOUT_EXTENSION_HEARTBEAT_INTERVAL;
 
     /// <summary>
     /// Validates that the options are valid against the message framework's and/or SQS limits
@@ -60,16 +60,16 @@ public class SQSMessagePollerOptions
                 $"or else other consumers may receive the message while it is still being processed.");
         }
 
-        if (VisibilityTimeoutExtensionHeartbeatInterval <= TimeSpan.Zero)
+        if (VisibilityTimeoutExtensionHeartbeatInterval <= 0)
         {
             errorMessages.Add($"{nameof(VisibilityTimeoutExtensionHeartbeatInterval)} must be greater than 0 seconds. " +
                 $"Current value: {VisibilityTimeoutExtensionHeartbeatInterval}.");
         }
 
-        if (VisibilityTimeoutExtensionHeartbeatInterval >= TimeSpan.FromSeconds(VisibilityTimeoutExtensionThreshold))
+        if (VisibilityTimeoutExtensionHeartbeatInterval >= VisibilityTimeoutExtensionThreshold)
         {
             errorMessages.Add($"{nameof(VisibilityTimeoutExtensionHeartbeatInterval)} ({VisibilityTimeoutExtensionHeartbeatInterval}) " +
-                            $"must be less than {nameof(VisibilityTimeoutExtensionThreshold)} ({TimeSpan.FromSeconds(VisibilityTimeoutExtensionThreshold)}), " +
+                            $"must be less than {nameof(VisibilityTimeoutExtensionThreshold)} ({VisibilityTimeoutExtensionThreshold}), " +
                             $"or else other consumers may receive the message while it is still being processed.");
         }
 
