@@ -12,14 +12,13 @@ builder.AddSQSPoller("<queueURL>", options =>
 { 
     options.VisibilityTimeout = 30; 
     options.VisibilityTimeoutExtensionThreshold = 5;
-    options.VisibilityTimeoutExtensionHeartbeatInterval = TimeSpan.FromSeconds(1);
+    options.VisibilityTimeoutExtensionHeartbeatInterval = 1;
 });
 ```
 1. `VisibilityTimeout` - This is is the length of time in seconds that the message will not be visible to other consumers once it is received, as well as the length of time that the framework will extend the visibility timeout for messages that are still processing. The default value is 30 seconds.
     * Note that the SQS poller will always set this when it receives messages with either the configured value or _framework default_ of 30 seconds, it will not respect the value configured on the queue.
 2. `VisibilityTimeoutExtensionThreshold` - When an in flight message is within this many seconds of becoming visible again, the framework will extend its visibility timeout automatically. The new visibility timeout will be set to `VisibilityTimeout` relative to now. The default value is 5 seconds.
 3. `VisibilityTimeoutExtensionHeartbeatInterval` - This is how frequently the framework will check in flight messages and extend the the visibility timeout of messages that are within the `VisibilityTimeoutExtensionThreshold`. The default value is 1 second.
-    * Note that this is a `TimeSpan` instead of integer seconds since it controls client behavior, and is not passed to SQS.
 
 Refer to [processing messages in a timely manner](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/working-with-messages.html#processing-messages-timely-manner) for possible strategies for these options.
 
