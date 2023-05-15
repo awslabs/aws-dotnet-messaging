@@ -3,9 +3,9 @@
 
 namespace AWS.Messaging.IntegrationTests.Models;
 
-public class ChatMessage
+public class OrderInfo
 {
-    public string MessageDescription { get; set; } = string.Empty;
+    public string OrderId { get; set; } = string.Empty;
 
-    public override string ToString() => MessageDescription;
+    public string UserId { get; set; } = string.Empty;
 }

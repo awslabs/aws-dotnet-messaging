@@ -15,21 +15,11 @@ namespace AWS.Messaging.SQS;
 public interface ISQSMessageCommunication
 {
     /// <summary>
-    /// Indicates whether extending message visibility is supported.
-    /// </summary>
-    bool SupportExtendingVisibilityTimeout { get; }
-
-    /// <summary>
-    /// How frequently message visibility should be extended in seconds
-    /// via <see cref="ExtendMessageVisibilityTimeoutAsync"/> while the message is still being processed
-    /// </summary>
-    int VisibilityTimeoutExtensionInterval { get; }
-
-    /// <summary>
     /// Report back to the communication implementer when a message .failed to be processed.
     /// </summary>
     /// <param name="message">The <see cref="MessageEnvelope"/> that was not processed correctly.</param>
-    ValueTask ReportMessageFailureAsync(MessageEnvelope message);
+    /// <param name="token">Optional token to cancel the deletion.</param>
+    ValueTask ReportMessageFailureAsync(MessageEnvelope message, CancellationToken token = default);
 
     /// <summary>
     /// Delete the message in the underlying service.

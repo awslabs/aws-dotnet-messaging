@@ -92,4 +92,7 @@ public class MessageEnvelope<T> : MessageEnvelope
     {
         Message = (T)message;
     }
+
+    /// <inheritdoc/>
+    public override string ToString() => Id;
 }

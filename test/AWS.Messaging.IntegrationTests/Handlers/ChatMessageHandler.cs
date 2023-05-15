@@ -42,3 +42,19 @@ public class ChatMessageHandler_10sDelay : IMessageHandler<ChatMessage>
         return MessageProcessStatus.Success();
     }
 }
+
+public class ChatMessageHandler_Failed : IMessageHandler<ChatMessage>
+{
+    private readonly TempStorage<ChatMessage> _tempStorage;
+
+    public ChatMessageHandler_Failed(TempStorage<ChatMessage> tempStorage)
+    {
+        _tempStorage = tempStorage;
+    }
+
+    public Task<MessageProcessStatus> HandleAsync(MessageEnvelope<ChatMessage> messageEnvelope, CancellationToken token = default)
+    {
+
+        return Task.FromResult(MessageProcessStatus.Failed());
+    }
+}

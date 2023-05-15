@@ -44,19 +44,13 @@ internal class DefaultLambdaMessageProcessor : ILambdaMessageProcessor, ISQSMess
         _sqsClient = awsClientProvider.GetServiceClient<IAmazonSQS>();
         _envelopeSerializer = envelopeSerializer;
         _configuration = configuration;
-        _messageManager = messageManagerFactory.CreateMessageManager(this);
+        _messageManager = messageManagerFactory.CreateMessageManager(this, new MessageManagerConfiguration
+        {
+            SupportExtendingVisibilityTimeout = false
+        });
 
         _sqsBatchResponse = new SQSBatchResponse();
     }
-
-    /// <inheritdoc/>
-    public bool SupportExtendingVisibilityTimeout => false;
-
-    /// <inheritdoc/>
-    /// <remarks>
-    /// This parameter does not hold any significance since <see cref="SupportExtendingVisibilityTimeout"/> is set to false.
-    /// </remarks>
-    public int VisibilityTimeoutExtensionInterval => 0;
 
     /// <summary>
     /// The maximum amount of time a polling iteration should pause for while waiting
@@ -175,7 +169,7 @@ internal class DefaultLambdaMessageProcessor : ILambdaMessageProcessor, ISQSMess
 
     /// <inheritdoc/>
     /// <remarks>
-    /// This is a no-op since <see cref="SupportExtendingVisibilityTimeout"/> is set to false.
+    /// This is a no-op since visibility should match the length of the Lambda function timeout.
     /// </remarks>
     public Task ExtendMessageVisibilityTimeoutAsync(IEnumerable<MessageEnvelope> messages, CancellationToken token = default)
     {
@@ -186,7 +180,7 @@ internal class DefaultLambdaMessageProcessor : ILambdaMessageProcessor, ISQSMess
     /// <remarks>
     /// This is a no-op when SQS event source mapping is not configured to use <see href="https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html#services-sqs-batchfailurereporting">partial batch responses.</see>
     /// </remarks>
-    public ValueTask ReportMessageFailureAsync(MessageEnvelope message)
+    public ValueTask ReportMessageFailureAsync(MessageEnvelope message, CancellationToken token = default)
     {
         lock (_sqsBatchResponseLock)
         {

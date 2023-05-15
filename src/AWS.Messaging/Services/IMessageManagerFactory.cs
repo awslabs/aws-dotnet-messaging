@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using AWS.Messaging.SQS;
+using AWS.Messaging.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AWS.Messaging.Services;
@@ -17,8 +18,9 @@ public interface IMessageManagerFactory
     /// Create an instance of <see cref="AWS.Messaging.Services.IMessageManager" />
     /// </summary>
     /// <param name="sqlMessageCommunication">The <see cref="AWS.Messaging.Services.IMessagePoller" /> that the <see cref="AWS.Messaging.Services.IMessageManager" /> to make lifecycle changes to the message.</param>
+    /// <param name="configuration">The configuration for the message manager</param>
     /// <returns></returns>
-    IMessageManager CreateMessageManager(ISQSMessageCommunication sqlMessageCommunication);
+    IMessageManager CreateMessageManager(ISQSMessageCommunication sqlMessageCommunication, MessageManagerConfiguration configuration);
 }
 
 /// <summary>
@@ -36,8 +38,8 @@ internal class DefaultMessageManagerFactory : IMessageManagerFactory
     }
 
     /// <inheritdoc/>
-    public IMessageManager CreateMessageManager(ISQSMessageCommunication sqlMessageCommunication)
+    public IMessageManager CreateMessageManager(ISQSMessageCommunication sqlMessageCommunication, MessageManagerConfiguration configuration)
     {
-        return ActivatorUtilities.CreateInstance<DefaultMessageManager>(_serviceProvider, sqlMessageCommunication);
+        return ActivatorUtilities.CreateInstance<DefaultMessageManager>(_serviceProvider, sqlMessageCommunication, configuration);
     }
 }

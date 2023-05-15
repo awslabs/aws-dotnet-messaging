@@ -3,9 +3,8 @@
 
 namespace AWS.Messaging.IntegrationTests.Models;
 
-public class ChatMessage
+public class FoodItem
 {
-    public string MessageDescription { get; set; } = string.Empty;
-
-    public override string ToString() => MessageDescription;
+    public int Id { get; set; }
+    public string Name { get; set; } = string.Empty;
 }

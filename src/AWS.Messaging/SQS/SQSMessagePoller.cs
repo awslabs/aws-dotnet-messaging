@@ -57,15 +57,8 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
         _configuration = configuration;
         _envelopeSerializer = envelopeSerializer;
 
-        _messageManager = messageManagerFactory.CreateMessageManager(this);
+        _messageManager = messageManagerFactory.CreateMessageManager(this, _configuration.ToMessageManagerConfiguration());
     }
-
-    /// <inheritdoc/>
-    public bool SupportExtendingVisibilityTimeout => true;
-
-    /// <inheritdoc/>
-    public int VisibilityTimeoutExtensionInterval => _configuration.VisibilityTimeoutExtensionInterval;
-
 
     /// <inheritdoc/>
     public async Task StartPollingAsync(CancellationToken token = default)
@@ -111,6 +104,8 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
                 MessageAttributeNames = new List<string> { "All" }
             };
 
+            List<Message>? receivedMessages = null;
+
             try
             {
                 _logger.LogTrace("Retrieving up to {NumberOfMessagesToRead} messages from {QueueUrl}",
@@ -121,18 +116,8 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
                 _logger.LogTrace("Retrieved {MessagesCount} messages from {QueueUrl} via request ID {RequestId}",
                     receiveMessageResponse.Messages.Count, receiveMessageRequest.QueueUrl, receiveMessageResponse.ResponseMetadata.RequestId);
 
-                foreach (var message in receiveMessageResponse.Messages)
-                {
-                    var messageEnvelopeResult = await _envelopeSerializer.ConvertToEnvelopeAsync(message);
-
-                    // Don't await this result, we want to process multiple messages concurrently
-                    _ = _messageManager.ProcessMessageAsync(messageEnvelopeResult.Envelope, messageEnvelopeResult.Mapping, token);
+                receivedMessages = receiveMessageResponse.Messages;
                 }
-            }
-            catch (AWSMessagingException)
-            {
-                // Swallow exceptions thrown by the framework, and rely on the thrower to log
-            }
             catch (AmazonSQSException ex)
             {
                 _logger.LogError(ex, "An {ExceptionName} occurred while polling", nameof(AmazonSQSException));
@@ -148,6 +133,29 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
             {
                 // TODO: explore a "cool down mode" for repeated exceptions
                 _logger.LogError(ex, "An unknown exception occurred while polling {SubscriberEndpoint}", _configuration.SubscriberEndpoint);
+            }
+
+            if (receivedMessages is null)
+                continue;
+
+            foreach (var message in receivedMessages)
+            {
+                try
+                {
+                    var messageEnvelopeResult = await _envelopeSerializer.ConvertToEnvelopeAsync(message);
+
+                    // Don't await this result, we want to process multiple messages concurrently
+                    _ = _messageManager.ProcessMessageAsync(messageEnvelopeResult.Envelope, messageEnvelopeResult.Mapping, token);
+        }
+                catch (AWSMessagingException)
+                {
+                    // Swallow exceptions thrown by the framework, and rely on the thrower to log
+    }
+                catch (Exception ex)
+                {
+                    // TODO: explore a "cool down mode" for repeated exceptions
+                    _logger.LogError(ex, "An unknown exception occurred while polling {SubscriberEndpoint}", _configuration.SubscriberEndpoint);
+                }
             }
         }
     }
@@ -236,6 +244,7 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
             {
                 _logger.LogTrace("Preparing to extend the visibility of {MessageId} with SQS receipt handle {ReceiptHandle} by {VisibilityTimeout} seconds",
                     message.Id, message.SQSMetadata.ReceiptHandle, _configuration.VisibilityTimeout);
+
                 if (currentRequest.Entries.Count >= SQS_MAX_MESSAGE_CHANGE_VISIBILITY)
                 {
                     requestBatches.Add(currentRequest);
@@ -246,7 +255,7 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
                 }
                 currentRequest.Entries.Add(new ChangeMessageVisibilityBatchRequestEntry
                 {
-                    Id = message.Id,
+                    Id = $"batchNum_{currentRequest.Entries.Count}_messageId_{message.Id}",
                     ReceiptHandle = message.SQSMetadata.ReceiptHandle,
                     VisibilityTimeout = _configuration.VisibilityTimeout
                 });
@@ -270,6 +279,7 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
         }
         catch (Exception ex)
         {
+            // TODO: this is being hit even for an AmazonSQSException that we want to handle below
             _logger.LogError(ex, "An unexpected exception occurred while extending message visibility on queue {SubscriberEndpoint}", _configuration.SubscriberEndpoint);
         }
 
@@ -312,7 +322,7 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
 
     /// <inheritdoc/>
     /// <remarks>This is a no-op since we currently do not have any special logic to handle messages that failed to process in <see cref="SQSMessagePoller"/></remarks>
-    public ValueTask ReportMessageFailureAsync(MessageEnvelope message)
+    public ValueTask ReportMessageFailureAsync(MessageEnvelope message, CancellationToken token = default)
     {
         return ValueTask.CompletedTask;
     }

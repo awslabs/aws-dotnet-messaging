@@ -305,7 +305,8 @@ public class MessageBusBuilderTests
             builder.AddSQSPoller("queueUrl", options => {
                 options.MaxNumberOfConcurrentMessages = 20;
                 options.VisibilityTimeout = 5;
-                options.VisibilityTimeoutExtensionInterval = 2;
+                options.VisibilityTimeoutExtensionThreshold = 2;
+                options.VisibilityTimeoutExtensionHeartbeatInterval = TimeSpan.FromMilliseconds(500);
                 options.WaitTimeSeconds = 10;
             });
         });
@@ -324,7 +325,8 @@ public class MessageBusBuilderTests
             Assert.Equal("queueUrl", sqsConfiguration.SubscriberEndpoint);
             Assert.Equal(20, sqsConfiguration.MaxNumberOfConcurrentMessages);
             Assert.Equal(5, sqsConfiguration.VisibilityTimeout);
-            Assert.Equal(2, sqsConfiguration.VisibilityTimeoutExtensionInterval);
+            Assert.Equal(2, sqsConfiguration.VisibilityTimeoutExtensionThreshold);
+            Assert.Equal(TimeSpan.FromMilliseconds(500), sqsConfiguration.VisibilityTimeoutExtensionHeartbeatInterval);
             Assert.Equal(10, sqsConfiguration.WaitTimeSeconds);
         }
         else
@@ -386,21 +388,38 @@ public class MessageBusBuilderTests
         yield return new object[] { new Action<SQSMessagePollerOptions>((options) => options.WaitTimeSeconds = -1) };
         yield return new object[] { new Action<SQSMessagePollerOptions>((options) => options.WaitTimeSeconds = 21) };
 
-        // VisibilityTimeoutExtensionInterval must be postive 
-        yield return new object[] { new Action<SQSMessagePollerOptions>((options) => options.VisibilityTimeoutExtensionInterval = -1) };
-        yield return new object[] { new Action<SQSMessagePollerOptions>((options) => options.VisibilityTimeoutExtensionInterval = 0) };
+        // VisibilityTimeoutExtensionThreshold must be postive 
+        yield return new object[] { new Action<SQSMessagePollerOptions>((options) => options.VisibilityTimeoutExtensionThreshold = -1) };
+        yield return new object[] { new Action<SQSMessagePollerOptions>((options) => options.VisibilityTimeoutExtensionThreshold = 0) };
 
-        // VisibilityTimeoutExtensionInterval must be strictly less than than VisibilityTimeout
+        // VisibilityTimeoutExtensionThreshold must be strictly less than than VisibilityTimeout
         yield return new object[] { new Action<SQSMessagePollerOptions>((options) =>
         {
             options.VisibilityTimeout = 5;
-            options.VisibilityTimeoutExtensionInterval = 5;
+            options.VisibilityTimeoutExtensionThreshold = 5;
         })};
         yield return new object[] { new Action<SQSMessagePollerOptions>((options) =>
         {
             options.VisibilityTimeout = 4;
-            options.VisibilityTimeoutExtensionInterval = 5;
+            options.VisibilityTimeoutExtensionThreshold = 5;
         })};
+
+        // VisibilityTimeoutExtensionHeartbeatInterval must be postive
+        yield return new object[] { new Action<SQSMessagePollerOptions>((options) => options.VisibilityTimeoutExtensionHeartbeatInterval = TimeSpan.FromSeconds(-1)) };
+        yield return new object[] { new Action<SQSMessagePollerOptions>((options) => options.VisibilityTimeoutExtensionHeartbeatInterval = TimeSpan.Zero) };
+
+        // VisibilityTimeoutExtensionHeartbeatInterval must be strictly less than than VisibilityTimeoutExtensionThreshold
+        yield return new object[] { new Action<SQSMessagePollerOptions>((options) =>
+        {
+            options.VisibilityTimeoutExtensionHeartbeatInterval = TimeSpan.FromSeconds(5);
+            options.VisibilityTimeoutExtensionThreshold = 5;
+        })};
+        yield return new object[] { new Action<SQSMessagePollerOptions>((options) =>
+        {
+            options.VisibilityTimeoutExtensionHeartbeatInterval  = TimeSpan.FromSeconds(6);
+            options.VisibilityTimeoutExtensionThreshold = 5;
+        })};
+
     }
 
     /// <summary>

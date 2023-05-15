@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 using Amazon.Lambda.Core;
 using Amazon.Lambda.SQSEvents;
 using Amazon.Lambda.TestUtilities;
+using Amazon.SQS;
 using AWS.Messaging.Lambda;
 using AWS.Messaging.Serialization;
 using Microsoft.Extensions.DependencyInjection;
@@ -174,7 +175,12 @@ public class LambdaTests
 
     private IServiceProvider CreateServiceProvider(int maxNumberOfConcurrentMessages = 1)
     {
+        Mock<IAmazonSQS> mockSqs = new Mock<IAmazonSQS>();
+
         IServiceCollection services = new ServiceCollection();
+
+        services.AddSingleton<IAmazonSQS>(mockSqs.Object);
+
         services.AddAWSMessageBus(builder =>
         {
             builder.AddSQSPublisher<SimulatedMessage>("https://sqs.us-west-2.amazonaws.com/123412341234/SimulatedMessage");

@@ -88,7 +88,8 @@ public class MessageBusBuilder : IMessageBusBuilder
         {
             MaxNumberOfConcurrentMessages = sqsMessagePollerOptions.MaxNumberOfConcurrentMessages,
             VisibilityTimeout = sqsMessagePollerOptions.VisibilityTimeout,
-            VisibilityTimeoutExtensionInterval = sqsMessagePollerOptions.VisibilityTimeoutExtensionInterval,
+            VisibilityTimeoutExtensionThreshold = sqsMessagePollerOptions.VisibilityTimeoutExtensionThreshold,
+            VisibilityTimeoutExtensionHeartbeatInterval = sqsMessagePollerOptions.VisibilityTimeoutExtensionHeartbeatInterval,
             WaitTimeSeconds = sqsMessagePollerOptions.WaitTimeSeconds
         };
 
