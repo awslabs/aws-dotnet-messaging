@@ -3,6 +3,7 @@
 
 using System.Collections.Concurrent;
 using AWS.Messaging.Configuration;
+using AWS.Messaging.SQS;
 using Microsoft.Extensions.Logging;
 
 namespace AWS.Messaging.Services;
@@ -10,7 +11,7 @@ namespace AWS.Messaging.Services;
 /// <inheritdoc cref="IMessageManager"/>
 public class DefaultMessageManager : IMessageManager
 {
-    private readonly IMessagePoller _messagePoller;
+    private readonly ISQSMessageCommunication _sqsMessageCommunication;
     private readonly IHandlerInvoker _handlerInvoker;
     private readonly ILogger<DefaultMessageManager> _logger;
 
@@ -25,12 +26,12 @@ public class DefaultMessageManager : IMessageManager
     /// <summary>
     /// Constructs an instance of <see cref="DefaultMessageManager"/>
     /// </summary>
-    /// <param name="messagePoller">The poller that this manager is managing messages for</param>
+    /// <param name="sqsMessageCommunication">Provides APIs to communicate back to SQS and the associated Queue for me incoming messages.</param>
     /// <param name="handlerInvoker">Used to look up and invoke the correct handler for each message</param>
     /// <param name="logger">Logger for debugging information</param>
-    public DefaultMessageManager(IMessagePoller messagePoller, IHandlerInvoker handlerInvoker, ILogger<DefaultMessageManager> logger)
+    public DefaultMessageManager(ISQSMessageCommunication sqsMessageCommunication, IHandlerInvoker handlerInvoker, ILogger<DefaultMessageManager> logger)
     {
-        _messagePoller = messagePoller;
+        _sqsMessageCommunication = sqsMessageCommunication;
         _handlerInvoker = handlerInvoker;
         _logger = logger;
     }
@@ -105,7 +106,7 @@ public class DefaultMessageManager : IMessageManager
         // Add it to the dictionary of running task, used to extend the visibility timeout if necessary
         _runningHandlerTasks.TryAdd(handlerTask, messageEnvelope);
 
-        if (_messagePoller.ShouldExtendVisibilityTimeout)
+        if (_sqsMessageCommunication.SupportExtendingVisibilityTimeout)
             StartMessageVisibilityExtensionTaskIfNotRunning(token);
 
         // Wait for the handler to finish processing the message
@@ -129,18 +130,18 @@ public class DefaultMessageManager : IMessageManager
             if (handlerTask.Result.IsSuccess)
             {
                 // Delete the message from the queue if it was processed successfully
-                await _messagePoller.DeleteMessagesAsync(new MessageEnvelope[] { messageEnvelope });
+                await _sqsMessageCommunication.DeleteMessagesAsync(new MessageEnvelope[] { messageEnvelope });
             }
             else // the handler still finished, but returned MessageProcessStatus.Failed
             {
                 _logger.LogError("Message handling completed unsuccessfully for message ID {MessageId}", messageEnvelope.Id);
-                await _messagePoller.HandleMessageProcessingFailureAsync(messageEnvelope);
+                await _sqsMessageCommunication.ReportMessageFailureAsync(messageEnvelope);
             }
         }
         else if (handlerTask.IsFaulted)
         {
             _logger.LogError(handlerTask.Exception, "Message handling failed unexpectedly for message ID {MessageId}", messageEnvelope.Id);
-            await _messagePoller.HandleMessageProcessingFailureAsync(messageEnvelope);
+            await _sqsMessageCommunication.ReportMessageFailureAsync(messageEnvelope);
         }
 
         UpdateActiveMessageCount(-1);
@@ -178,7 +179,7 @@ public class DefaultMessageManager : IMessageManager
         do
         {
             // Wait for the configured interval before extending visibility
-            await Task.Delay(_messagePoller.VisibilityTimeoutExtensionInterval * 1000, token);
+            await Task.Delay(_sqsMessageCommunication.VisibilityTimeoutExtensionInterval * 1000, token);
 
             // Select the message envelopes whose corresponding handler task is not yet complete
              unfinishedMessages = _runningHandlerTasks.Values;
@@ -186,7 +187,7 @@ public class DefaultMessageManager : IMessageManager
             // TODO: The envelopes in _runningHandlerTasks may have been received at different times, we could track + extend visibility separately
             // TODO: The underlying ChangeMessageVisibilityBatch only takes up to 10 messages, we may need to slice and make multiple calls
             // TODO: Handle the race condition where a message could have finished handling and be deleted concurrently
-            await _messagePoller.ExtendMessageVisibilityTimeoutAsync(unfinishedMessages);
+            await _sqsMessageCommunication.ExtendMessageVisibilityTimeoutAsync(unfinishedMessages);
 
         } while (unfinishedMessages.Any() && !token.IsCancellationRequested);
     }

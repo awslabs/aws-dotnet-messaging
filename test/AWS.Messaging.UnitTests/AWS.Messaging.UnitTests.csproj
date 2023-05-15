@@ -7,11 +7,13 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\AWS.Messaging.Lambda\AWS.Messaging.Lambda.csproj" />
     <ProjectReference Include="..\..\src\AWS.Messaging\AWS.Messaging.csproj" />
     <ProjectReference Include="..\AWS.Messaging.Tests.Common\AWS.Messaging.Tests.Common.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Amazon.Lambda.TestUtilities" Version="2.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.1" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.3.2" />

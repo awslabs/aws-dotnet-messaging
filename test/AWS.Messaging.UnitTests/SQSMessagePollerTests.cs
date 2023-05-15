@@ -17,6 +17,7 @@ using Microsoft.Extensions.Hosting;
 using Moq;
 using Xunit;
 using AWS.Messaging.Tests.Common.Services;
+using AWS.Messaging.SQS;
 
 namespace AWS.Messaging.UnitTests;
 
@@ -73,7 +74,7 @@ public class SQSMessagePollerTests
         client.Setup(x => x.DeleteMessageBatchAsync(It.IsAny<DeleteMessageBatchRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new DeleteMessageBatchResponse { Failed = new List<BatchResultErrorEntry>() });
 
-        var messagePoller = CreateSQSMessagePoller(client);
+        var messagePoller = CreateSQSMessagePoller(client) as ISQSMessageCommunication;
 
         var messageEnvelopes = new List<MessageEnvelope>()
         {
@@ -104,7 +105,7 @@ public class SQSMessagePollerTests
         client.Setup(x => x.ChangeMessageVisibilityBatchAsync(It.IsAny<ChangeMessageVisibilityBatchRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChangeMessageVisibilityBatchResponse { Failed = new List<BatchResultErrorEntry>() }, TimeSpan.FromMilliseconds(50));
 
-        var messagePoller = CreateSQSMessagePoller(client);
+        var messagePoller = CreateSQSMessagePoller(client) as ISQSMessageCommunication;
 
         var messageEnvelopes = new List<MessageEnvelope>()
         {
@@ -140,7 +141,7 @@ public class SQSMessagePollerTests
         client.Setup(x => x.ChangeMessageVisibilityBatchAsync(It.Is<ChangeMessageVisibilityBatchRequest>(x => x.Entries.Count <= 10), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new ChangeMessageVisibilityBatchResponse { Failed = new List<BatchResultErrorEntry>() }, TimeSpan.FromMilliseconds(50));
 
-        var messagePoller = CreateSQSMessagePoller(client);
+        var messagePoller = CreateSQSMessagePoller(client) as ISQSMessageCommunication;
 
         var messageEnvelopes = Enumerable.Range(0, 15).Select(x => new MessageEnvelope<ChatMessage> { Id = $"{x + 1}", SQSMetadata = new SQSMetadata { ReceiptHandle = $"rh{x + 1}" } }).Cast<MessageEnvelope>().ToList();
 

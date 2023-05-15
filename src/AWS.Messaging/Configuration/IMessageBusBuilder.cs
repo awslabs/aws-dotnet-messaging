@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using AWS.Messaging.Serialization;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace AWS.Messaging.Configuration;
 
@@ -60,4 +61,11 @@ public interface IMessageBusBuilder
     /// </summary>
     /// <param name="serializationCallback">An instance of <see cref="ISerializationCallback"/>that lets users inject their own metadata to incoming and outgoing messages.</param>
     IMessageBusBuilder AddSerializationCallback(ISerializationCallback serializationCallback);
+
+    /// <summary>
+    /// Add additional services to the IMessageBusBuilder. This method is used for AWS.Messaging plugins to add services for messaging.
+    /// </summary>
+    /// <param name="serviceDescriptor">The service descriptor for the added service.</param>
+    /// <returns></returns>
+    IMessageBusBuilder AddAdditionalService(ServiceDescriptor serviceDescriptor);
 }

@@ -13,7 +13,7 @@ namespace AWS.Messaging.SQS;
 /// <summary>
 /// SQS implementation of the <see cref="AWS.Messaging.Services.IMessagePoller" />
 /// </summary>
-internal class SQSMessagePoller : IMessagePoller
+internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
 {
     private readonly IAmazonSQS _sqsClient;
     private readonly ILogger<SQSMessagePoller> _logger;
@@ -61,7 +61,7 @@ internal class SQSMessagePoller : IMessagePoller
     }
 
     /// <inheritdoc/>
-    public bool ShouldExtendVisibilityTimeout => true;
+    public bool SupportExtendingVisibilityTimeout => true;
 
     /// <inheritdoc/>
     public int VisibilityTimeoutExtensionInterval => _configuration.VisibilityTimeoutExtensionInterval;
@@ -312,7 +312,7 @@ internal class SQSMessagePoller : IMessagePoller
 
     /// <inheritdoc/>
     /// <remarks>This is a no-op since we currently do not have any special logic to handle messages that failed to process in <see cref="SQSMessagePoller"/></remarks>
-    public ValueTask HandleMessageProcessingFailureAsync(MessageEnvelope message)
+    public ValueTask ReportMessageFailureAsync(MessageEnvelope message)
     {
         return ValueTask.CompletedTask;
     }

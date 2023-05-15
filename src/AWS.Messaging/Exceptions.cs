@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using AWS.Messaging.Configuration;
-using AWS.Messaging.Lambda;
 using AWS.Messaging.Serialization;
 
 namespace AWS.Messaging;
@@ -204,17 +203,6 @@ public class FailedToFindAWSServiceClientException : AWSMessagingException
     /// Creates an instance of <see cref="InvalidMessageHandlerSignatureException"/>.
     /// </summary>
     public FailedToFindAWSServiceClientException(string message, Exception? innerException = null) : base(message, innerException) { }
-}
-
-/// <summary>
-/// Thrown when an <see cref="LambdaMessagePollerOptions" /> is configured with one or more invalid values
-/// </summary>
-public class InvalidLambdaMessagePollerOptionsException : AWSMessagingException
-{
-    /// <summary>
-    /// Creates an instance of <see cref="InvalidLambdaMessagePollerOptionsException"/>.
-    /// </summary>
-    public InvalidLambdaMessagePollerOptionsException(string message, Exception? innerException = null) : base(message, innerException) { }
 }
 
 /// <summary>

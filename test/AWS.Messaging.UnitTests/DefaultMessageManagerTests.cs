@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AWS.Messaging.Configuration;
 using AWS.Messaging.Services;
+using AWS.Messaging.SQS;
 using AWS.Messaging.UnitTests.MessageHandlers;
 using AWS.Messaging.UnitTests.Models;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -24,7 +25,7 @@ namespace AWS.Messaging.UnitTests
         [Fact]
         public async Task DefaultMessageManager_ManagesMessageSuccess()
         {
-            var mockPoller = CreateMockPoller(messageVisibilityRefreshInterval: 10);
+            var mockPoller = CreateMockSQSMessageCommunication(messageVisibilityRefreshInterval: 10);
             var mockHandlerInvoker = CreateMockHandlerInvoker(MessageProcessStatus.Success());
 
             var manager = new DefaultMessageManager(mockPoller.Object, mockHandlerInvoker.Object, new NullLogger<DefaultMessageManager>());
@@ -63,7 +64,7 @@ namespace AWS.Messaging.UnitTests
         [Fact]
         public async Task DefaultMessageManager_ManagesMessageFailed()
         {
-            var mockPoller = CreateMockPoller(messageVisibilityRefreshInterval: 10);
+            var mockPoller = CreateMockSQSMessageCommunication(messageVisibilityRefreshInterval: 10);
             var mockHandlerInvoker = CreateMockHandlerInvoker(MessageProcessStatus.Failed());
 
             var manager = new DefaultMessageManager(mockPoller.Object, mockHandlerInvoker.Object, new NullLogger<DefaultMessageManager>());
@@ -103,7 +104,7 @@ namespace AWS.Messaging.UnitTests
         [Fact]
         public async Task DefaultMessageManager_RefreshesLongHandler()
         {
-            var mockPoller = CreateMockPoller(messageVisibilityRefreshInterval: 1);
+            var mockPoller = CreateMockSQSMessageCommunication(messageVisibilityRefreshInterval: 1);
             var mockHandlerInvoker = CreateMockHandlerInvoker(MessageProcessStatus.Success(), messageHandlingDelay: TimeSpan.FromSeconds(3));
 
             var manager = new DefaultMessageManager(mockPoller.Object, mockHandlerInvoker.Object, new NullLogger<DefaultMessageManager>());
@@ -149,7 +150,7 @@ namespace AWS.Messaging.UnitTests
         [Fact]
         public async Task DefaultMessageManager_CountsActiveMessagesCorrectly()
         {
-            var mockPoller = CreateMockPoller(messageVisibilityRefreshInterval: 1);
+            var mockPoller = CreateMockSQSMessageCommunication(messageVisibilityRefreshInterval: 1);
             var mockHandlerInvoker = CreateMockHandlerInvoker(MessageProcessStatus.Success(), TimeSpan.FromSeconds(1));
 
             var manager = new DefaultMessageManager(mockPoller.Object, mockHandlerInvoker.Object, new NullLogger<DefaultMessageManager>());
@@ -177,19 +178,19 @@ namespace AWS.Messaging.UnitTests
         /// </summary>
         /// <param name="messageVisibilityRefreshInterval">How frequently the manager should extend message visibility in seconds</param>
         /// <returns>Mock poller</returns>
-        private Mock<IMessagePoller> CreateMockPoller(int messageVisibilityRefreshInterval)
+        private Mock<ISQSMessageCommunication> CreateMockSQSMessageCommunication(int messageVisibilityRefreshInterval)
         {
-            var mockPoller = new Mock<IMessagePoller>();
+            var mockSQSMessageCommunication = new Mock<ISQSMessageCommunication>();
 
-            mockPoller.Setup(x => x.ExtendMessageVisibilityTimeoutAsync(
+            mockSQSMessageCommunication.Setup(x => x.ExtendMessageVisibilityTimeoutAsync(
                     It.IsAny<IEnumerable<MessageEnvelope>>(),
                     It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
-            mockPoller.Setup(x => x.VisibilityTimeoutExtensionInterval).Returns(messageVisibilityRefreshInterval);
-            mockPoller.Setup(x => x.ShouldExtendVisibilityTimeout).Returns(true);
+            mockSQSMessageCommunication.Setup(x => x.VisibilityTimeoutExtensionInterval).Returns(messageVisibilityRefreshInterval);
+            mockSQSMessageCommunication.Setup(x => x.SupportExtendingVisibilityTimeout).Returns(true);
 
-            return mockPoller;
+            return mockSQSMessageCommunication;
         }
 
         /// <summary>

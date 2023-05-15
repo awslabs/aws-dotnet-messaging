@@ -7,50 +7,54 @@ using Amazon.SQS.Model;
 using AWS.Messaging.Configuration;
 using AWS.Messaging.Serialization;
 using AWS.Messaging.Services;
+using AWS.Messaging.SQS;
 using Microsoft.Extensions.Logging;
 
-namespace AWS.Messaging.Lambda;
+namespace AWS.Messaging.Lambda.Services;
 
-internal class LambdaMessagePoller : IMessagePoller
+internal class DefaultLambdaMessageProcessor : ILambdaMessageProcessor, ISQSMessageCommunication
 {
     private readonly IAmazonSQS _sqsClient;
-    private readonly ILogger<LambdaMessagePoller> _logger;
+    private readonly ILogger<DefaultLambdaMessageProcessor> _logger;
     private readonly IMessageManager _messageManager;
-    private readonly LambdaMessagePollerConfiguration _configuration;
     private readonly IEnvelopeSerializer _envelopeSerializer;
+    private readonly LambdaMessageProcessorConfiguration _configuration;
+
+    private readonly SQSBatchResponse _sqsBatchResponse;
 
     // this is used to safely delete messages from _configuration.SQSBatchResponse.
     private readonly object _sqsBatchResponseLock = new object();
 
     /// <summary>
-    /// Creates instance of <see cref="LambdaMessagePoller" />
+    /// Creates instance of <see cref="DefaultLambdaMessageProcessor" />
     /// </summary>
     /// <param name="logger">Logger for debugging information.</param>
     /// <param name="messageManagerFactory">The factory to create the message manager for processing messages.</param>
     /// <param name="awsClientProvider">Provides the AWS service client from the DI container.</param>
-    /// <param name="configuration">The Lambda message poller configuration.</param>
+    /// <param name="configuration">The Lambda message processor configuration.</param>
     /// <param name="envelopeSerializer">Serializer used to deserialize the SQS messages</param>
-    public LambdaMessagePoller(
-        ILogger<LambdaMessagePoller> logger,
+    public DefaultLambdaMessageProcessor(
+        ILogger<DefaultLambdaMessageProcessor> logger,
         IMessageManagerFactory messageManagerFactory,
         IAWSClientProvider awsClientProvider,
-        LambdaMessagePollerConfiguration configuration,
+        LambdaMessageProcessorConfiguration configuration,
         IEnvelopeSerializer envelopeSerializer)
     {
         _logger = logger;
         _sqsClient = awsClientProvider.GetServiceClient<IAmazonSQS>();
-        _configuration = configuration;
         _envelopeSerializer = envelopeSerializer;
-
+        _configuration = configuration;
         _messageManager = messageManagerFactory.CreateMessageManager(this);
+
+        _sqsBatchResponse = new SQSBatchResponse();
     }
 
     /// <inheritdoc/>
-    public bool ShouldExtendVisibilityTimeout => false;
+    public bool SupportExtendingVisibilityTimeout => false;
 
     /// <inheritdoc/>
     /// <remarks>
-    /// This parameter does not hold any significance since <see cref="ShouldExtendVisibilityTimeout"/> is set to false.
+    /// This parameter does not hold any significance since <see cref="SupportExtendingVisibilityTimeout"/> is set to false.
     /// </remarks>
     public int VisibilityTimeoutExtensionInterval => 0;
 
@@ -60,13 +64,13 @@ internal class LambdaMessagePoller : IMessagePoller
     /// </summary>
     private static readonly TimeSpan CONCURRENT_CAPACITY_WAIT_TIMEOUT = TimeSpan.FromSeconds(30);
 
-    /// <inheritdoc/>
-    public async Task StartPollingAsync(CancellationToken token = default)
+
+    public async Task<SQSBatchResponse?> ProcessMessagesAsync(CancellationToken token = default)
     {
         var sqsEvent = _configuration.SQSEvent;
         if (sqsEvent is null || !sqsEvent.Records.Any())
         {
-            return;
+            return _sqsBatchResponse;
         }
 
         var taskList = new List<Task>(sqsEvent.Records.Count);
@@ -99,35 +103,37 @@ internal class LambdaMessagePoller : IMessagePoller
 
             await Task.WhenAll(taskList);
         }
-        catch (AWSMessagingException)
-        {
-            // Swallow exceptions thrown by the framework, and rely on the thrower to log
-        }
-        catch (AmazonSQSException ex)
-        {
-            _logger.LogError(ex, "An {ExceptionName} occurred while polling", nameof(AmazonSQSException));
-
-            // Rethrow the exception to fail fast for invalid configuration, permissioning, etc.
-            // TODO: explore a "cool down mode" for repeated exceptions
-            if (IsSQSExceptionFatal(ex))
-            {
-                throw;
-            }
-        }
         catch (Exception ex)
         {
-            // TODO: explore a "cool down mode" for repeated exceptions
-            _logger.LogError(ex, "An unknown exception occurred while polling {SubscriberEndpoint}", _configuration.SubscriberEndpoint);
+            _logger.LogError(ex, "An unknown exception initiating message handlers for incoming SQS messages.");
+
+            // If there are any errors queuing messages into the handlers then let the exception bubble up to allow Lambda to report a function invocation failure.
+            throw;
         }
+
+        // If partial failure mode is not enabled then if there are any errors reported from the message handlers we
+        // need to communicate up to Lambda via an exception that the invocation failed.
+        if(!_configuration.UseBatchResponse && _sqsBatchResponse.BatchItemFailures?.Count > 0)
+        {
+            throw new LambdaInvocationFailureException($"Lambda invocation failed because {_sqsBatchResponse.BatchItemFailures.Count} message reported failures during handling");
+        }
+
+        return _configuration.UseBatchResponse ? _sqsBatchResponse : null;
     }
 
     /// <inheritdoc/>
     public async Task DeleteMessagesAsync(IEnumerable<MessageEnvelope> messages, CancellationToken token = default)
     {
-        if (!messages.Any())
+        // If batch response is enabled then rely on Lambda to delete the messages that are not in the SQSBatchResponse returned for the Lambda function.
+        if (!_configuration.DeleteMessagesWhenCompleted || _configuration.UseBatchResponse)
         {
             return;
         }
+
+        if(!messages.Any())
+        {
+            return;
+        }    
 
         var request = new DeleteMessageBatchRequest
         {
@@ -153,41 +159,23 @@ internal class LambdaMessagePoller : IMessagePoller
             }
         }
 
-        try
+        var response = await _sqsClient.DeleteMessageBatchAsync(request, token);
+
+        foreach (var successMessage in response.Successful)
         {
-            var response = await _sqsClient.DeleteMessageBatchAsync(request, token);
-
-            foreach (var successMessage in response.Successful)
-            {
-                _logger.LogTrace("Deleted message {MessageId} from queue {SubscriberEndpoint} successfully", successMessage.Id, _configuration.SubscriberEndpoint);
-            }
-
-            foreach (var failedMessage in response.Failed)
-            {
-                _logger.LogError("Failed to delete message {FailedMessageId} from queue {SubscriberEndpoint}: {FailedMessage}",
-                    failedMessage.Id, _configuration.SubscriberEndpoint, failedMessage.Message);
-            }
+            _logger.LogTrace("Deleted message {MessageId} from queue {SubscriberEndpoint} successfully", successMessage.Id, _configuration.SubscriberEndpoint);
         }
-        catch (AmazonSQSException ex)
-        {
-            _logger.LogError(ex, "Failed to delete message(s) [{MessageIds}] from queue {SubscriberEndpoint}",
-                string.Join(", ", messages.Select(x => x.Id)), _configuration.SubscriberEndpoint);
 
-            // Rethrow the exception to fail fast for invalid configuration, permissioning, etc.
-            if (IsSQSExceptionFatal(ex))
-            {
-                throw;
-            }
-        }
-        catch (Exception ex)
+        foreach (var failedMessage in response.Failed)
         {
-            _logger.LogError(ex, "An unexpected exception occurred while deleting messages from queue {SubscriberEndpoint}", _configuration.SubscriberEndpoint);
+            _logger.LogError("Failed to delete message {FailedMessageId} from queue {SubscriberEndpoint}: {FailedMessage}",
+                failedMessage.Id, _configuration.SubscriberEndpoint, failedMessage.Message);
         }
     }
 
     /// <inheritdoc/>
     /// <remarks>
-    /// This is a no-op since <see cref="ShouldExtendVisibilityTimeout"/> is set to false.
+    /// This is a no-op since <see cref="SupportExtendingVisibilityTimeout"/> is set to false.
     /// </remarks>
     public Task ExtendMessageVisibilityTimeoutAsync(IEnumerable<MessageEnvelope> messages, CancellationToken token = default)
     {
@@ -198,13 +186,8 @@ internal class LambdaMessagePoller : IMessagePoller
     /// <remarks>
     /// This is a no-op when SQS event source mapping is not configured to use <see href="https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html#services-sqs-batchfailurereporting">partial batch responses.</see>
     /// </remarks>
-    public ValueTask HandleMessageProcessingFailureAsync(MessageEnvelope message)
+    public ValueTask ReportMessageFailureAsync(MessageEnvelope message)
     {
-        // If partial batch response is not enabled then we don't do anything.
-        // The message that was failed to process will not be deleted from the SQS queue and it will be retried after its visibility timeout expires.
-        if (!_configuration.IsPartialBatchResponseEnabled)
-            return ValueTask.CompletedTask;
-
         lock (_sqsBatchResponseLock)
         {
             if (string.IsNullOrEmpty(message.SQSMetadata?.MessageID))
@@ -217,7 +200,7 @@ internal class LambdaMessagePoller : IMessagePoller
             {
                 ItemIdentifier = message.SQSMetadata.MessageID
             };
-            _configuration.SQSBatchResponse.BatchItemFailures.Add(batchItemFailure);
+            _sqsBatchResponse.BatchItemFailures.Add(batchItemFailure);
         }
 
         return ValueTask.CompletedTask;
@@ -248,24 +231,6 @@ internal class LambdaMessagePoller : IMessagePoller
         }
 
         return sqsMessage;
-    }
-
-    /// <summary>
-    /// <see cref="AmazonSQSException"/> error codes that should be treated as fatal and stop the poller
-    /// </summary>
-    private static readonly HashSet<string> _fatalSQSErrorCodes = new HashSet<string>
-    {
-        "InvalidAddress",   // Returned for an invalid queue URL
-        "AccessDenied"      // Returned with insufficient IAM permissions to read from the configured queue
-    };
-
-    /// <summary>
-    /// Determines if a given SQS exception should be treated as fatal and rethrown to stop the poller
-    /// </summary>
-    /// <param name="sqsException">SQS Exception</param>
-    private bool IsSQSExceptionFatal(AmazonSQSException sqsException)
-    {
-        return _fatalSQSErrorCodes.Contains(sqsException.ErrorCode);
     }
 }
 

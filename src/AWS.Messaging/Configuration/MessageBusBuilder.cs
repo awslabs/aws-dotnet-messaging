@@ -9,7 +9,8 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using AWS.Messaging.Publishers.SQS;
 using AWS.Messaging.Publishers.SNS;
 using AWS.Messaging.Publishers.EventBridge;
-using AWS.Messaging.Lambda;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Logging;
 
 namespace AWS.Messaging.Configuration;
 
@@ -19,6 +20,7 @@ namespace AWS.Messaging.Configuration;
 public class MessageBusBuilder : IMessageBusBuilder
 {
     private readonly MessageConfiguration _messageConfiguration;
+    private readonly IList<ServiceDescriptor> _additionalServices = new List<ServiceDescriptor>();
 
     /// <summary>
     /// Creates an instance of <see cref="MessageBusBuilder"/>.
@@ -108,14 +110,29 @@ public class MessageBusBuilder : IMessageBusBuilder
         return this;
     }
 
+    /// <inheritdoc/>
+    public IMessageBusBuilder AddAdditionalService(ServiceDescriptor serviceDescriptor)
+    {
+        _additionalServices.Add(serviceDescriptor);
+        return this;
+    }
+
     internal void Build(IServiceCollection services)
     {
+        // Make sure there is at least the default null implementation of the logger to injected so that
+        // the DI constructors can be satisfied.
+        services.TryAdd(ServiceDescriptor.Singleton<ILoggerFactory, NullLoggerFactory>());
+        services.TryAdd(ServiceDescriptor.Singleton(typeof(ILogger<>), typeof(NullLogger<>)));
+
         services.AddSingleton<IMessageConfiguration>(_messageConfiguration);
         services.TryAddSingleton<IMessageSerializer, MessageSerializer>();
         services.TryAddSingleton<IEnvelopeSerializer, EnvelopeSerializer>();
         services.TryAddSingleton<IDateTimeHandler, DateTimeHandler>();
         services.TryAddSingleton<IMessageIdGenerator, MessageIdGenerator>();
         services.TryAddSingleton<IAWSClientProvider, AWSClientProvider>();
+        services.TryAddSingleton<IMessageManagerFactory, DefaultMessageManagerFactory>();
+        services.TryAddSingleton<IHandlerInvoker, HandlerInvoker>();
+        services.TryAddSingleton<IMessagePollerFactory, DefaultMessagePollerFactory>();
 
         if (_messageConfiguration.PublisherMappings.Any())
         {
@@ -140,8 +157,6 @@ public class MessageBusBuilder : IMessageBusBuilder
 
         if (_messageConfiguration.SubscriberMappings.Any())
         {
-            // Adding the Lambda message pump upfront since there is no state on the IMessageConfiguration to indicate whether we want to include the lambda message pump.
-            services.TryAddSingleton<ILambdaMessagePump, LambdaMessagePump>();
             services.TryAddAWSService<Amazon.SQS.IAmazonSQS>();
 
             foreach (var subscriberMapping in _messageConfiguration.SubscriberMappings)
@@ -153,14 +168,16 @@ public class MessageBusBuilder : IMessageBusBuilder
         if (_messageConfiguration.MessagePollerConfigurations.Any())
         {
             services.AddHostedService<MessagePumpService>();
-            services.TryAddSingleton<IHandlerInvoker, HandlerInvoker>();
-            services.TryAddSingleton<IMessagePollerFactory, DefaultMessagePollerFactory>();
-            services.TryAddSingleton<IMessageManagerFactory, DefaultMessageManagerFactory>();
 
             if (_messageConfiguration.MessagePollerConfigurations.OfType<SQSMessagePollerConfiguration>().Any())
             {
                 services.TryAddAWSService<Amazon.SQS.IAmazonSQS>();
             }
+        }
+
+        foreach (var service in _additionalServices)
+        {
+            services.Add(service);
         }
     }
 }

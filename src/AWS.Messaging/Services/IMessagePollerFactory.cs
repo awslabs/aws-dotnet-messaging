@@ -2,14 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using AWS.Messaging.Configuration;
-using AWS.Messaging.Lambda;
 using AWS.Messaging.SQS;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AWS.Messaging.Services;
 
 /// <summary>
-/// Factory for creating instances of <see cref="AWS.Messaging.Services.IMessagePollerFactory" />. Users that want to use a custom <see cref="AWS.Messaging.Services.IMessagePoller" />
+/// Factory for creating instances of <see cref="AWS.Messaging.Services.IMessagePoller" />. Users that want to use a custom <see cref="AWS.Messaging.Services.IMessagePoller" />
 /// can inject into the <see cref="Microsoft.Extensions.DependencyInjection.IServiceCollection" /> their own implementation of <see cref="AWS.Messaging.Services.IMessagePollerFactory" /> to construct
 /// a custom <see cref="AWS.Messaging.Services.IMessagePoller" /> instance.
 /// </summary>
@@ -44,10 +43,6 @@ internal class DefaultMessagePollerFactory : IMessagePollerFactory
         if(pollerConfiguration is SQSMessagePollerConfiguration sqsPollerConfiguration)
         {
             poller = ActivatorUtilities.CreateInstance<SQSMessagePoller>(_serviceProvider, sqsPollerConfiguration);
-        }
-        else if (pollerConfiguration is LambdaMessagePollerConfiguration lambdaMessagePollerConfiguration)
-        {
-            poller = ActivatorUtilities.CreateInstance<LambdaMessagePoller>(_serviceProvider, lambdaMessagePollerConfiguration);
         }
         else
         {
