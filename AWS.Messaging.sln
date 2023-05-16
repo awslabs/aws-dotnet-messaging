@@ -27,7 +27,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SubscriberService", "sample
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AWS.Messaging.Tests.Common", "test\AWS.Messaging.Tests.Common\AWS.Messaging.Tests.Common.csproj", "{A174942B-AF9C-4935-AD7B-AF651BACE63C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AWS.Messaging.Lambda", "src\AWS.Messaging.Lambda\AWS.Messaging.Lambda.csproj", "{24FA3671-8C2B-4B64-865C-68FB6237E34D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AWS.Messaging.Lambda", "src\AWS.Messaging.Lambda\AWS.Messaging.Lambda.csproj", "{24FA3671-8C2B-4B64-865C-68FB6237E34D}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LambdaMessaging", "sampleapps\LambdaMessaging\LambdaMessaging.csproj", "{F74A4CF0-D814-426E-8149-46758E86AFE3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -63,6 +65,10 @@ Global
 		{24FA3671-8C2B-4B64-865C-68FB6237E34D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{24FA3671-8C2B-4B64-865C-68FB6237E34D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{24FA3671-8C2B-4B64-865C-68FB6237E34D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F74A4CF0-D814-426E-8149-46758E86AFE3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F74A4CF0-D814-426E-8149-46758E86AFE3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F74A4CF0-D814-426E-8149-46758E86AFE3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F74A4CF0-D814-426E-8149-46758E86AFE3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -75,6 +81,7 @@ Global
 		{D398D75B-80F3-4D4F-AFC7-15CD61DD22C3} = {1AA8985B-897C-4BD5-9735-FD8B33FEBFFB}
 		{A174942B-AF9C-4935-AD7B-AF651BACE63C} = {80DB2C77-6ADD-4A60-B27D-763BDF9659D3}
 		{24FA3671-8C2B-4B64-865C-68FB6237E34D} = {2D0A561B-0B97-4259-8603-3AF5437BB652}
+		{F74A4CF0-D814-426E-8149-46758E86AFE3} = {1AA8985B-897C-4BD5-9735-FD8B33FEBFFB}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7B2B759D-6455-4089-8173-3F1619567B36}

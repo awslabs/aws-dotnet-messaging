@@ -1,7 +1,7 @@
+using Amazon.Lambda.Annotations;
 using Amazon.Lambda.Core;
 using Amazon.Lambda.SQSEvents;
 using AWS.Messaging.Lambda;
-using Microsoft.Extensions.DependencyInjection;
 
 
 // Assembly attribute to enable the Lambda function's JSON input to be converted into a .NET class.
@@ -9,41 +9,36 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace LambdaMessaging;
 
+/// <summary>
+/// This sample uses the Amazon.Lambda.Annotations framework to use attributes to configure
+/// Lambda function and setup the dependency injection framework. For more information
+/// on Amazon.Lambda.Annotations check out the repository:
+/// https://github.com/aws/aws-lambda-dotnet/tree/master/Libraries/src/Amazon.Lambda.Annotations
+/// </summary>
 public class Function
 {
-    private readonly IServiceProvider _serviceProvider;
+    private readonly ILambdaMessaging _messaging;
 
     /// <summary>
-    /// Default constructor. This constructor is used by Lambda to construct the instance. When invoked in a Lambda environment
-    /// the AWS credentials will come from the IAM role associated with the function and the AWS region will be set to the
-    /// region the Lambda function is executed in.
+    /// Creates an instance and injects the ILambdaMessaging service
+    /// from the dependency injection framework configured in the Startup class.
     /// </summary>
-    public Function()
+    /// <param name="messaging"></param>
+    public Function(ILambdaMessaging messaging)
     {
-        _serviceProvider = ConfigureServices();
+        _messaging = messaging;
     }
-
 
     /// <summary>
-    /// This method is called for every Lambda invocation. This method takes in an SQS event object and can be used 
-    /// to respond to SQS messages.
+    /// Lambda function that sends the incoming Lambda SQS Event into the .NET Message Framework.
+    /// This function returns an SQSBatchResponse to support partial batch failure.
     /// </summary>
-    public async Task FunctionHandler(SQSEvent sqsEvent, ILambdaContext context)
+    /// <param name="evnt"></param>
+    /// <param name="context"></param>
+    /// <returns></returns>
+    [LambdaFunction(Policies = "AWSLambdaSQSQueueExecutionRole")]
+    public async Task<SQSBatchResponse> FunctionHandler(SQSEvent evnt, ILambdaContext context)
     {
-        var serviceProvider = ConfigureServices();
-        var lambdaMessagePump = serviceProvider.GetRequiredService<ILambdaMessagePump>();
-        await lambdaMessagePump.ExecuteAsync(sqsEvent, new CancellationTokenSource().Token);
-    }
-
-    private IServiceProvider ConfigureServices()
-    {
-        var serviceCollection = new ServiceCollection();
-        serviceCollection.AddAWSMessageBus(builder =>
-        {
-            builder.AddMessageHandler<ChatMessageHandler, ChatMessage>();
-        });
-
-        var serviceProvider = serviceCollection.BuildServiceProvider();
-        return serviceProvider;
+        return await _messaging.ProcessLambdaEventWithBatchResponseAsync(evnt, context);
     }
 }
