@@ -51,6 +51,18 @@ public class Function
     }
 }
 ```
+
+## Options
+When calling `AddLambdaMessageProcessor` the following options are available to configure the framework.
+
+* **MaxNumberOfConcurrentMessages**: The max number of messages the Lambda function will process at the same time.
+The default value is `10`.
+* **DeleteMessagesWhenCompleted**: When **not** using partial response failure with Lambda if this is set to `true`
+then after each message has been successfully processed the framework will delete the message. The default value is `false`
+which means the Lambda service will delete all of the messages in the Lambda event if the function invocation
+was successful. If the function is configured for partial response failure this property is ignored.
+
+
 # Useful Links
 * [AWS Message Processing Framework for .NET Design Document](./docs/design/message-processing-framework-design.md)
 
