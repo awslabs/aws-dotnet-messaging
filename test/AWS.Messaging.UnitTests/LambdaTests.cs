@@ -9,17 +9,23 @@ using Amazon.Lambda.Core;
 using Amazon.Lambda.SQSEvents;
 using Amazon.Lambda.TestUtilities;
 using Amazon.SQS;
+using Amazon.SQS.Model;
+using AWS.Messaging.Configuration;
 using AWS.Messaging.Lambda;
 using AWS.Messaging.Serialization;
+using AWS.Messaging.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Xunit;
+using Xunit.Sdk;
 using static Amazon.Lambda.SQSEvents.SQSEvent;
 
 namespace AWS.Messaging.UnitTests;
 
 public class LambdaTests
 {
+    Mock<IAmazonSQS>? _mockSqs;
+
     [Fact]
     public async Task OneSuccessfulMessage()
     {
@@ -105,11 +111,67 @@ public class LambdaTests
         Assert.Equal("1", tuple.batchResponse.BatchItemFailures[0].ItemIdentifier);
     }
 
-    private async Task<string> Execute(SimulatedMessage[] messages, int maxNumberOfConcurrentMessages = 1)
+    [Fact]
+    public async Task DeleteMessagesAsWeGo()
     {
-        var provider = CreateServiceProvider(maxNumberOfConcurrentMessages: maxNumberOfConcurrentMessages);
-        var sqsEvent = await CreateLambdaEvent(provider, messages);
+        var message1 = new SimulatedMessage
+        {
+            Id = "success-1",
+        };
 
+        var message2 = new SimulatedMessage
+        {
+            Id = "success-2",
+        };
+
+        var message3 = new SimulatedMessage
+        {
+            Id = "success-3",
+        };
+
+        await Execute(new SimulatedMessage[] { message1, message2, message3 }, deleteMessagesWhenCompleted: true);
+        _mockSqs!.VerifyDeleteMessageBatchAsyncWasCalled(Times.Exactly(3));
+
+        await Execute(new SimulatedMessage[] { message1, message2, message3 }, deleteMessagesWhenCompleted: false);
+        _mockSqs!.VerifyDeleteMessageBatchAsyncWasCalled(Times.Never());
+    }
+
+    [Fact]
+    public async Task MakeSureDeleteIsNotCalledWhenUsingPartialFailure()
+    {
+        var message1 = new SimulatedMessage
+        {
+            Id = "success-1",
+        };
+
+        var message2 = new SimulatedMessage
+        {
+            Id = "success-2",
+        };
+
+        var message3 = new SimulatedMessage
+        {
+            Id = "success-3",
+        };
+
+        await ExecuteWithBatchResponse(new SimulatedMessage[] { message1, message2, message3 }, deleteMessagesWhenCompleted: false);
+        _mockSqs!.VerifyDeleteMessageBatchAsyncWasCalled(Times.Never());
+
+        // deleteMessagesWhenCompleted should be ignored on the options class when using partial failure.
+        await ExecuteWithBatchResponse(new SimulatedMessage[] { message1, message2, message3 }, deleteMessagesWhenCompleted: true);
+        _mockSqs!.VerifyDeleteMessageBatchAsyncWasCalled(Times.Never());
+    }
+
+    [Fact]
+    public async Task InvalidMessageFormatTriggersInvocationFailiure()
+    {
+        await Assert.ThrowsAsync<FailedToCreateMessageEnvelopeException>(async () => await Execute(new SimulatedMessage[] { }, addInvalidMessageFormatRecord: true));
+    }
+
+    private async Task<string> Execute(SimulatedMessage[] messages, int maxNumberOfConcurrentMessages = 1, bool deleteMessagesWhenCompleted = false, bool addInvalidMessageFormatRecord = false)
+    {
+        var provider = CreateServiceProvider(maxNumberOfConcurrentMessages: maxNumberOfConcurrentMessages, deleteMessagesWhenCompleted: deleteMessagesWhenCompleted);
+        var sqsEvent = await CreateLambdaEvent(provider, messages, addInvalidMessageFormatRecord: addInvalidMessageFormatRecord);
 
         var logger = new TestLambdaLogger();
         var context = new TestLambdaContext()
@@ -123,9 +185,9 @@ public class LambdaTests
         return logger.Buffer.ToString();
     }
 
-    private async Task<(string log, SQSBatchResponse batchResponse)> ExecuteWithBatchResponse(SimulatedMessage[] messages, int maxNumberOfConcurrentMessages = 1)
+    private async Task<(string log, SQSBatchResponse batchResponse)> ExecuteWithBatchResponse(SimulatedMessage[] messages, int maxNumberOfConcurrentMessages = 1, bool deleteMessagesWhenCompleted = false)
     {
-        var provider = CreateServiceProvider(maxNumberOfConcurrentMessages: maxNumberOfConcurrentMessages);
+        var provider = CreateServiceProvider(maxNumberOfConcurrentMessages: maxNumberOfConcurrentMessages, deleteMessagesWhenCompleted: deleteMessagesWhenCompleted);
         var sqsEvent = await CreateLambdaEvent(provider, messages);
 
 
@@ -141,7 +203,7 @@ public class LambdaTests
         return (logger.Buffer.ToString(), batchResponse);
     }
 
-    private async Task<SQSEvent> CreateLambdaEvent(IServiceProvider provider,  params SimulatedMessage[] messages)
+    private async Task<SQSEvent> CreateLambdaEvent(IServiceProvider provider,  SimulatedMessage[] messages, bool addInvalidMessageFormatRecord = false)
     {
         var envelopeSerializer = provider.GetRequiredService<IEnvelopeSerializer>();
         
@@ -150,7 +212,25 @@ public class LambdaTests
             Records = new List<SQSEvent.SQSMessage>()
         };
 
-        for(int i = 1; i <= messages.Length; i++)
+        if (addInvalidMessageFormatRecord)
+        {
+            var i = "-1";
+            var sqsMessage = new SQSEvent.SQSMessage
+            {
+                Body = "This is not a valid message",
+
+                MessageId = i.ToString(),
+                ReceiptHandle = "fake-receipt-handle-" + i,
+                AwsRegion = "us-west-2",
+                EventSource = "aws:sqs",
+                EventSourceArn = "arn:aws:sqs:us-west-2:123412341234:SimulatedMessage",
+                MessageAttributes = new Dictionary<string, MessageAttribute>(),
+                Attributes = new Dictionary<string, string>()
+            };
+            sqsEvent.Records.Add(sqsMessage);
+        }
+
+        for (int i = 1; i <= messages.Length; i++)
         {
             var messageEnvelope = await envelopeSerializer.CreateEnvelopeAsync(messages[i - 1]);
             var messageBody = await envelopeSerializer.SerializeAsync(messageEnvelope);
@@ -173,13 +253,18 @@ public class LambdaTests
         return sqsEvent;
     }
 
-    private IServiceProvider CreateServiceProvider(int maxNumberOfConcurrentMessages = 1)
+    private IServiceProvider CreateServiceProvider(int maxNumberOfConcurrentMessages = 1, bool deleteMessagesWhenCompleted = false)
     {
-        Mock<IAmazonSQS> mockSqs = new Mock<IAmazonSQS>();
+        _mockSqs = new Mock<IAmazonSQS>();
+
+        _mockSqs.Setup(x => x.DeleteMessageBatchAsync(
+                It.IsAny<DeleteMessageBatchRequest>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.FromResult(new DeleteMessageBatchResponse()));
 
         IServiceCollection services = new ServiceCollection();
 
-        services.AddSingleton<IAmazonSQS>(mockSqs.Object);
+        services.AddSingleton<IAmazonSQS>(_mockSqs.Object);
 
         services.AddAWSMessageBus(builder =>
         {
@@ -189,6 +274,7 @@ public class LambdaTests
             builder.AddLambdaMessageProcessor(options =>
             {
                 options.MaxNumberOfConcurrentMessages = maxNumberOfConcurrentMessages;
+                options.DeleteMessagesWhenCompleted = deleteMessagesWhenCompleted;
             });
         });
 
@@ -224,7 +310,7 @@ public class SimulatedLambdaFunction
 
 public class SimulatedMessage
 {
-    public string Id { get; set; }
+    public string? Id { get; set; }
 
     public bool ReturnFailedStatus { get; set; } = false;
 
@@ -258,5 +344,16 @@ public class SimulatedMessageHandler : IMessageHandler<SimulatedMessage>
         {
             _lambdaContext.Logger.LogInformation("Finished handler: " + message.Id);
         }
+    }
+}
+
+public static class MockSQSClientExtensions
+{
+    public static void VerifyDeleteMessageBatchAsyncWasCalled(this Mock<IAmazonSQS> mockSQSClient, Times times)
+    {
+        mockSQSClient.Verify(x => x.DeleteMessageBatchAsync(
+                It.IsAny<DeleteMessageBatchRequest>(),
+                It.IsAny<CancellationToken>()),
+            times);
     }
 }
