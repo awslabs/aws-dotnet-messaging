@@ -5,7 +5,7 @@
 This package is a plugin for the [AWS Message Processing Framework for .NET](https://github.com/awslabs/aws-dotnet-messaging) that allows a .NET Lambda function
 to be the the subscriber of messages for the AWS Message Processing Framework for .NET.
 
-In AWS Lambda the Lambda service takes care of reading the messages from the SQS queue. This plugin allows the messages in the incoming Lambda event to be feed
+In AWS Lambda the Lambda service takes care of reading the messages from the SQS queue. This plugin allows the messages in the incoming Lambda event to be fed
 into the AWS Message Processing Framework so it can dispatch the messages to the `IMessageHandler`.
 
 ## Example
@@ -36,7 +36,7 @@ public class Startup
 ```
 
 In the Lambda function itself you need to inject the `ILambdaMessaging` service. This service provides the entry point for the Lambda function
-to pass in the `SQSEvent` sent in by the Lambda service. If you Lambda function is configured for partial failure response use the
+to pass in the `SQSEvent` sent in by the Lambda service. If your Lambda function is configured for partial failure response use the
 `ProcessLambdaEventWithBatchResponseAsync` and return the instance of `SQSBatchResponse`. If partial failure response is not enabled
 use the `ProcessLambdaEventAsync` method.
 

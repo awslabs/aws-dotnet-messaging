@@ -28,7 +28,7 @@ public class DefaultMessageManager : IMessageManager
     /// <summary>
     /// Constructs an instance of <see cref="DefaultMessageManager"/>
     /// </summary>
-    /// <param name="sqsMessageCommunication">Provides APIs to communicate back to SQS and the associated Queue for me incoming messages.</param>
+    /// <param name="sqsMessageCommunication">Provides APIs to communicate back to SQS and the associated Queue for incoming messages.</param>
     /// <param name="handlerInvoker">Used to look up and invoke the correct handler for each message</param>
     /// <param name="logger">Logger for debugging information</param>
     /// <param name="configuration">The configuration for the message manager</param>

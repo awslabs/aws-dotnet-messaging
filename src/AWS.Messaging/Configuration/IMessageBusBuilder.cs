@@ -63,7 +63,7 @@ public interface IMessageBusBuilder
     IMessageBusBuilder AddSerializationCallback(ISerializationCallback serializationCallback);
 
     /// <summary>
-    /// Add additional services to the IMessageBusBuilder. This method is used for AWS.Messaging plugins to add services for messaging.
+    /// Add additional services to the <see cref="IMessageBusBuilder"/>. This method is used for AWS.Messaging plugins to add services for messaging.
     /// </summary>
     /// <param name="serviceDescriptor">The service descriptor for the added service.</param>
     /// <returns></returns>

@@ -9,7 +9,7 @@ namespace AWS.Messaging.Lambda;
 
 /// <summary>
 /// This interface provides the functionality to process SQS messages in a Lambda function. This interface is what Lambda functions must retrieve from the <see cref="IServiceProvider"/> and
-/// invoke one of the process methods passing the SQSEvent and ILambdaContext.
+/// invoke one of the process methods passing the <see cref="Amazon.Lambda.SQSEvents.SQSEvent"/> and <see cref="Amazon.Lambda.Core.ILambdaContext"/>.
 /// </summary>
 public interface ILambdaMessaging
 {

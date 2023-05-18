@@ -10,15 +10,15 @@ using System.Threading.Tasks;
 namespace AWS.Messaging.SQS;
 
 /// <summary>
-/// Provides APIs for the IMessageManager to communicate back to SQS the status of a Message.
+/// Provides APIs for the <see cref="AWS.Messaging.Services.IMessageManager"/> to communicate back to SQS the status of a Message.
 /// </summary>
 public interface ISQSMessageCommunication
 {
     /// <summary>
-    /// Report back to the communication implementer when a message .failed to be processed.
+    /// Report back to the communication implementer when a message failed to be processed.
     /// </summary>
     /// <param name="message">The <see cref="MessageEnvelope"/> that was not processed correctly.</param>
-    /// <param name="token">Optional token to cancel the deletion.</param>
+    /// <param name="token">Optional token to cancel the reporting of the failure to process the message.</param>
     ValueTask ReportMessageFailureAsync(MessageEnvelope message, CancellationToken token = default);
 
     /// <summary>

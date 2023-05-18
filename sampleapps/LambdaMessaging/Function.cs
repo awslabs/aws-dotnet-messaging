@@ -31,7 +31,7 @@ public class Function
 
     /// <summary>
     /// Lambda function that sends the incoming Lambda SQS Event into the .NET Message Framework.
-    /// This function returns an SQSBatchResponse to support partial batch failure.
+    /// This function returns an <see cref="Amazon.Lambda.SQSEvents.SQSBatchResponse"/> to support partial batch failure.
     /// </summary>
     /// <param name="evnt"></param>
     /// <param name="context"></param>

@@ -20,11 +20,11 @@ public class LambdaMessagingOptions
     public int MaxNumberOfConcurrentMessages { get; set; } = DEFAULT_MAX_NUMBER_OF_CONCURRENT_MESSAGES;
 
     /// <summary>
-    /// If true when a message has been successfully processed delete the message from the SQS queue. When not set
-    /// to false the messages will be deleted by the Lambda service if all of the messages in the were successfully processed
-    /// and the Lambda function returned no exceptions.
+    /// If true when a message has been successfully processed the message is deleted from the SQS queue. When set
+    /// to false the Lambda service will delete all messages after the Lambda function invocation. If the function
+    /// throws an uncaught exception the Lambda invocation fails and no messages are deleted.
     ///
-    /// For Lambda functions that are configured for partial failure and return an SQSBatchResponse this property is ignored.
+    /// For Lambda functions that are configured for partial failure and return an <see cref="Amazon.Lambda.SQSEvents.SQSEvent"/> this property is ignored.
     /// </summary>
     public bool DeleteMessagesWhenCompleted { get; set; } = false;
 

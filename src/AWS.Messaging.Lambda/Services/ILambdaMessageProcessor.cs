@@ -13,7 +13,7 @@ public interface ILambdaMessageProcessor
 {
     /// <summary>
     /// Initiates the processing of all the messages for a Lambda invocation
-    /// and if partial failure is enabled returns a SQSBatchResponse.
+    /// and if partial failure is enabled returns a <see cref="Amazon.Lambda.SQSEvents.SQSBatchResponse"/>.
     /// </summary>
     /// <param name="token"></param>
     /// <returns>If partial failure is enabled then a response of the messages that failed to process.</returns>

@@ -6,7 +6,7 @@ using AWS.Messaging.Configuration;
 namespace AWS.Messaging.Lambda.Services;
 
 /// <summary>
-/// Configuration for the <see cref="ILambdaMessageProcessor"/> to use for processing the SQSEvent coming for the Lambda service.
+/// Configuration for the <see cref="ILambdaMessageProcessor"/> to use for processing the <see cref="Amazon.Lambda.SQSEvents.SQSEvent"/> coming for the Lambda service.
 /// </summary>
 public class LambdaMessageProcessorConfiguration
 {
@@ -21,7 +21,7 @@ public class LambdaMessageProcessorConfiguration
     /// to false the messages will be deleted by the Lambda service if all of the messages in the were successfully processed
     /// and the Lambda function returned no exceptions.
     ///
-    /// For Lambda functions that are configured for partial failure and return an SQSBatchResponse this property is ignored.
+    /// For Lambda functions that are configured for partial failure and return an <see cref="Amazon.Lambda.SQSEvents.SQSBatchResponse"/> this property is ignored.
     /// </summary>
     public bool DeleteMessagesWhenCompleted { get; init; } = false;
 

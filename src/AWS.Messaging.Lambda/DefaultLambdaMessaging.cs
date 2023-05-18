@@ -40,7 +40,7 @@ internal class DefaultLambdaMessaging : ILambdaMessaging
     /// <inheritdoc/>
     public async Task ProcessLambdaEventAsync(SQSEvent sqsEvent, ILambdaContext context)
     {
-        if (!sqsEvent.Records.Any())
+        if (sqsEvent.Records?.Any() == false)
             return;
 
         _lambdaContextHolder.Context = context;
@@ -62,7 +62,7 @@ internal class DefaultLambdaMessaging : ILambdaMessaging
     /// <inheritdoc/>
     public async Task<SQSBatchResponse> ProcessLambdaEventWithBatchResponseAsync(SQSEvent sqsEvent, ILambdaContext context)
     {
-        if (!sqsEvent.Records.Any())
+        if (sqsEvent.Records?.Any() == false)
             return new SQSBatchResponse();
 
         _lambdaContextHolder.Context = context;
@@ -96,7 +96,7 @@ internal class DefaultLambdaMessaging : ILambdaMessaging
             SQSEvent = sqsEvent,
             UseBatchResponse = useBatchResponse,
             DeleteMessagesWhenCompleted = options?.DeleteMessagesWhenCompleted ?? false,
-            // TODO: This will value should be set differently when working with FIFO queues.
+            // TODO: This value should be set differently when working with FIFO queues.
             MaxNumberOfConcurrentMessages = options?.MaxNumberOfConcurrentMessages ?? LambdaMessagingOptions.DEFAULT_MAX_NUMBER_OF_CONCURRENT_MESSAGES
         };
 

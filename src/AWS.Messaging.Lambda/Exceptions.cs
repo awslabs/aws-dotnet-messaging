@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 namespace AWS.Messaging.Lambda;
 
 /// <summary>
-/// Thrown when an <see cref="LambdaMessagingOptions" /> is configured with one or more invalid values
+/// Thrown when a <see cref="LambdaMessagingOptions" /> is configured with one or more invalid values
 /// </summary>
 public class InvalidLambdaMessagingOptionsException : AWSMessagingException
 {
