@@ -104,6 +104,7 @@ public class EventBridgePublisherTests : IAsyncLifetime
         serviceCollection.AddAWSMessageBus(builder =>
         {
             builder.AddEventBridgePublisher<ChatMessage>(_eventBusArn);
+            builder.AddMessageSource("/aws/messaging");
         });
         _serviceProvider = serviceCollection.BuildServiceProvider();
     }

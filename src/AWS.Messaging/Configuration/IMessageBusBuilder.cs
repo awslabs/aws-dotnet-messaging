@@ -63,6 +63,20 @@ public interface IMessageBusBuilder
     IMessageBusBuilder AddSerializationCallback(ISerializationCallback serializationCallback);
 
     /// <summary>
+    /// Adds a global message source to the message bus.
+    /// This source will be added to the message envelope of all the messages sent through the framework.
+    /// </summary>
+    /// <param name="messageSource">The relative or absolute Uri to be used as a message source.</param>
+    IMessageBusBuilder AddMessageSource(string messageSource);
+
+    /// <summary>
+    /// Appends a suffix to the message source that is either set using <see cref="AddMessageSource(string)"/>
+    /// or computed by the framework in the absence of a user-defined source.
+    /// </summary>
+    /// <param name="suffix">The suffix to append to the message source.</param>
+    IMessageBusBuilder AddMessageSourceSuffix(string suffix);
+
+    /// <summary>
     /// Add additional services to the <see cref="IMessageBusBuilder"/>. This method is used for AWS.Messaging plugins to add services for messaging.
     /// </summary>
     /// <param name="serviceDescriptor">The service descriptor for the added service.</param>

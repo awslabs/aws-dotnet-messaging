@@ -16,21 +16,30 @@ namespace AWS.Messaging.Serialization;
 /// </summary>
 internal class EnvelopeSerializer : IEnvelopeSerializer
 {
+    private Uri? MessageSource { get; set; }
     private const string CLOUD_EVENT_SPEC_VERSION = "1.0";
 
     private readonly IMessageConfiguration _messageConfiguration;
     private readonly IMessageSerializer _messageSerializer;
     private readonly IDateTimeHandler _dateTimeHandler;
     private readonly IMessageIdGenerator _messageIdGenerator;
+    private readonly IMessageSourceHandler _messageSourceHandler;
     private readonly ILogger<EnvelopeSerializer> _logger;
 
-    public EnvelopeSerializer(ILogger<EnvelopeSerializer> logger, IMessageConfiguration messageConfiguration, IMessageSerializer messageSerializer, IDateTimeHandler dateTimeHandler, IMessageIdGenerator messageIdGenerator)
+    public EnvelopeSerializer(
+        ILogger<EnvelopeSerializer> logger,
+        IMessageConfiguration messageConfiguration,
+        IMessageSerializer messageSerializer,
+        IDateTimeHandler dateTimeHandler,
+        IMessageIdGenerator messageIdGenerator,
+        IMessageSourceHandler messageSourceHandler)
     {
         _logger = logger;
         _messageConfiguration = messageConfiguration;
         _messageSerializer = messageSerializer;
         _dateTimeHandler = dateTimeHandler;
         _messageIdGenerator = messageIdGenerator;
+        _messageSourceHandler = messageSourceHandler;
     }
 
     /// <inheritdoc/>
@@ -38,7 +47,6 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
     {
         var messageId = await _messageIdGenerator.GenerateIdAsync();
         var timeStamp = _dateTimeHandler.GetUtcNow();
-        var source = new Uri("/aws/messaging", UriKind.Relative); // TODO: This is a dummy value. The actual value will come via the publisher configuration (pending implementation).
 
         var publisherMapping = _messageConfiguration.GetPublisherMapping(typeof(T));
         if (publisherMapping is null)
@@ -47,10 +55,15 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             throw new FailedToCreateMessageEnvelopeException($"Failed to create a message envelope because a valid publisher mapping for message type '{typeof(T)}' does not exist.");
         }
 
+        if (MessageSource is null)
+        {
+            MessageSource = await _messageSourceHandler.ComputeMessageSource();
+        }
+
         return new MessageEnvelope<T>
         {
             Id = messageId,
-            Source = source,
+            Source = MessageSource,
             Version = CLOUD_EVENT_SPEC_VERSION,
             MessageTypeIdentifier = publisherMapping.MessageTypeIdentifier,
             TimeStamp = timeStamp,

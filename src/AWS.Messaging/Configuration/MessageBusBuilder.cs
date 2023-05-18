@@ -112,6 +112,20 @@ public class MessageBusBuilder : IMessageBusBuilder
     }
 
     /// <inheritdoc/>
+    public IMessageBusBuilder AddMessageSource(string messageSource)
+    {
+        _messageConfiguration.Source = messageSource;
+        return this;
+    }
+
+    /// <inheritdoc/>
+    public IMessageBusBuilder AddMessageSourceSuffix(string suffix)
+    {
+        _messageConfiguration.SourceSuffix = suffix;
+        return this;
+    }
+
+    /// <inheritdoc/>
     public IMessageBusBuilder AddAdditionalService(ServiceDescriptor serviceDescriptor)
     {
         _additionalServices.Add(serviceDescriptor);
@@ -131,6 +145,12 @@ public class MessageBusBuilder : IMessageBusBuilder
         services.TryAddSingleton<IDateTimeHandler, DateTimeHandler>();
         services.TryAddSingleton<IMessageIdGenerator, MessageIdGenerator>();
         services.TryAddSingleton<IAWSClientProvider, AWSClientProvider>();
+        services.TryAddSingleton<IMessageSourceHandler, MessageSourceHandler>();
+        services.TryAddSingleton<IEnvironmentManager, EnvironmentManager>();
+        services.TryAddSingleton<IDnsManager, DnsManager>();
+        services.TryAddSingleton<IEC2InstanceMetadataManager, EC2InstanceMetadataManager>();
+        services.TryAddSingleton<IECSContainerMetadataManager, ECSContainerMetadataManager>();
+        services.AddHttpClient("ECSMetadataClient");
         services.TryAddSingleton<IMessageManagerFactory, DefaultMessageManagerFactory>();
         services.TryAddSingleton<IHandlerInvoker, HandlerInvoker>();
         services.TryAddSingleton<IMessagePollerFactory, DefaultMessagePollerFactory>();
