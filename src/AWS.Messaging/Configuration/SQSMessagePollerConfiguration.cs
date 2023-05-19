@@ -32,7 +32,7 @@ internal class SQSMessagePollerConfiguration : IMessagePollerConfiguration
     /// Default value for <see cref="VisibilityTimeoutExtensionHeartbeatInterval"/>
     /// </summary>
     /// <remarks>The default value is 1 second.</remarks>
-    public static TimeSpan DEFAULT_VISIBILITY_TIMEOUT_EXTENSION_HEARTBEAT_INTERVAL = TimeSpan.FromSeconds(1);
+    public const int DEFAULT_VISIBILITY_TIMEOUT_EXTENSION_HEARTBEAT_INTERVAL = 1;
 
     /// <summary>
     /// Default value for <see cref="WaitTimeSeconds"/>
@@ -76,7 +76,7 @@ internal class SQSMessagePollerConfiguration : IMessagePollerConfiguration
     /// /// <remarks>
     /// <inheritdoc cref="DEFAULT_VISIBILITY_TIMEOUT_EXTENSION_HEARTBEAT_INTERVAL" path="//remarks"/>
     /// </remarks>
-    public TimeSpan VisibilityTimeoutExtensionHeartbeatInterval { get; init; } = DEFAULT_VISIBILITY_TIMEOUT_EXTENSION_HEARTBEAT_INTERVAL;
+    public int VisibilityTimeoutExtensionHeartbeatInterval { get; init; } = DEFAULT_VISIBILITY_TIMEOUT_EXTENSION_HEARTBEAT_INTERVAL;
 
     /// <summary>
     /// <inheritdoc cref="ReceiveMessageRequest.WaitTimeSeconds"/>

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using AWS.Messaging.Serialization;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace AWS.Messaging.Configuration;
@@ -75,6 +76,13 @@ public interface IMessageBusBuilder
     /// </summary>
     /// <param name="suffix">The suffix to append to the message source.</param>
     IMessageBusBuilder AddMessageSourceSuffix(string suffix);
+    
+    /// <summary>
+    /// Retrieve the Message Processing Framework section from <see cref="IConfiguration"/>
+    /// and apply the Message bus configuration based on that section.
+    /// </summary>
+    /// <param name="configuration"><see cref="IConfiguration"/></param>
+    IMessageBusBuilder LoadConfigurationFromSettings(IConfiguration configuration);
 
     /// <summary>
     /// Add additional services to the <see cref="IMessageBusBuilder"/>. This method is used for AWS.Messaging plugins to add services for messaging.

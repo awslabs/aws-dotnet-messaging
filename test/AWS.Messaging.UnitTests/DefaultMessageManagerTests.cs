@@ -101,7 +101,7 @@ namespace AWS.Messaging.UnitTests
             {
                 VisibilityTimeout = 2,
                 VisibilityTimeoutExtensionThreshold = 1,
-                VisibilityTimeoutExtensionHeartbeatInterval = TimeSpan.FromSeconds(1)
+                VisibilityTimeoutExtensionHeartbeatInterval = 1
             });
 
             var subscriberMapping = new SubscriberMapping(typeof(ChatMessageHandler), typeof(ChatMessage));
@@ -154,7 +154,7 @@ namespace AWS.Messaging.UnitTests
             {
                 VisibilityTimeout = 2,
                 VisibilityTimeoutExtensionThreshold = 1,
-                VisibilityTimeoutExtensionHeartbeatInterval = TimeSpan.FromSeconds(1)
+                VisibilityTimeoutExtensionHeartbeatInterval = 1
             });
 
             var subscriberMapping = new SubscriberMapping(typeof(ChatMessageHandler), typeof(ChatMessage));

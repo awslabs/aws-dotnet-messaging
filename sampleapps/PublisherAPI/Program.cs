@@ -9,12 +9,15 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
 builder.Services.AddControllers();
-builder.Services.AddAWSMessageBus(builder =>
+builder.Services.AddAWSMessageBus(bus =>
 {
-    builder.AddSQSPublisher<ChatMessage>("https://sqs.us-west-2.amazonaws.com/012345678910/MPF");
-    builder.AddSNSPublisher<OrderInfo>("arn:aws:sns:us-west-2:012345678910:MPF");
-    builder.AddEventBridgePublisher<FoodItem>("arn:aws:events:us-west-2:012345678910:event-bus/default");
-    builder.ConfigureSerializationOptions(options =>
+    // To load the configuration from appsettings.json instead of the code below, uncomment this and remove the following lines.
+    // bus.LoadConfigurationFromSettings(builder.Configuration);
+
+    bus.AddSQSPublisher<ChatMessage>("https://sqs.us-west-2.amazonaws.com/012345678910/MPF");
+    bus.AddSNSPublisher<OrderInfo>("arn:aws:sns:us-west-2:012345678910:MPF");
+    bus.AddEventBridgePublisher<FoodItem>("arn:aws:events:us-west-2:012345678910:event-bus/default");
+    bus.ConfigureSerializationOptions(options =>
     {
         options.SystemTextJsonOptions = new JsonSerializerOptions
         {
