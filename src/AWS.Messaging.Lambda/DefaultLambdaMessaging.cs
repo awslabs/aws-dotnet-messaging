@@ -84,10 +84,8 @@ internal class DefaultLambdaMessaging : ILambdaMessaging
 
     private LambdaMessageProcessorConfiguration CreateLambdaMessageProcessorConfiguration(SQSEvent sqsEvent, bool useBatchResponse, LambdaMessagingOptions? options = null)
     {
-        if (options is null)
-        {
-            options = new LambdaMessagingOptions();
-        }
+        options ??= new LambdaMessagingOptions();
+
         options.Validate();
         var sqsQueueArn = sqsEvent.Records[0].EventSourceArn;
         var sqsQueueUrl = GetSQSQueueUrl(sqsQueueArn);

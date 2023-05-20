@@ -3,7 +3,6 @@ using Amazon.Lambda.Core;
 using Amazon.Lambda.SQSEvents;
 using AWS.Messaging.Lambda;
 
-
 // Assembly attribute to enable the Lambda function's JSON input to be converted into a .NET class.
 [assembly: LambdaSerializer(typeof(Amazon.Lambda.Serialization.SystemTextJson.DefaultLambdaJsonSerializer))]
 
@@ -20,7 +19,7 @@ public class Function
     private readonly ILambdaMessaging _messaging;
 
     /// <summary>
-    /// Creates an instance and injects the ILambdaMessaging service
+    /// Creates an instance and injects the <see cref="AWS.Messaging.Lambda.ILambdaMessaging"/> service
     /// from the dependency injection framework configured in the Startup class.
     /// </summary>
     /// <param name="messaging"></param>
@@ -30,7 +29,7 @@ public class Function
     }
 
     /// <summary>
-    /// Lambda function that sends the incoming Lambda SQS Event into the .NET Message Framework.
+    /// Lambda function that sends the incoming Lambda SQS Event into the AWS Message Processing Framework for .NET.
     /// This function returns an <see cref="Amazon.Lambda.SQSEvents.SQSBatchResponse"/> to support partial batch failure.
     /// </summary>
     /// <param name="evnt"></param>
