@@ -17,10 +17,10 @@ public interface IMessageManagerFactory
     /// <summary>
     /// Create an instance of <see cref="AWS.Messaging.Services.IMessageManager" />
     /// </summary>
-    /// <param name="sqlMessageCommunication">The <see cref="AWS.Messaging.Services.IMessagePoller" /> that the <see cref="AWS.Messaging.Services.IMessageManager" /> to make lifecycle changes to the message.</param>
+    /// <param name="sqsMessageCommunication">The <see cref="AWS.Messaging.Services.IMessagePoller" /> that the <see cref="AWS.Messaging.Services.IMessageManager" /> to make lifecycle changes to the message.</param>
     /// <param name="configuration">The configuration for the message manager</param>
     /// <returns></returns>
-    IMessageManager CreateMessageManager(ISQSMessageCommunication sqlMessageCommunication, MessageManagerConfiguration configuration);
+    IMessageManager CreateMessageManager(ISQSMessageCommunication sqsMessageCommunication, MessageManagerConfiguration configuration);
 }
 
 /// <summary>
@@ -38,8 +38,8 @@ internal class DefaultMessageManagerFactory : IMessageManagerFactory
     }
 
     /// <inheritdoc/>
-    public IMessageManager CreateMessageManager(ISQSMessageCommunication sqlMessageCommunication, MessageManagerConfiguration configuration)
+    public IMessageManager CreateMessageManager(ISQSMessageCommunication sqsMessageCommunication, MessageManagerConfiguration configuration)
     {
-        return ActivatorUtilities.CreateInstance<DefaultMessageManager>(_serviceProvider, sqlMessageCommunication, configuration);
+        return ActivatorUtilities.CreateInstance<DefaultMessageManager>(_serviceProvider, sqsMessageCommunication, configuration);
     }
 }

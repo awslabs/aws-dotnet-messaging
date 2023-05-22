@@ -16,7 +16,7 @@ namespace AWS.Messaging.Configuration;
 public class MessageManagerConfiguration
 {
     /// <summary>
-    /// Indicates whether extending message visibility is supported.
+    /// Indicates whether extending message visibility timeout is supported.
     /// </summary>
     public bool SupportExtendingVisibilityTimeout { get; set; } = true;
 
