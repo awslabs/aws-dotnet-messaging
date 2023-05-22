@@ -162,14 +162,14 @@ public class FailedToCreateMessageEnvelopeConfigurationException : AWSMessagingE
 }
 
 /// <summary>
-/// Thrown when attempting to perform an SQS operation on a message without a valid receipt handle in the <see cref="MessageEnvelope.SQSMetadata"/>
+/// Thrown when attempting to perform an SQS operation on a message without a valid <see cref="MessageEnvelope.SQSMetadata"/>
 /// </summary>
-public class MissingSQSReceiptHandleException : AWSMessagingException
+public class MissingSQSMetadataException : AWSMessagingException
 {
     /// <summary>
-    /// Creates an instance of <see cref="MissingSQSReceiptHandleException"/>.
+    /// Creates an instance of <see cref="MissingSQSMetadataException"/>.
     /// </summary>
-    public MissingSQSReceiptHandleException(string message, Exception? innerException = null) : base(message, innerException) { }
+    public MissingSQSMetadataException(string message, Exception? innerException = null) : base(message, innerException) { }
 }
 
 /// <summary>
@@ -226,4 +226,15 @@ public class InvalidAppSettingsConfigurationException : AWSMessagingException
     /// Creates an instance of <see cref="InvalidAppSettingsConfigurationException"/>.
     /// </summary>
     public InvalidAppSettingsConfigurationException(string message, Exception? innerException = null) : base(message, innerException) { }
+}
+
+/// <summary>
+/// Thrown when an invalid SQS queue ARN is encountered.
+/// </summary>
+public class InvalidSQSQueueArnException : AWSMessagingException
+{
+    /// <summary>
+    /// Creates an instance of <see cref="InvalidSQSQueueArnException"/>.
+    /// </summary>
+    public InvalidSQSQueueArnException(string message, Exception? innerException = null) : base(message, innerException) { }
 }

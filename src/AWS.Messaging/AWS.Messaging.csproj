@@ -4,7 +4,7 @@
     <TargetFramework>net6.0</TargetFramework>
     <IsPackable>true</IsPackable>
     <Product>AWS Message Processing Framework</Product>
-    <PackageProjectUrl>https://github.com/aws/aws-dotnet-messaging</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/awslabs/aws-dotnet-messaging</PackageProjectUrl>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <RollForward>Major</RollForward>
     <PackageReadmeFile>README.md</PackageReadmeFile>

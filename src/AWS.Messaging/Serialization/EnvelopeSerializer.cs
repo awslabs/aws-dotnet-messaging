@@ -240,6 +240,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
     {
         envelopeConfiguration.SQSMetadata = new SQSMetadata
         {
+            MessageID = sqsMessage.MessageId,
             MessageAttributes = sqsMessage.MessageAttributes,
             ReceiptHandle = sqsMessage.ReceiptHandle
         };

@@ -13,7 +13,7 @@ namespace AWS.Messaging.SQS;
 /// <summary>
 /// SQS implementation of the <see cref="AWS.Messaging.Services.IMessagePoller" />
 /// </summary>
-internal class SQSMessagePoller : IMessagePoller
+internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
 {
     private readonly IAmazonSQS _sqsClient;
     private readonly ILogger<SQSMessagePoller> _logger;
@@ -117,7 +117,7 @@ internal class SQSMessagePoller : IMessagePoller
                     receiveMessageResponse.Messages.Count, receiveMessageRequest.QueueUrl, receiveMessageResponse.ResponseMetadata.RequestId);
 
                 receivedMessages = receiveMessageResponse.Messages;
-            }
+                }
             catch (AmazonSQSException ex)
             {
                 _logger.LogError(ex, "An {ExceptionName} occurred while polling", nameof(AmazonSQSException));
@@ -146,11 +146,11 @@ internal class SQSMessagePoller : IMessagePoller
 
                     // Don't await this result, we want to process multiple messages concurrently
                     _ = _messageManager.ProcessMessageAsync(messageEnvelopeResult.Envelope, messageEnvelopeResult.Mapping, token);
-                }
+        }
                 catch (AWSMessagingException)
                 {
                     // Swallow exceptions thrown by the framework, and rely on the thrower to log
-                }
+    }
                 catch (Exception ex)
                 {
                     // TODO: explore a "cool down mode" for repeated exceptions
@@ -188,7 +188,7 @@ internal class SQSMessagePoller : IMessagePoller
             else
             {
                 _logger.LogError("Attempted to delete message {MessageId} from {SubscriberEndpoint} without an SQS receipt handle.", message.Id, _configuration.SubscriberEndpoint);
-                throw new MissingSQSReceiptHandleException($"Attempted to delete message {message.Id} from {_configuration.SubscriberEndpoint} without an SQS receipt handle.");
+                throw new MissingSQSMetadataException($"Attempted to delete message {message.Id} from {_configuration.SubscriberEndpoint} without an SQS receipt handle.");
             }
         }
 
@@ -263,7 +263,7 @@ internal class SQSMessagePoller : IMessagePoller
             else
             {
                 _logger.LogError("Attempted to change the visibility of message {MessageId} from {SubscriberEndpoint} without an SQS receipt handle.", message.Id, _configuration.SubscriberEndpoint);
-                throw new MissingSQSReceiptHandleException($"Attempted to change the visibility of message {message.Id} from {_configuration.SubscriberEndpoint} without an SQS receipt handle.");
+                throw new MissingSQSMetadataException($"Attempted to change the visibility of message {message.Id} from {_configuration.SubscriberEndpoint} without an SQS receipt handle.");
             }
         }
         requestBatches.Add(currentRequest);
@@ -318,6 +318,13 @@ internal class SQSMessagePoller : IMessagePoller
                 }
             }
         }
+    }
+
+    /// <inheritdoc/>
+    /// <remarks>This is a no-op since we currently do not have any special logic to handle messages that failed to process in <see cref="SQSMessagePoller"/></remarks>
+    public ValueTask ReportMessageFailureAsync(MessageEnvelope message, CancellationToken token = default)
+    {
+        return ValueTask.CompletedTask;
     }
 
     /// <summary>

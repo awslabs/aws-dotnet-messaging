@@ -4,6 +4,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using AWS.Messaging.Configuration;
+using AWS.Messaging.SQS;
 using Microsoft.Extensions.Logging;
 
 namespace AWS.Messaging.Services;
@@ -11,7 +12,7 @@ namespace AWS.Messaging.Services;
 /// <inheritdoc cref="IMessageManager"/>
 public class DefaultMessageManager : IMessageManager
 {
-    private readonly IMessagePoller _messagePoller;
+    private readonly ISQSMessageCommunication _sqsMessageCommunication;
     private readonly IHandlerInvoker _handlerInvoker;
     private readonly ILogger<DefaultMessageManager> _logger;
     private readonly MessageManagerConfiguration _configuration;
@@ -27,13 +28,13 @@ public class DefaultMessageManager : IMessageManager
     /// <summary>
     /// Constructs an instance of <see cref="DefaultMessageManager"/>
     /// </summary>
-    /// <param name="messagePoller">The poller that this manager is managing messages for</param>
+    /// <param name="sqsMessageCommunication">Provides APIs to communicate back to SQS and the associated Queue for incoming messages.</param>
     /// <param name="handlerInvoker">Used to look up and invoke the correct handler for each message</param>
     /// <param name="logger">Logger for debugging information</param>
     /// <param name="configuration">The configuration for the message manager</param>
-    public DefaultMessageManager(IMessagePoller messagePoller, IHandlerInvoker handlerInvoker, ILogger<DefaultMessageManager> logger, MessageManagerConfiguration configuration)
+    public DefaultMessageManager(ISQSMessageCommunication sqsMessageCommunication, IHandlerInvoker handlerInvoker, ILogger<DefaultMessageManager> logger, MessageManagerConfiguration configuration)
     {
-        _messagePoller = messagePoller;
+        _sqsMessageCommunication = sqsMessageCommunication;
         _handlerInvoker = handlerInvoker;
         _logger = logger;
         _configuration = configuration;
@@ -113,7 +114,8 @@ public class DefaultMessageManager : IMessageManager
         // Add that metadata to the dictionary of running handlers, used to extend the visibility timeout if necessary
         _inFlightMessageMetadata.TryAdd(messageEnvelope, metadata);
 
-        StartMessageVisibilityExtensionTaskIfNotRunning(token);
+        if (_configuration.SupportExtendingVisibilityTimeout)
+            StartMessageVisibilityExtensionTaskIfNotRunning(token);
 
         // Wait for the handler to finish processing the message
         try
@@ -136,16 +138,18 @@ public class DefaultMessageManager : IMessageManager
             if (metadata.HandlerTask.Result.IsSuccess)
             {
                 // Delete the message from the queue if it was processed successfully
-                await _messagePoller.DeleteMessagesAsync(new MessageEnvelope[] { messageEnvelope });
+                await _sqsMessageCommunication.DeleteMessagesAsync(new MessageEnvelope[] { messageEnvelope });
             }
             else // the handler still finished, but returned MessageProcessStatus.Failed
             {
                 _logger.LogError("Message handling completed unsuccessfully for message ID {MessageId}", messageEnvelope.Id);
+                await _sqsMessageCommunication.ReportMessageFailureAsync(messageEnvelope);
             }
         }
         else if (metadata.HandlerTask.IsFaulted)
         {
             _logger.LogError(metadata.HandlerTask.Exception, "Message handling failed unexpectedly for message ID {MessageId}", messageEnvelope.Id);
+            await _sqsMessageCommunication.ReportMessageFailureAsync(messageEnvelope);
         }
 
         UpdateActiveMessageCount(-1);
@@ -189,7 +193,7 @@ public class DefaultMessageManager : IMessageManager
             //
             //   The .ToList() is important as we want to evaluate their expected expiration relative to the threshold at this instant,
             //   rather than lazily. Otherwise the batch of messages that are eligible for a visibility timeout extension may change between
-            //   actully extending the timeout and recording that we've done so.
+            //   actually extending the timeout and recording that we've done so.
             unfinishedMessages = _inFlightMessageMetadata.Where(messageAndMetadata =>
                 messageAndMetadata.Value.IsMessageVisibilityTimeoutExpiring(_configuration.VisibilityTimeoutExtensionThreshold)).ToList();
 
@@ -203,7 +207,7 @@ public class DefaultMessageManager : IMessageManager
                     unfinishedMessage.Value.UpdateExpectedVisibilityTimeoutExpiration(_configuration.VisibilityTimeout);
                 }
 
-                await _messagePoller.ExtendMessageVisibilityTimeoutAsync(unfinishedMessages.Select(messageAndMetadata => messageAndMetadata.Key), token);
+                await _sqsMessageCommunication.ExtendMessageVisibilityTimeoutAsync(unfinishedMessages.Select(messageAndMetadata => messageAndMetadata.Key), token);
             }
         } while (_inFlightMessageMetadata.Any() && !token.IsCancellationRequested);
     }

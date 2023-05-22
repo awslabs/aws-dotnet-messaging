@@ -18,18 +18,4 @@ public interface IMessagePoller
     /// </summary>
     /// <param name="token">Optional cancellation token to shutdown the poller.</param>
     Task StartPollingAsync(CancellationToken token = default);
-
-    /// <summary>
-    /// Delete the message in the underlying service.
-    /// </summary>
-    /// <param name="messages">The messages to delete.</param>
-    /// <param name="token">Optional token to cancel the deletion.</param>
-    Task DeleteMessagesAsync(IEnumerable<MessageEnvelope> messages, CancellationToken token = default);
-
-    /// <summary>
-    /// Inform the underlying service to extend the message's visibility timeout because the message is still being processed.
-    /// </summary>
-    /// <param name="messages">The messages to extend their visibility timeout.</param>
-    /// <param name="token">Optional token to cancel the visibility timeout extension.</param>
-    Task ExtendMessageVisibilityTimeoutAsync(IEnumerable<MessageEnvelope> messages, CancellationToken token = default);
 }

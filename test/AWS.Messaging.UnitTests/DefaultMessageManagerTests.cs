@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using AWS.Messaging.Configuration;
 using AWS.Messaging.Services;
+using AWS.Messaging.SQS;
 using AWS.Messaging.UnitTests.MessageHandlers;
 using AWS.Messaging.UnitTests.Models;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -24,10 +25,10 @@ namespace AWS.Messaging.UnitTests
         [Fact]
         public async Task DefaultMessageManager_ManagesMessageSuccess()
         {
-            var mockPoller = CreateMockPoller();
+            var mockSQSMessageCommunication = CreateMockSQSMessageCommunication();
             var mockHandlerInvoker = CreateMockHandlerInvoker(MessageProcessStatus.Success());
 
-            var manager = new DefaultMessageManager(mockPoller.Object, mockHandlerInvoker.Object, new NullLogger<DefaultMessageManager>(), new MessageManagerConfiguration());
+            var manager = new DefaultMessageManager(mockSQSMessageCommunication.Object, mockHandlerInvoker.Object, new NullLogger<DefaultMessageManager>(), new MessageManagerConfiguration());
 
             var messsageEnvelope = new MessageEnvelope<ChatMessage> { Id = "1" };
             var subscriberMapping = new SubscriberMapping(typeof(ChatMessageHandler), typeof(ChatMessage));
@@ -38,16 +39,16 @@ namespace AWS.Messaging.UnitTests
             mockHandlerInvoker.VerifyInvokeAsyncWasCalledWith(messsageEnvelope, subscriberMapping, Times.Once());
 
             // Since the mock handler invoker returns success, verify that delete was called
-            mockPoller.VerifyDeleteMessagesAsyncWasCalledWith(messsageEnvelope, Times.Once());
+            mockSQSMessageCommunication.VerifyDeleteMessagesAsyncWasCalledWith(messsageEnvelope, Times.Once());
 
             // Since the handler succeeds right away, verify the visiblity was never extended
-            mockPoller.VerifyExtendMessageVisibilityTimeoutAsync(new[] { messsageEnvelope }, Times.Never());
+            mockSQSMessageCommunication.VerifyExtendMessageVisibilityTimeoutAsync(new[] { messsageEnvelope }, Times.Never());
 
             // Verify that the active message count was deprecated back to 0
             Assert.Equal(0, manager.ActiveMessageCount);
 
             // Verify that there were no expected poller/handler calls
-            mockPoller.VerifyNoOtherCalls();
+            mockSQSMessageCommunication.VerifyNoOtherCalls();
             mockHandlerInvoker.VerifyNoOtherCalls();
         }
 
@@ -57,10 +58,10 @@ namespace AWS.Messaging.UnitTests
         [Fact]
         public async Task DefaultMessageManager_ManagesMessageFailed()
         {
-            var mockPoller = CreateMockPoller();
+            var mockSQSMessageCommunication = CreateMockSQSMessageCommunication();
             var mockHandlerInvoker = CreateMockHandlerInvoker(MessageProcessStatus.Failed());
 
-            var manager = new DefaultMessageManager(mockPoller.Object, mockHandlerInvoker.Object, new NullLogger<DefaultMessageManager>(), new MessageManagerConfiguration());
+            var manager = new DefaultMessageManager(mockSQSMessageCommunication.Object, mockHandlerInvoker.Object, new NullLogger<DefaultMessageManager>(), new MessageManagerConfiguration());
 
             var messsageEnvelope = new MessageEnvelope<ChatMessage> { Id = "1" };
             var subscriberMapping = new SubscriberMapping(typeof(ChatMessageHandler), typeof(ChatMessage));
@@ -70,17 +71,20 @@ namespace AWS.Messaging.UnitTests
             // Verify that the handler was invoked once with the expected message and mapping
             mockHandlerInvoker.VerifyInvokeAsyncWasCalledWith(messsageEnvelope, subscriberMapping, Times.Once());
 
+            // Verify that the handler was invoked once with the expected message and mapping
+            mockSQSMessageCommunication.VerifyReportMessageFailureAsync(messsageEnvelope, Times.Once());
+
             // Since the message handling failed, verify that delete was never called
-            mockPoller.VerifyDeleteMessagesAsyncWasCalledWith(messsageEnvelope, Times.Never());
+            mockSQSMessageCommunication.VerifyDeleteMessagesAsyncWasCalledWith(messsageEnvelope, Times.Never());
 
             // Since the handler fails right away, verify the visiblity was never extended
-            mockPoller.VerifyExtendMessageVisibilityTimeoutAsync(new[] { messsageEnvelope }, Times.Never());
+            mockSQSMessageCommunication.VerifyExtendMessageVisibilityTimeoutAsync(new[] { messsageEnvelope }, Times.Never());
 
             // Verify that the active message count was deprecated back to 0
             Assert.Equal(0, manager.ActiveMessageCount);
 
             // Verify that there were no expected poller/handler calls
-            mockPoller.VerifyNoOtherCalls();
+            mockSQSMessageCommunication.VerifyNoOtherCalls();
             mockHandlerInvoker.VerifyNoOtherCalls();
         }
 
@@ -90,10 +94,10 @@ namespace AWS.Messaging.UnitTests
         [Fact]
         public async Task DefaultMessageManager_ExtendsVisibilityTimeout_Batch()
         {
-            var mockPoller = CreateMockPoller();
+            var mockSQSMessageCommunication = CreateMockSQSMessageCommunication();
             var mockHandlerInvoker = CreateMockHandlerInvoker(MessageProcessStatus.Success(), messageHandlingDelay: TimeSpan.FromSeconds(3));
 
-            var manager = new DefaultMessageManager(mockPoller.Object, mockHandlerInvoker.Object, new NullLogger<DefaultMessageManager>(), new MessageManagerConfiguration
+            var manager = new DefaultMessageManager(mockSQSMessageCommunication.Object, mockHandlerInvoker.Object, new NullLogger<DefaultMessageManager>(), new MessageManagerConfiguration
             {
                 VisibilityTimeout = 2,
                 VisibilityTimeoutExtensionThreshold = 1,
@@ -120,12 +124,12 @@ namespace AWS.Messaging.UnitTests
             mockHandlerInvoker.VerifyInvokeAsyncWasCalledWith(message2, subscriberMapping, Times.Once());
 
             // Since the mock handler invoker returns success, verify that delete was called
-            mockPoller.VerifyDeleteMessagesAsyncWasCalledWith(message1, Times.Once());
-            mockPoller.VerifyDeleteMessagesAsyncWasCalledWith(message2, Times.Once());
+            mockSQSMessageCommunication.VerifyDeleteMessagesAsyncWasCalledWith(message1, Times.Once());
+            mockSQSMessageCommunication.VerifyDeleteMessagesAsyncWasCalledWith(message2, Times.Once());
 
             // Since the message handler takes 3 seconds, verify that the visibility was extended
             // The 1 to 3 allows for some instability around the second boundaries
-            mockPoller.VerifyExtendMessageVisibilityTimeoutAsync(new[] { message2, message1 }, Times.Between(1, 3, Moq.Range.Inclusive));
+            mockSQSMessageCommunication.VerifyExtendMessageVisibilityTimeoutAsync(new[] { message2, message1 }, Times.Between(1, 3, Moq.Range.Inclusive));
 
             // Verify that there were no other calls, which is guarding against
             // ExtendMessageVisibilityTimeoutAsync being called with only a single message since
@@ -143,10 +147,10 @@ namespace AWS.Messaging.UnitTests
         [Fact]
         public async Task DefaultMessageManager_ExtendsVisibilityTimeout_OnlyWhenNecessary()
         {
-            var mockPoller = CreateMockPoller();
+            var mockSQSMessageCommunication = CreateMockSQSMessageCommunication();
             var mockHandlerInvoker = CreateMockHandlerInvoker(MessageProcessStatus.Success(), messageHandlingDelay: TimeSpan.FromSeconds(4));
 
-            var manager = new DefaultMessageManager(mockPoller.Object, mockHandlerInvoker.Object, new NullLogger<DefaultMessageManager>(), new MessageManagerConfiguration
+            var manager = new DefaultMessageManager(mockSQSMessageCommunication.Object, mockHandlerInvoker.Object, new NullLogger<DefaultMessageManager>(), new MessageManagerConfiguration
             {
                 VisibilityTimeout = 2,
                 VisibilityTimeoutExtensionThreshold = 1,
@@ -173,20 +177,20 @@ namespace AWS.Messaging.UnitTests
             mockHandlerInvoker.VerifyInvokeAsyncWasCalledWith(laterMessage, subscriberMapping, Times.Once());
 
             // Since the mock handler invoker returns success, verify that delete was called
-            mockPoller.VerifyDeleteMessagesAsyncWasCalledWith(earlyMessage, Times.Once());
-            mockPoller.VerifyDeleteMessagesAsyncWasCalledWith(laterMessage, Times.Once());
+            mockSQSMessageCommunication.VerifyDeleteMessagesAsyncWasCalledWith(earlyMessage, Times.Once());
+            mockSQSMessageCommunication.VerifyDeleteMessagesAsyncWasCalledWith(laterMessage, Times.Once());
 
             // Since the message handler takes 3 seconds, verify the the visibility was extended
             // The 1 to 3 allows for some instability around the second boundaries
-            mockPoller.VerifyExtendMessageVisibilityTimeoutAsync(new[] { earlyMessage }, Times.Between(1, 3, Moq.Range.Inclusive));
-            mockPoller.VerifyExtendMessageVisibilityTimeoutAsync(new[] { laterMessage }, Times.Between(1, 3, Moq.Range.Inclusive));
+            mockSQSMessageCommunication.VerifyExtendMessageVisibilityTimeoutAsync(new[] { earlyMessage }, Times.Between(1, 3, Moq.Range.Inclusive));
+            mockSQSMessageCommunication.VerifyExtendMessageVisibilityTimeoutAsync(new[] { laterMessage }, Times.Between(1, 3, Moq.Range.Inclusive));
 
             // Verify that there were no other calls, which is guarding against ExtendMessageVisibilityTimeoutAsync
             // being called with both messages since we never expect them to be batched together
             // T  | T+0   | T+1    | T+2    | T+3    | T+4    | T+5    | T + 6  | T + 7  |
             // M1 | Start |        | Extend | Extend | Finish |        |        |        |
             // M2 |       |                 | Start  |        | Extend | Extend | Finish |
-            mockPoller.VerifyNoOtherCalls();
+            mockSQSMessageCommunication.VerifyNoOtherCalls();
             mockHandlerInvoker.VerifyNoOtherCalls();
 
             // Verify that the active message count was deprecated back to 0
@@ -200,10 +204,10 @@ namespace AWS.Messaging.UnitTests
         [Fact]
         public async Task DefaultMessageManager_CountsActiveMessagesCorrectly()
         {
-            var mockPoller = CreateMockPoller();
+            var mockSQSMessageCommunication = CreateMockSQSMessageCommunication();
             var mockHandlerInvoker = CreateMockHandlerInvoker(MessageProcessStatus.Success(), TimeSpan.FromSeconds(1));
 
-            var manager = new DefaultMessageManager(mockPoller.Object, mockHandlerInvoker.Object, new NullLogger<DefaultMessageManager>(), new MessageManagerConfiguration());
+            var manager = new DefaultMessageManager(mockSQSMessageCommunication.Object, mockHandlerInvoker.Object, new NullLogger<DefaultMessageManager>(), new MessageManagerConfiguration());
             var subscriberMapping = new SubscriberMapping(typeof(ChatMessageHandler), typeof(ChatMessage));
            
             var tasks = new List<Task>();
@@ -227,16 +231,16 @@ namespace AWS.Messaging.UnitTests
         /// Mocks a message poller with the given visibility refresh interval
         /// </summary>
         /// <returns>Mock poller</returns>
-        private Mock<IMessagePoller> CreateMockPoller()
+        private Mock<ISQSMessageCommunication> CreateMockSQSMessageCommunication()
         {
-            var mockPoller = new Mock<IMessagePoller>();
+            var mockSQSMessageCommunication = new Mock<ISQSMessageCommunication>();
 
-            mockPoller.Setup(x => x.ExtendMessageVisibilityTimeoutAsync(
+            mockSQSMessageCommunication.Setup(x => x.ExtendMessageVisibilityTimeoutAsync(
                     It.IsAny<IEnumerable<MessageEnvelope>>(),
                     It.IsAny<CancellationToken>()))
                 .Returns(Task.CompletedTask);
 
-            return mockPoller;
+            return mockSQSMessageCommunication;
         }
 
         /// <summary>
@@ -279,9 +283,20 @@ namespace AWS.Messaging.UnitTests
         /// <summary>
         /// Verifies that <see cref="IMessagePoller.DeleteMessagesAsync"/> was called with a specified message a specified number of times
         /// </summary>
-        public static void VerifyDeleteMessagesAsyncWasCalledWith(this Mock<IMessagePoller> mockPoller, MessageEnvelope expectedMessage, Times times)
+        public static void VerifyReportMessageFailureAsync(this Mock<ISQSMessageCommunication> mockSQSMessageCommunication, MessageEnvelope expectedMessage, Times times)
         {
-            mockPoller.Verify(poller => poller.DeleteMessagesAsync(
+            mockSQSMessageCommunication.Verify(sqsMessageCommunication => sqsMessageCommunication.ReportMessageFailureAsync(
+                    It.Is<MessageEnvelope>(x => x == expectedMessage),
+                    It.IsAny<CancellationToken>()),
+                times);
+        }
+
+        /// <summary>
+        /// Verifies that <see cref="IMessagePoller.DeleteMessagesAsync"/> was called with a specified message a specified number of times
+        /// </summary>
+        public static void VerifyDeleteMessagesAsyncWasCalledWith(this Mock<ISQSMessageCommunication> mockSQSMessageCommunication, MessageEnvelope expectedMessage, Times times)
+        {
+            mockSQSMessageCommunication.Verify(sqsMessageCommunication => sqsMessageCommunication.DeleteMessagesAsync(
                     It.Is<IEnumerable<MessageEnvelope>>(x => x.Count() == 1 && x.First() == expectedMessage),
                     It.IsAny<CancellationToken>()),
                 times);
@@ -302,9 +317,9 @@ namespace AWS.Messaging.UnitTests
         /// <summary>
         /// Verifies that <see cref="IMessagePoller.ExtendMessageVisibilityTimeoutAsync"/> was called with specified message(s) a specified number of times
         /// </summary>
-        public static void VerifyExtendMessageVisibilityTimeoutAsync(this Mock<IMessagePoller> mockPoller, IEnumerable<MessageEnvelope> messages, Times times)
+        public static void VerifyExtendMessageVisibilityTimeoutAsync(this Mock<ISQSMessageCommunication> mockSQSMessageCommunication, IEnumerable<MessageEnvelope> messages, Times times)
         {
-            mockPoller.Verify(poller => poller.ExtendMessageVisibilityTimeoutAsync(
+            mockSQSMessageCommunication.Verify(sqsMessageCommunication => sqsMessageCommunication.ExtendMessageVisibilityTimeoutAsync(
                     It.Is<IEnumerable<MessageEnvelope>>(x => x.ToHashSet().SetEquals(messages.ToHashSet())), // use HashSets becuase the order may differ
                     It.IsAny<CancellationToken>()),
                 times);

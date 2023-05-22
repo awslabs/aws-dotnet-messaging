@@ -107,6 +107,7 @@ internal class SQSMessagePollerConfiguration : IMessagePollerConfiguration
     {
         return new MessageManagerConfiguration
         {
+            SupportExtendingVisibilityTimeout = true,
             VisibilityTimeout = VisibilityTimeout,
             VisibilityTimeoutExtensionThreshold = VisibilityTimeoutExtensionThreshold,
             VisibilityTimeoutExtensionHeartbeatInterval = VisibilityTimeoutExtensionHeartbeatInterval

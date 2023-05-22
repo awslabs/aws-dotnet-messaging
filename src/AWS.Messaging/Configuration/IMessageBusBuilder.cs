@@ -3,6 +3,7 @@
 
 using AWS.Messaging.Serialization;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace AWS.Messaging.Configuration;
 
@@ -82,4 +83,11 @@ public interface IMessageBusBuilder
     /// </summary>
     /// <param name="configuration"><see cref="IConfiguration"/></param>
     IMessageBusBuilder LoadConfigurationFromSettings(IConfiguration configuration);
+
+    /// <summary>
+    /// Add additional services to the <see cref="IMessageBusBuilder"/>. This method is used for AWS.Messaging plugins to add services for messaging.
+    /// </summary>
+    /// <param name="serviceDescriptor">The service descriptor for the added service.</param>
+    /// <returns></returns>
+    IMessageBusBuilder AddAdditionalService(ServiceDescriptor serviceDescriptor);
 }

@@ -10,6 +10,7 @@ using Amazon.Extensions.NETCore.Setup;
 using Amazon.SimpleNotificationService;
 using Amazon.SQS;
 using AWS.Messaging.Configuration;
+using AWS.Messaging.Lambda;
 using AWS.Messaging.Publishers.EventBridge;
 using AWS.Messaging.Publishers.SNS;
 using AWS.Messaging.Publishers.SQS;

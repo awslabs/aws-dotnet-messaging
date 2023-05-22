@@ -15,6 +15,11 @@ namespace AWS.Messaging.Configuration;
 /// TODO: revisit not marking this public since it's not user-configurable. Currently it's required due to DefaultMessageManagerFactory's implementation
 public class MessageManagerConfiguration
 {
+    /// <summary>
+    /// Indicates whether extending message visibility timeout is supported.
+    /// </summary>
+    public bool SupportExtendingVisibilityTimeout { get; set; } = true;
+
     /// <inheritdoc cref="SQSMessagePollerConfiguration.VisibilityTimeout"/>
     internal int VisibilityTimeout { get; set; } = SQSMessagePollerConfiguration.DEFAULT_VISIBILITY_TIMEOUT_SECONDS;
 

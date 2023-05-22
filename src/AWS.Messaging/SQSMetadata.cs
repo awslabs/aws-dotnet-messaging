@@ -11,6 +11,11 @@ namespace AWS.Messaging
     public class SQSMetadata
     {
         /// <summary>
+        /// The unique identifier for the SQS message.
+        /// </summary>
+        public string? MessageID { get; set; }
+
+        /// <summary>
         /// The ReceiptHandle is returned when messages are receieved from SQS. The ReceiptHandle is required to delete messages or extend the message's visibility timeout.
         /// </summary>
         public string? ReceiptHandle { get; set; }
