@@ -1,7 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-using System.Text.Json.Serialization;
+using System;
+using System.Collections.Concurrent;
 
 namespace AWS.Messaging.UnitTests.Models;
 
@@ -30,4 +31,29 @@ public enum Gender
 {
     Male,
     Female
+}
+
+public interface IGreeter
+{
+    string Greet();
+}
+
+public class Greeter : IGreeter
+{
+    public readonly string _message;
+
+    public Greeter()
+    {
+        _message = Guid.NewGuid().ToString();
+    }
+
+    public string Greet()
+    {
+        return _message;
+    }
+}
+
+public class TempStorage<T>
+{
+    public ConcurrentBag<MessageEnvelope<T>> Messages { get; set; } = new ConcurrentBag<MessageEnvelope<T>>();
 }

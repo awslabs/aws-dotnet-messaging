@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using AWS.Messaging.Configuration;
 using AWS.Messaging.Services;
@@ -103,6 +104,41 @@ public class HandlerInvokerTests
         await handlerInvoker.InvokeAsync(envelope, subscriberMapping);
 
         mockLogger.VerifyLogError(typeof(CustomHandlerException), "A handler exception occurred while handling message ID 123.");
+    }
 
+    /// <summary>
+    /// Tests that all message handlers are registered and retrieved as scoped dependencies in the service collection.
+    /// </summary>
+    [Fact]
+    public async Task HandlerInvoker_VerifyHandlersAreRetrievedAsScopedDependencies()
+    {
+        // ARRANGE
+        var serviceCollection = new ServiceCollection()
+            .AddAWSMessageBus(builder =>
+            {
+                builder.AddMessageHandler<GreetingHandler, string>("sqsQueueUrl");
+            });
+
+        serviceCollection.AddScoped<IGreeter, Greeter>();
+        serviceCollection.AddSingleton<TempStorage<string>>();
+
+        var serviceProvider = serviceCollection.BuildServiceProvider();
+        var handlerInvoker = new HandlerInvoker(serviceProvider, new NullLogger<HandlerInvoker>());
+
+        // ACT and ASSERT - Invoke the GreetingHandler multiple times and verify that a new instance of IGreeter is created each time.
+        var envelope = new MessageEnvelope<string>();
+        var subscriberMapping = new SubscriberMapping(typeof(GreetingHandler), typeof(string));
+
+        await handlerInvoker.InvokeAsync(envelope, subscriberMapping);
+        await handlerInvoker.InvokeAsync(envelope, subscriberMapping);
+        await handlerInvoker.InvokeAsync(envelope, subscriberMapping);
+
+        var tempStorage = serviceProvider.GetRequiredService<TempStorage<string>>();
+        var messageStorage2 = new HashSet<string>();
+        foreach (var item in tempStorage.Messages)
+        {
+            messageStorage2.Add(item.Message);
+        }
+        Assert.Equal(3, messageStorage2.Count);
     }
 }

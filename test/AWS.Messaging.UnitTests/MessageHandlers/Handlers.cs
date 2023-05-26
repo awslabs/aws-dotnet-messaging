@@ -2,9 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using AWS.Messaging.UnitTests.Models;
+using Microsoft.Extensions.DependencyInjection;
+using Xunit;
 
 namespace AWS.Messaging.UnitTests.MessageHandlers;
 
@@ -56,5 +59,33 @@ public class ChatExceptionHandler : IMessageHandler<ChatMessage>
     public Task<MessageProcessStatus> HandleAsync(MessageEnvelope<ChatMessage> messageEnvelope, CancellationToken token = default)
     {
         throw new CustomHandlerException($"Unable to process message {messageEnvelope.Id}");
+    }
+}
+
+public class GreetingHandler : IMessageHandler<string>
+{
+    private readonly IGreeter _greeter;
+    private readonly TempStorage<string> _tempStorage;
+
+    public GreetingHandler(IServiceProvider serviceProvider, TempStorage<string> tempStorage)
+    {
+        // Retrieve the IGreeter instance from the serviceProvider and verify that all instances are the same.
+        var greeter1 = serviceProvider.GetRequiredService<IGreeter>();
+        var greeter2 = serviceProvider.GetRequiredService<IGreeter>();
+        var greeter3 = serviceProvider.GetRequiredService<IGreeter>();
+        var messageStorage = new HashSet<string>() { greeter1.Greet(), greeter2.Greet(), greeter3.Greet() };
+        Assert.Single(messageStorage);
+
+        _greeter = serviceProvider.GetRequiredService<IGreeter>();
+        _tempStorage = tempStorage;
+    }
+
+    public Task<MessageProcessStatus> HandleAsync(MessageEnvelope<string> messageEnvelope, CancellationToken token = default)
+    {
+        _tempStorage.Messages.Add(new MessageEnvelope<string>
+        {
+            Message = _greeter.Greet()
+        });
+        return Task.FromResult(MessageProcessStatus.Success());
     }
 }
