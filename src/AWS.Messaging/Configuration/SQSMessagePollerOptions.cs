@@ -1,8 +1,6 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-using System.Text;
-
 namespace AWS.Messaging.Configuration;
 
 /// <summary>
@@ -19,8 +17,11 @@ public class SQSMessagePollerOptions
     /// <inheritdoc cref="SQSMessagePollerConfiguration.WaitTimeSeconds"/>
     public int WaitTimeSeconds { get; set; } = SQSMessagePollerConfiguration.DEFAULT_WAIT_TIME_SECONDS;
 
-    /// <inheritdoc cref="SQSMessagePollerConfiguration.VisibilityTimeoutExtensionInterval"/>
-    public int VisibilityTimeoutExtensionInterval { get; set; } = SQSMessagePollerConfiguration.DEFAULT_VISIBILITY_TIMEOUT_EXTENSION_INTERVAL_SECONDS;
+    /// <inheritdoc cref="SQSMessagePollerConfiguration.VisibilityTimeoutExtensionThreshold"/>
+    public int VisibilityTimeoutExtensionThreshold { get; set; } = SQSMessagePollerConfiguration.DEFAULT_VISIBILITY_TIMEOUT_EXTENSION_THRESHOLD_SECONDS;
+
+    /// <inheritdoc cref="SQSMessagePollerConfiguration.VisibilityTimeoutExtensionHeartbeatInterval"/>
+    public int VisibilityTimeoutExtensionHeartbeatInterval { get; set; } = SQSMessagePollerConfiguration.DEFAULT_VISIBILITY_TIMEOUT_EXTENSION_HEARTBEAT_INTERVAL;
 
     /// <summary>
     /// Validates that the options are valid against the message framework's and/or SQS limits
@@ -47,16 +48,29 @@ public class SQSMessagePollerOptions
             errorMessages.Add($"{nameof(WaitTimeSeconds)} must be between 0 seconds and 20 seconds. Current value: {WaitTimeSeconds}.");
         }
 
-        if (VisibilityTimeoutExtensionInterval <= 0)
+        if (VisibilityTimeoutExtensionThreshold <= 0)
         {
-            errorMessages.Add($"{nameof(VisibilityTimeoutExtensionInterval)} must be greater than 0. Current value: {VisibilityTimeoutExtensionInterval}.");
+            errorMessages.Add($"{nameof(VisibilityTimeoutExtensionThreshold)} must be greater than 0. Current value: {VisibilityTimeoutExtensionThreshold}.");
         }
 
-        if (VisibilityTimeoutExtensionInterval >= VisibilityTimeout)
+        if (VisibilityTimeoutExtensionThreshold >= VisibilityTimeout)
         {
-            errorMessages.Add($"{nameof(VisibilityTimeoutExtensionInterval)} ({VisibilityTimeoutExtensionInterval} seconds) " +
+            errorMessages.Add($"{nameof(VisibilityTimeoutExtensionThreshold)} ({VisibilityTimeoutExtensionThreshold} seconds) " +
                 $"must be less than {nameof(VisibilityTimeout)} ({VisibilityTimeout} seconds), " +
                 $"or else other consumers may receive the message while it is still being processed.");
+        }
+
+        if (VisibilityTimeoutExtensionHeartbeatInterval <= 0)
+        {
+            errorMessages.Add($"{nameof(VisibilityTimeoutExtensionHeartbeatInterval)} must be greater than 0 seconds. " +
+                $"Current value: {VisibilityTimeoutExtensionHeartbeatInterval}.");
+        }
+
+        if (VisibilityTimeoutExtensionHeartbeatInterval >= VisibilityTimeoutExtensionThreshold)
+        {
+            errorMessages.Add($"{nameof(VisibilityTimeoutExtensionHeartbeatInterval)} ({VisibilityTimeoutExtensionHeartbeatInterval}) " +
+                            $"must be less than {nameof(VisibilityTimeoutExtensionThreshold)} ({VisibilityTimeoutExtensionThreshold}), " +
+                            $"or else other consumers may receive the message while it is still being processed.");
         }
 
         if (errorMessages.Any())

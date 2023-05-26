@@ -54,25 +54,25 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
     /// <exception cref="MissingMessageTypeConfigurationException">If cannot find the publisher configuration for the message type.</exception>
     public async Task PublishAsync<T>(T message, EventBridgeOptions? eventBridgeOptions, CancellationToken token = default)
     {
-        _logger.LogDebug("Publishing the message of type '{messageType}' using the {publisherType}.", typeof(T), nameof(EventBridgePublisher));
+        _logger.LogDebug("Publishing the message of type '{MessageType}' using the {PublisherType}.", typeof(T), nameof(EventBridgePublisher));
 
         if (message == null)
         {
-            _logger.LogError("A message of type '{messageType}' has a null value.", typeof(T));
+            _logger.LogError("A message of type '{MessageType}' has a null value.", typeof(T));
             throw new InvalidMessageException("The message cannot be null.");
         }
 
         var publisherMapping = GetPublisherMapping(typeof(T));
         var publisherEndpoint = publisherMapping.PublisherConfiguration.PublisherEndpoint;
 
-        _logger.LogDebug("Creating the message envelope for the message of type '{messageType}'.", typeof(T));
+        _logger.LogDebug("Creating the message envelope for the message of type '{MessageType}'.", typeof(T));
         var messageEnvelope = await _envelopeSerializer.CreateEnvelopeAsync(message);
         var messageBody = await _envelopeSerializer.SerializeAsync(messageEnvelope);
 
-        _logger.LogDebug("Sending the message of type '{messageType}' to EventBridge. Publisher Endpoint: {endpoint}", typeof(T), publisherEndpoint);
+        _logger.LogDebug("Sending the message of type '{MessageType}' to EventBridge. Publisher Endpoint: {Endpoint}", typeof(T), publisherEndpoint);
         var request = CreatePutEventsRequest(publisherMapping, messageEnvelope.Source?.ToString(), messageBody, eventBridgeOptions);
         await _eventBridgeClient.PutEventsAsync(request, token);
-        _logger.LogDebug("The message of type '{messageType}' has been pushed to EventBridge.", typeof(T));
+        _logger.LogDebug("The message of type '{MessageType}' has been pushed to EventBridge.", typeof(T));
     }
 
     private PutEventsRequest CreatePutEventsRequest(PublisherMapping publisherMapping, string? source, string messageBody, EventBridgeOptions? eventBridgeOptions)
@@ -118,12 +118,12 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
         var mapping = _messageConfiguration.GetPublisherMapping(messageType);
         if (mapping is null)
         {
-            _logger.LogError("Cannot find a configuration for the message of type '{messageType}'.", messageType.FullName);
+            _logger.LogError("Cannot find a configuration for the message of type '{MessageType}'.", messageType.FullName);
             throw new MissingMessageTypeConfigurationException($"The framework is not configured to accept messages of type '{messageType.FullName}'.");
         }
         if (mapping.PublishTargetType != PublisherTargetType.EVENTBRIDGE_PUBLISHER)
         {
-            _logger.LogError("Messages of type '{messageType}' are not configured for publishing to EventBridge.", messageType.FullName);
+            _logger.LogError("Messages of type '{MessageType}' are not configured for publishing to EventBridge.", messageType.FullName);
             throw new MissingMessageTypeConfigurationException($"Messages of type '{messageType.FullName}' are not configured for publishing to EventBridge.");
         }
         return mapping;

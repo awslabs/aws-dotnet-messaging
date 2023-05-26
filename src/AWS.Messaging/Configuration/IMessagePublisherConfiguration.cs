@@ -9,7 +9,7 @@ namespace AWS.Messaging.Configuration;
 public interface IMessagePublisherConfiguration
 {
     /// <summary>
-    /// Retrieves the AWS service-specifc endpoint URL which the publisher will use to route the message.
+    /// Retrieves the AWS service-specific endpoint URL which the publisher will use to route the message.
     /// </summary>
     string PublisherEndpoint { get; set; }
 }

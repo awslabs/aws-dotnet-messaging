@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace AWS.Messaging.Services;
 
 /// <summary>
-/// Factory for creating instances of <see cref="AWS.Messaging.Services.IMessagePollerFactory" />. Users that want to use a custom <see cref="AWS.Messaging.Services.IMessagePoller" />
+/// Factory for creating instances of <see cref="AWS.Messaging.Services.IMessagePoller" />. Users that want to use a custom <see cref="AWS.Messaging.Services.IMessagePoller" />
 /// can inject into the <see cref="Microsoft.Extensions.DependencyInjection.IServiceCollection" /> their own implementation of <see cref="AWS.Messaging.Services.IMessagePollerFactory" /> to construct
 /// a custom <see cref="AWS.Messaging.Services.IMessagePoller" /> instance.
 /// </summary>

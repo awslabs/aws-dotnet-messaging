@@ -16,41 +16,54 @@ namespace AWS.Messaging.Serialization;
 /// </summary>
 internal class EnvelopeSerializer : IEnvelopeSerializer
 {
+    private Uri? MessageSource { get; set; }
     private const string CLOUD_EVENT_SPEC_VERSION = "1.0";
 
     private readonly IMessageConfiguration _messageConfiguration;
     private readonly IMessageSerializer _messageSerializer;
     private readonly IDateTimeHandler _dateTimeHandler;
     private readonly IMessageIdGenerator _messageIdGenerator;
+    private readonly IMessageSourceHandler _messageSourceHandler;
     private readonly ILogger<EnvelopeSerializer> _logger;
 
-    public EnvelopeSerializer(ILogger<EnvelopeSerializer> logger, IMessageConfiguration messageConfiguration, IMessageSerializer messageSerializer, IDateTimeHandler dateTimeHandler, IMessageIdGenerator messageIdGenerator)
+    public EnvelopeSerializer(
+        ILogger<EnvelopeSerializer> logger,
+        IMessageConfiguration messageConfiguration,
+        IMessageSerializer messageSerializer,
+        IDateTimeHandler dateTimeHandler,
+        IMessageIdGenerator messageIdGenerator,
+        IMessageSourceHandler messageSourceHandler)
     {
         _logger = logger;
         _messageConfiguration = messageConfiguration;
         _messageSerializer = messageSerializer;
         _dateTimeHandler = dateTimeHandler;
         _messageIdGenerator = messageIdGenerator;
+        _messageSourceHandler = messageSourceHandler;
     }
 
-    // <inheritdoc/>
+    /// <inheritdoc/>
     public async ValueTask<MessageEnvelope<T>> CreateEnvelopeAsync<T>(T message)
     {
         var messageId = await _messageIdGenerator.GenerateIdAsync();
         var timeStamp = _dateTimeHandler.GetUtcNow();
-        var source = new Uri("/aws/messaging", UriKind.Relative); // TODO: This is a dummy value. The actual value will come via the publisher configuration (pending implementation).
 
         var publisherMapping = _messageConfiguration.GetPublisherMapping(typeof(T));
         if (publisherMapping is null)
         {
-            _logger.LogError("Failed to create a message envelope because a valid publisher mapping for message type '{0}' does not exist.", typeof(T));
+            _logger.LogError("Failed to create a message envelope because a valid publisher mapping for message type '{MessageType}' does not exist.", typeof(T));
             throw new FailedToCreateMessageEnvelopeException($"Failed to create a message envelope because a valid publisher mapping for message type '{typeof(T)}' does not exist.");
+        }
+
+        if (MessageSource is null)
+        {
+            MessageSource = await _messageSourceHandler.ComputeMessageSource();
         }
 
         return new MessageEnvelope<T>
         {
             Id = messageId,
-            Source = source,
+            Source = MessageSource,
             Version = CLOUD_EVENT_SPEC_VERSION,
             MessageTypeIdentifier = publisherMapping.MessageTypeIdentifier,
             TimeStamp = timeStamp,
@@ -61,7 +74,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
     /// <summary>
     /// Serializes the <see cref="MessageEnvelope{T}"/> into a raw string representing a JSON blob
     /// </summary>
-    /// <typeparam name="T">The .NET type of the uderlying application message held by <see cref="MessageEnvelope{T}.Message"/></typeparam>
+    /// <typeparam name="T">The .NET type of the underlying application message held by <see cref="MessageEnvelope{T}.Message"/></typeparam>
     /// <param name="envelope">The <see cref="MessageEnvelope{T}"/> instance that will be serialized</param>
     public async ValueTask<string> SerializeAsync<T>(MessageEnvelope<T> envelope)
     {
@@ -71,7 +84,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             var message = envelope.Message ?? throw new ArgumentNullException("The underlying application message cannot be null");
 
             // This blob serves as an intermediate data container because the underlying application message
-            // must be serialized seperately as the _messageSerializer can have a user injected implementation.
+            // must be serialized separately as the _messageSerializer can have a user injected implementation.
             var blob = new JsonObject
             {
                 ["id"] = envelope.Id,
@@ -79,13 +92,13 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
                 ["specversion"] = envelope.Version,
                 ["type"] = envelope.MessageTypeIdentifier,
                 ["time"] = envelope.TimeStamp,
-                ["data"] = _messageSerializer.Serialize(envelope.Message)
+                ["data"] = _messageSerializer.Serialize(message)
             };
 
             var jsonString = blob.ToJsonString();
             var serializedMessage = await InvokePostSerializationCallback(jsonString);
-            
-            _logger.LogTrace("Serialized the MessageEnvelope object as the following raw string:\n{serializedMessage}", serializedMessage);
+
+            _logger.LogTrace("Serialized the MessageEnvelope object as the following raw string:\n{SerializedMessage}", serializedMessage);
             return serializedMessage;
         }
         catch (Exception ex)
@@ -95,7 +108,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
         }
     }
 
-    // <inheritdoc/>
+    /// <inheritdoc/>
     public async ValueTask<ConvertToEnvelopeResult> ConvertToEnvelopeAsync(Message sqsMessage)
     {
         try
@@ -108,7 +121,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             var subscriberMapping = _messageConfiguration.GetSubscriberMapping(messageTypeIdentifier);
             if (subscriberMapping is null)
             {
-                _logger.LogError("{messageConfiguration} does not have a valid subscriber mapping for message ID '{messageTypeIdentifier}'", nameof(_messageConfiguration), messageTypeIdentifier);
+                _logger.LogError("{MessageConfiguration} does not have a valid subscriber mapping for message ID '{MessageTypeIdentifier}'", nameof(_messageConfiguration), messageTypeIdentifier);
                 throw new InvalidDataException($"{nameof(_messageConfiguration)} does not have a valid subscriber mapping for {nameof(messageTypeIdentifier)} '{messageTypeIdentifier}'");
             }
 
@@ -118,7 +131,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
 
             if (Activator.CreateInstance(messageEnvelopeType) is not MessageEnvelope finalMessageEnvelope)
             {
-                _logger.LogError("Failed to create a messageEnvelope of type '{messageEnvelopeType}'", messageEnvelopeType.FullName);
+                _logger.LogError("Failed to create a messageEnvelope of type '{MessageEnvelopeType}'", messageEnvelopeType.FullName);
                 throw new InvalidOperationException($"Failed to create a {nameof(MessageEnvelope)} of type '{messageEnvelopeType.FullName}'");
             }
 
@@ -136,12 +149,12 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             await InvokePostDeserializationCallback(finalMessageEnvelope);
             var result = new ConvertToEnvelopeResult(finalMessageEnvelope, subscriberMapping);
 
-            _logger.LogTrace("Created a generic {messageEnvelopeName} of type '{messageEnvelopeType}'", nameof(MessageEnvelope), result.Envelope.GetType());
+            _logger.LogTrace("Created a generic {MessageEnvelopeName} of type '{MessageEnvelopeType}'", nameof(MessageEnvelope), result.Envelope.GetType());
             return result;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Failed to create a {messageEnvelopeName}", nameof(MessageEnvelope));
+            _logger.LogError(ex, "Failed to create a {MessageEnvelopeName}", nameof(MessageEnvelope));
             throw new FailedToCreateMessageEnvelopeException($"Failed to create {nameof(MessageEnvelope)}", ex);
         }
     }
@@ -150,7 +163,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
     {
         if (messageEnvelope is null)
         {
-            _logger.LogError("{messageEnvelope} cannot be null", nameof(messageEnvelope));
+            _logger.LogError("{MessageEnvelope} cannot be null", nameof(messageEnvelope));
             throw new InvalidDataException($"{nameof(messageEnvelope)} cannot be null");
         }
 
@@ -177,7 +190,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
         var validationFailures = strBuilder.ToString();
         if (!string.IsNullOrEmpty(validationFailures))
         {
-            _logger.LogError("MessageEnvelope instance is not valid{newline}{errorMessage}", Environment.NewLine, validationFailures);
+            _logger.LogError("MessageEnvelope instance is not valid" + Environment.NewLine +"{ValidationFailures}", validationFailures);
             throw new InvalidDataException($"MessageEnvelope instance is not valid{Environment.NewLine}{validationFailures}");
         }
     }
@@ -227,16 +240,17 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
     {
         envelopeConfiguration.SQSMetadata = new SQSMetadata
         {
+            MessageID = sqsMessage.MessageId,
             MessageAttributes = sqsMessage.MessageAttributes,
             ReceiptHandle = sqsMessage.ReceiptHandle
         };
-        if (sqsMessage.Attributes.ContainsKey("MessageGroupId"))
+        if (sqsMessage.Attributes.TryGetValue("MessageGroupId", out var attribute))
         {
-            envelopeConfiguration.SQSMetadata.MessageGroupId = sqsMessage.Attributes["MessageGroupId"];
+            envelopeConfiguration.SQSMetadata.MessageGroupId = attribute;
         }
-        if (sqsMessage.Attributes.ContainsKey("MessageDeduplicationId"))
+        if (sqsMessage.Attributes.TryGetValue("MessageDeduplicationId", out var messageAttribute))
         {
-            envelopeConfiguration.SQSMetadata.MessageDeduplicationId = sqsMessage.Attributes["MessageDeduplicationId"];
+            envelopeConfiguration.SQSMetadata.MessageDeduplicationId = messageAttribute;
         }
     }
 

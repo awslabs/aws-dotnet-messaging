@@ -4,7 +4,7 @@
     <TargetFramework>net6.0</TargetFramework>
     <IsPackable>true</IsPackable>
     <Product>AWS Message Processing Framework</Product>
-    <PackageProjectUrl>https://github.com/aws/aws-dotnet-messaging</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/awslabs/aws-dotnet-messaging</PackageProjectUrl>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <RollForward>Major</RollForward>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -17,7 +17,9 @@
     <PackageReference Include="AWSSDK.SQS" Version="3.7.100.69" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="6.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="6.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="6.0.0" />
   </ItemGroup>
   
   <ItemGroup>

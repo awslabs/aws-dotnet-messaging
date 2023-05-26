@@ -10,6 +10,7 @@ using Amazon.Extensions.NETCore.Setup;
 using Amazon.SimpleNotificationService;
 using Amazon.SQS;
 using AWS.Messaging.Configuration;
+using AWS.Messaging.Lambda;
 using AWS.Messaging.Publishers.EventBridge;
 using AWS.Messaging.Publishers.SNS;
 using AWS.Messaging.Publishers.SQS;
@@ -304,7 +305,8 @@ public class MessageBusBuilderTests
             builder.AddSQSPoller("queueUrl", options => {
                 options.MaxNumberOfConcurrentMessages = 20;
                 options.VisibilityTimeout = 5;
-                options.VisibilityTimeoutExtensionInterval = 2;
+                options.VisibilityTimeoutExtensionThreshold = 3;
+                options.VisibilityTimeoutExtensionHeartbeatInterval = 2;
                 options.WaitTimeSeconds = 10;
             });
         });
@@ -323,7 +325,8 @@ public class MessageBusBuilderTests
             Assert.Equal("queueUrl", sqsConfiguration.SubscriberEndpoint);
             Assert.Equal(20, sqsConfiguration.MaxNumberOfConcurrentMessages);
             Assert.Equal(5, sqsConfiguration.VisibilityTimeout);
-            Assert.Equal(2, sqsConfiguration.VisibilityTimeoutExtensionInterval);
+            Assert.Equal(3, sqsConfiguration.VisibilityTimeoutExtensionThreshold);
+            Assert.Equal(2, sqsConfiguration.VisibilityTimeoutExtensionHeartbeatInterval);
             Assert.Equal(10, sqsConfiguration.WaitTimeSeconds);
         }
         else
@@ -385,21 +388,38 @@ public class MessageBusBuilderTests
         yield return new object[] { new Action<SQSMessagePollerOptions>((options) => options.WaitTimeSeconds = -1) };
         yield return new object[] { new Action<SQSMessagePollerOptions>((options) => options.WaitTimeSeconds = 21) };
 
-        // VisibilityTimeoutExtensionInterval must be postive 
-        yield return new object[] { new Action<SQSMessagePollerOptions>((options) => options.VisibilityTimeoutExtensionInterval = -1) };
-        yield return new object[] { new Action<SQSMessagePollerOptions>((options) => options.VisibilityTimeoutExtensionInterval = 0) };
+        // VisibilityTimeoutExtensionThreshold must be postive 
+        yield return new object[] { new Action<SQSMessagePollerOptions>((options) => options.VisibilityTimeoutExtensionThreshold = -1) };
+        yield return new object[] { new Action<SQSMessagePollerOptions>((options) => options.VisibilityTimeoutExtensionThreshold = 0) };
 
-        // VisibilityTimeoutExtensionInterval must be strictly less than than VisibilityTimeout
+        // VisibilityTimeoutExtensionThreshold must be strictly less than than VisibilityTimeout
         yield return new object[] { new Action<SQSMessagePollerOptions>((options) =>
         {
             options.VisibilityTimeout = 5;
-            options.VisibilityTimeoutExtensionInterval = 5;
+            options.VisibilityTimeoutExtensionThreshold = 5;
         })};
         yield return new object[] { new Action<SQSMessagePollerOptions>((options) =>
         {
             options.VisibilityTimeout = 4;
-            options.VisibilityTimeoutExtensionInterval = 5;
+            options.VisibilityTimeoutExtensionThreshold = 5;
         })};
+
+        // VisibilityTimeoutExtensionHeartbeatInterval must be postive
+        yield return new object[] { new Action<SQSMessagePollerOptions>((options) => options.VisibilityTimeoutExtensionHeartbeatInterval = -1) };
+        yield return new object[] { new Action<SQSMessagePollerOptions>((options) => options.VisibilityTimeoutExtensionHeartbeatInterval = 0) };
+
+        // VisibilityTimeoutExtensionHeartbeatInterval must be strictly less than than VisibilityTimeoutExtensionThreshold
+        yield return new object[] { new Action<SQSMessagePollerOptions>((options) =>
+        {
+            options.VisibilityTimeoutExtensionHeartbeatInterval = 5;
+            options.VisibilityTimeoutExtensionThreshold = 5;
+        })};
+        yield return new object[] { new Action<SQSMessagePollerOptions>((options) =>
+        {
+            options.VisibilityTimeoutExtensionHeartbeatInterval  = 6;
+            options.VisibilityTimeoutExtensionThreshold = 5;
+        })};
+
     }
 
     /// <summary>

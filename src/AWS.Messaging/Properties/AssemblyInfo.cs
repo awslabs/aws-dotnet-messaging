@@ -5,3 +5,4 @@ using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("AWS.Messaging.UnitTests")]
 [assembly: InternalsVisibleTo("AWS.Messaging.IntegrationTests")]
+[assembly: InternalsVisibleTo("DynamicProxyGenAssembly2")]
