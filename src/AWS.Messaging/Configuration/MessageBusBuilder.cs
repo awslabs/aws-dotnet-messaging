@@ -308,7 +308,7 @@ public class MessageBusBuilder : IMessageBusBuilder
 
             foreach (var subscriberMapping in _messageConfiguration.SubscriberMappings)
             {
-                services.AddSingleton(subscriberMapping.HandlerType);
+                services.AddScoped(subscriberMapping.HandlerType);
             }
         }
 
