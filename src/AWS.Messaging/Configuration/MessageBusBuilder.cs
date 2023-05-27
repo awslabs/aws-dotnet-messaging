@@ -14,6 +14,7 @@ using AWS.Messaging.Configuration.Internal;
 using System.Reflection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging;
+using AWS.Messaging.Telemetry;
 
 namespace AWS.Messaging.Configuration;
 
@@ -280,6 +281,7 @@ public class MessageBusBuilder : IMessageBusBuilder
         services.TryAddSingleton<IMessageManagerFactory, DefaultMessageManagerFactory>();
         services.TryAddSingleton<IHandlerInvoker, HandlerInvoker>();
         services.TryAddSingleton<IMessagePollerFactory, DefaultMessagePollerFactory>();
+        services.TryAddSingleton<ITelemetryFactory, DefaultTelemetryFactory>();
 
         if (_messageConfiguration.PublisherMappings.Any())
         {
