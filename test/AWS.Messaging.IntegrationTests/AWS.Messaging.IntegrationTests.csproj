@@ -4,9 +4,17 @@
     <TargetFramework>net6.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <Nullable>enable</Nullable>
+
+    <!-- Set this to true to package the Lambda functions used in the integration tests.
+    You may want to set it to false when iterating on test code but not the Lambda code. -->
+    <PackageTestLambdas>true</PackageTestLambdas>
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="AWSSDK.CloudWatchLogs" Version="3.7.104.72" />
+    <PackageReference Include="AWSSDK.IdentityManagement" Version="3.7.100.128" />
+    <PackageReference Include="AWSSDK.Lambda" Version="3.7.109.6" />
+    <PackageReference Include="AWSSDK.S3" Version="3.7.104.13" />
     <PackageReference Include="AWSSDK.SecurityToken" Version="3.7.101.47" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.1" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.1" />
@@ -29,5 +37,12 @@
     <ProjectReference Include="..\..\src\AWS.Messaging\AWS.Messaging.csproj" />
     <ProjectReference Include="..\AWS.Messaging.Tests.Common\AWS.Messaging.Tests.Common.csproj" />
   </ItemGroup>
+
+  
+  <Target Name="PackageTestFunction" AfterTargets="AfterBuild" Condition="$(PackageTestLambdas)">
+    <Exec Command="dotnet tool install -g Amazon.Lambda.Tools" IgnoreExitCode="true" />
+    <Exec WorkingDirectory="..\AWS.Messaging.Tests.LambdaFunctions" Command="dotnet restore" />
+    <Exec WorkingDirectory="..\AWS.Messaging.Tests.LambdaFunctions" Command="dotnet lambda package -c Release" />
+  </Target>
 
 </Project>
