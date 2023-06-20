@@ -14,15 +14,15 @@ public interface ITelemetryFactory
     bool IsTelemetryEnabled { get; }
 
     /// <summary>
-    /// Start a trace represented by the returned ITelemetryTrace. The trace will end when the ITelemetryTrace is disposed.
+    /// Start a trace represented by the returned <see cref="ITelemetryTrace"/>. The trace will end when the <see cref="ITelemetryTrace"/> is disposed.
     /// </summary>
     /// <param name="traceName">The name of the trace.</param>
     /// <returns>The state of the trace.</returns>
     ITelemetryTrace Trace(string traceName);
 
     /// <summary>
-    /// Start a trace represented by the returned ITelemetryTrace. The trace will end when the ITelemetryTrace is disposed.
-    /// The MessageEnvelope is used to look for parent trace metadata to connect traces from publishers to subscribers.
+    /// Start a trace represented by the returned <see cref="ITelemetryTrace"/>. The trace will end when the <see cref="ITelemetryTrace"/> is disposed.
+    /// The <see cref="MessageEnvelope"/> is used to look for parent trace metadata to connect traces from publishers to subscribers.
     /// </summary>
     /// <param name="traceName"></param>
     /// <param name="envelope"></param>

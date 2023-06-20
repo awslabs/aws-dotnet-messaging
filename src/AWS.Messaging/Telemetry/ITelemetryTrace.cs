@@ -3,7 +3,7 @@
 namespace AWS.Messaging.Telemetry;
 
 /// <summary>
-/// A telemetry trace where metadata and exceptions can be added. The trace is ended with this
+/// A telemetry trace where metadata and exceptions can be added. The trace is ended when this
 /// instance is disposed.
 /// </summary>
 public interface ITelemetryTrace : IDisposable
@@ -23,7 +23,7 @@ public interface ITelemetryTrace : IDisposable
     void AddException(Exception exception, bool fatal = true);
 
     /// <summary>
-    /// Record in the MessageEnvelope metadata the trace context for downstream services to link with
+    /// Record the trace context in the MessageEnvelope metadata to support linking with downstream services.
     /// </summary>
     /// <param name="envelope"></param>
     void RecordTelemetryContext(MessageEnvelope envelope);

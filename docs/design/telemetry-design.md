@@ -3,7 +3,7 @@
 It is expected a large numbers of messages will be going through a system using the AWS Message Processing Framework for .NET moving from publishers to subscribers.
 Users of the library need access to telemetry that shows how messages traverse through their messaging system. For example, if an alarm goes off for a message that
 failed to process users need to be able to see where the message came from and how it got to the point it failed. Another need is total processing time for a message
-exceeds an SLA the user needs to be able see where the bottle necks are for messages being processed.
+exceeds an SLA the user needs to be able see where the bottlenecks are for messages being processed.
 
 ### Tenets
 
@@ -71,7 +71,7 @@ The `ITelemetryTrace` extends from the IDisposable. To end a trace the `ITelemet
 namespace AWS.Messaging.Telemetry;
 
 /// <summary>
-/// A telemetry trace where metadata and exceptions can be added. The trace is ended with this
+/// A telemetry trace where metadata and exceptions can be added. The trace is ended when this
 /// instance is disposed.
 /// </summary>
 public interface ITelemetryTrace : IDisposable
@@ -91,7 +91,7 @@ public interface ITelemetryTrace : IDisposable
     void AddException(Exception exception, bool fatal = true);
 
     /// <summary>
-    /// Record in the MessageEnvelope metadata the trace context for downstream services to link with
+    /// Record the trace context in the MessageEnvelope metadata to support linking with downstream services.
     /// </summary>
     /// <param name="envelope"></param>
     void RecordTelemetryContext(MessageEnvelope envelope);
@@ -136,7 +136,7 @@ public async Task<MessageProcessStatus> InvokeAsync(MessageEnvelope messageEnvel
 
 The AWS Message Processing Framework for .NET provides support for [AWS X-Ray](https://aws.amazon.com/xray/) and [OpenTelemetry](https://opentelemetry.io/). Each provider is implemented
 in separate packages ensuring users are only including the provider and its dependencies for the telemetry provider they want to use. Each provider package implements the
-`ITelemetryProvider` interface from AWS.Messaging. Each package provides extensions methods to the `IMessageBusBuilder` that adds their implementation of `ITelemetryProvider` to the dependency
+`ITelemetryProvider` interface from AWS.Messaging. Each package provide extension methods to the `IMessageBusBuilder` that adds their implementation of `ITelemetryProvider` to the dependency
 container using IMessageBusBuilder's `AddAdditionalService` method.
 
 Users and third-party vendors can add support for additional telemetry providers by implementing the `ITelemetryProvider` interface and providing extension methods to register
@@ -148,7 +148,7 @@ namespace AWS.Messaging.Telemetry;
 
 /// <summary>
 /// Interface for telemetry providers to implement. The implementation must be registered with the dependency injection container as a
-/// service for ITelemetryProvider. The core library's ITelemetryFactory will forwared trace starts to all registered ITelemetryProvider services.
+/// service for ITelemetryProvider. The core library's ITelemetryFactory will forwarded trace starts to all registered ITelemetryProvider services.
 /// </summary>
 public interface ITelemetryProvider
 {

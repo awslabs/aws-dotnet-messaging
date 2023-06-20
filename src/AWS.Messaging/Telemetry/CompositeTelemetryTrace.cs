@@ -3,7 +3,7 @@
 namespace AWS.Messaging.Telemetry;
 
 /// <summary>
-/// Wraps all of the telemetry provider specific ITelemetryTrace and forwards each tracing API to all
+/// Wraps all of the telemetry provider specific <see cref="ITelemetryTrace"/> and forwards each tracing API to all
 /// of the created provider specific ITelemetryTrace instances.
 /// </summary>
 internal class CompositeTelemetryTrace : ITelemetryTrace
@@ -57,7 +57,6 @@ internal class CompositeTelemetryTrace : ITelemetryTrace
 
     public void Dispose()
     {
-        // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
         Dispose(disposing: true);
         GC.SuppressFinalize(this);
     }
