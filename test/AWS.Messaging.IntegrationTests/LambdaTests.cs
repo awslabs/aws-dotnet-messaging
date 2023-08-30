@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Amazon.CloudWatchLogs;
 using Amazon.IdentityManagement;
@@ -50,6 +53,41 @@ namespace AWS.Messaging.IntegrationTests
 
         public async Task InitializeAsync()
         {
+            // Cancel the install and build processes in case they're stuck
+            var source = new CancellationTokenSource();
+            source.CancelAfter(TimeSpan.FromMinutes(2));
+            var token = source.Token;
+
+            // Ensure Amazon.Lambda.Tools is installed, which will be used to deploy the test functions
+            var toolsProcess = new Process()
+            {
+                StartInfo = new ProcessStartInfo()
+                {
+                    FileName = "dotnet.exe",
+                    CreateNoWindow = true,
+                    Arguments = "tool install -g Amazon.Lambda.Tools"
+                }
+            };
+            toolsProcess.Start();
+            await toolsProcess.WaitForExitAsync(token);
+            token.ThrowIfCancellationRequested();   // if this has thrown, setup took longer than expected
+
+            // Package the project containing the functions that are under test (individual tests will deploy functions as needed) 
+            var path = Path.Combine(TestUtilities.FindParentDirectoryWithName(Environment.CurrentDirectory, "test"), "AWS.Messaging.Tests.LambdaFunctions");
+            var buildProcess = new Process()
+            {
+                StartInfo = new ProcessStartInfo()
+                {
+                    FileName = "dotnet.exe",
+                    CreateNoWindow = true,
+                    Arguments = "lambda package -c Release",
+                    WorkingDirectory = path
+                }
+            };
+            buildProcess.Start();
+            await buildProcess.WaitForExitAsync(token);
+            token.ThrowIfCancellationRequested();   // if this has thrown, setup took longer than expected
+
             // Create the execution IAM role for the function
             ExecutionRoleArn = await AWSUtilities.CreateFunctionRoleIfNotExists(_iamClient, LambdaExecutionRoleName);
 
