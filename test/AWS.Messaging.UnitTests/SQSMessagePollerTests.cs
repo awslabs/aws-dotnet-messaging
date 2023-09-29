@@ -18,6 +18,7 @@ using Moq;
 using Xunit;
 using AWS.Messaging.Tests.Common.Services;
 using AWS.Messaging.SQS;
+using Microsoft.Extensions.Logging;
 
 namespace AWS.Messaging.UnitTests;
 
@@ -161,6 +162,59 @@ public class SQSMessagePollerTests
 
         Assert.NotNull(_inMemoryLogger);
         Assert.Empty(_inMemoryLogger.Logs.Where(x => x.Exception is AmazonSQSException ex && ex.ErrorCode.Equals("AWS.SimpleQueueService.TooManyEntriesInBatchRequest")));
+    }
+
+    /// <summary>
+    /// Tests that <see cref="IMessagePoller.ExtendMessageVisibilityTimeoutAsync"/> does
+    /// not log errors for the case where we fail to extend the message visibility timeout for a
+    /// given message because it was recently deleted.
+    /// </summary>
+    [Fact]
+    public async Task SQSMessagePoller_ExtendsAlreadyDeleteMessage_OnlyLogsTrace()
+    {
+        var client = new Mock<IAmazonSQS>();
+
+        client.Setup(x => x.ChangeMessageVisibilityBatchAsync(It.IsAny<ChangeMessageVisibilityBatchRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ChangeMessageVisibilityBatchResponse
+            {
+                Failed = new List<BatchResultErrorEntry>()
+                {
+                    new BatchResultErrorEntry()
+                    {
+                        Id = "batchNum_0_messageId_1",
+                        Code = "ReceiptHandleIsInvalid",
+                        Message = "Message does not exist or is not available for visibility timeout change"
+                    },
+                    new BatchResultErrorEntry()
+                    {
+                        Id = "batchNum_0_messageId_2",
+                        Code = "ReceiptHandleIsInvalid",
+                        Message = "Something else"
+                    }
+                }
+            }, TimeSpan.FromMilliseconds(50));
+
+        var messagePoller = CreateSQSMessagePoller(client) as ISQSMessageCommunication;
+        if (messagePoller == null)
+        {
+            Assert.Fail("Failed to cast message poller to ISQSMessageCommunication");
+        }
+
+        var messageEnvelopes = new List<MessageEnvelope>()
+        {
+            new MessageEnvelope<ChatMessage> { Id = "1", SQSMetadata = new SQSMetadata { ReceiptHandle ="rh1"} },
+            new MessageEnvelope<ChatMessage> { Id = "2", SQSMetadata = new SQSMetadata { ReceiptHandle ="rh2"} }
+        };
+
+        await messagePoller.ExtendMessageVisibilityTimeoutAsync(messageEnvelopes);
+
+        Assert.NotNull(_inMemoryLogger);
+
+        // Don't expect to see message 1 in the error logs, since this is the case where it was deleted before or while extending visibility
+        Assert.Empty(_inMemoryLogger.Logs.Where(x => x.Message.Contains("batchNum_0_messageId_1")));
+
+        // But we should see an entry for message 2, which failed to extend visibility for a different reason
+        Assert.Single(_inMemoryLogger.Logs.Where(x => x.Message.Contains("batchNum_0_messageId_2") && x.LogLevel == LogLevel.Error));
     }
 
     /// <summary>
