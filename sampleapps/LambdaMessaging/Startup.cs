@@ -16,7 +16,7 @@ public class Startup
         });
         services.AddAWSMessageBus(builder =>
         {
-            builder.AddMessageHandler<ChatMessageHandler, ChatMessage>();
+            builder.AddMessageHandler<ChatMessageHandler, ChatMessage>("chatMessage");
 
             builder.AddLambdaMessageProcessor(options =>
             {
