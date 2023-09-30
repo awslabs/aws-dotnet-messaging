@@ -14,9 +14,9 @@ builder.Services.AddAWSMessageBus(bus =>
     // To load the configuration from appsettings.json instead of the code below, uncomment this and remove the following lines.
     // bus.LoadConfigurationFromSettings(builder.Configuration);
 
-    bus.AddSQSPublisher<ChatMessage>("https://sqs.us-west-2.amazonaws.com/012345678910/MPF");
-    bus.AddSNSPublisher<OrderInfo>("arn:aws:sns:us-west-2:012345678910:MPF");
-    bus.AddEventBridgePublisher<FoodItem>("arn:aws:events:us-west-2:012345678910:event-bus/default");
+    bus.AddSQSPublisher<ChatMessage>("https://sqs.us-west-2.amazonaws.com/012345678910/MPF", "chatMessage");
+    bus.AddSNSPublisher<OrderInfo>("arn:aws:sns:us-west-2:012345678910:MPF", "orderInfo");
+    bus.AddEventBridgePublisher<FoodItem>("arn:aws:events:us-west-2:012345678910:event-bus/default", "foodItem");
     bus.ConfigureSerializationOptions(options =>
     {
         options.SystemTextJsonOptions = new JsonSerializerOptions
