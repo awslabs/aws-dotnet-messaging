@@ -56,4 +56,6 @@ public class Greeter : IGreeter
 public class TempStorage<T>
 {
     public ConcurrentBag<MessageEnvelope<T>> Messages { get; set; } = new ConcurrentBag<MessageEnvelope<T>>();
+
+    public ConcurrentQueue<MessageEnvelope<T>> FifoMessages { get; set; } = new ConcurrentQueue<MessageEnvelope<T>>();
 }
