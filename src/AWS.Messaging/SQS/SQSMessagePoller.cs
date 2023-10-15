@@ -326,22 +326,5 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
     {
         return ValueTask.CompletedTask;
     }
-
-    ///// <summary>
-    ///// <see cref="AmazonSQSException"/> error codes that should be treated as fatal and stop the poller
-    ///// </summary>
-    //private static readonly HashSet<string> _fatalSQSErrorCodes = new HashSet<string>
-    //{
-    //    "InvalidAddress",   // Returned for an invalid queue URL
-    //    "AccessDenied"      // Returned with insufficient IAM permissions to read from the configured queue
-    //};
-
-    ///// <summary>
-    ///// Determines if a given SQS exception should be treated as fatal and rethrown to stop the poller
-    ///// </summary>
-    ///// <param name="sqsException">SQS Exception</param>
-    //private bool IsSQSExceptionFatal(AmazonSQSException sqsException)
-    //{
-    //    return _fatalSQSErrorCodes.Contains(sqsException.ErrorCode);
-    //}
+      
 }
