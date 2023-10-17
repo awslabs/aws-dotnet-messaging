@@ -89,9 +89,9 @@ internal class SQSMessagePollerConfiguration : IMessagePollerConfiguration
     public int WaitTimeSeconds { get; init; } = DEFAULT_WAIT_TIME_SECONDS;
 
     /// <summary>
-    /// Function that that indicated whether SQS poller should stop polling or continue;
+    /// Function that indicates whether an <see cref="AmazonSQSException"/> should stop the poller or continue.
     /// </summary>
-    public Func<AmazonSQSException, bool> FatalErrorChecker { get; set; } = IsSQSExceptionFatal;
+    public Func<AmazonSQSException, bool> IsSQSExceptionFatal { get; set; } = IsFatalException;
 
     /// <summary>
     /// Construct an instance of <see cref="SQSMessagePollerConfiguration" />
@@ -133,8 +133,8 @@ internal class SQSMessagePollerConfiguration : IMessagePollerConfiguration
     /// Determines if a given SQS exception should be treated as fatal and rethrown to stop the poller
     /// </summary>
     /// <param name="sqsException">SQS Exception</param>
-    private static bool IsSQSExceptionFatal(AmazonSQSException sqsException)
+    internal static bool IsFatalException(AmazonSQSException sqsException)
     {
-        return _fatalSQSErrorCodes.Contains(sqsException.ErrorCode);
+        return sqsException is QueueDoesNotExistException ? true : _fatalSQSErrorCodes.Contains(sqsException.ErrorCode);
     }
 }

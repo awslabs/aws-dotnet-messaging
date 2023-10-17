@@ -124,7 +124,7 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
 
                 // Rethrow the exception to fail fast for invalid configuration, permissioning, etc.
                 // TODO: explore a "cool down mode" for repeated exceptions
-                if (_configuration.FatalErrorChecker(ex))
+                if (_configuration.IsSQSExceptionFatal(ex))
                 {
                     throw;
                 }
@@ -213,7 +213,7 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
                 string.Join(", ", messages.Select(x => x.Id)), _configuration.SubscriberEndpoint);
 
             // Rethrow the exception to fail fast for invalid configuration, permissioning, etc.
-            if (_configuration.FatalErrorChecker(ex))
+            if (_configuration.IsSQSExceptionFatal(ex))
             {
                 throw;
             }
@@ -307,7 +307,7 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
                         string.Join(", ", messages.Select(x => x.Id)), _configuration.SubscriberEndpoint);
 
                     // Rethrow the exception to fail fast for invalid configuration, permissioning, etc.
-                    if (_configuration.FatalErrorChecker(amazonEx))
+                    if (_configuration.IsSQSExceptionFatal(amazonEx))
                     {
                         throw amazonEx;
                     }

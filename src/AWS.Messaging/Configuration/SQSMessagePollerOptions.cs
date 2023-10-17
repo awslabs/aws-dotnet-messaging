@@ -1,6 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using Amazon.SQS;
+
 namespace AWS.Messaging.Configuration;
 
 /// <summary>
@@ -22,6 +24,11 @@ public class SQSMessagePollerOptions
 
     /// <inheritdoc cref="SQSMessagePollerConfiguration.VisibilityTimeoutExtensionHeartbeatInterval"/>
     public int VisibilityTimeoutExtensionHeartbeatInterval { get; set; } = SQSMessagePollerConfiguration.DEFAULT_VISIBILITY_TIMEOUT_EXTENSION_HEARTBEAT_INTERVAL;
+
+    /// <summary>
+    /// <inheritdoc cref="SQSMessagePollerConfiguration.IsFatalException(AmazonSQSException)" />
+    /// </summary>
+    public Func<AmazonSQSException, bool> IsSQSExceptionFatal { get; set; } = SQSMessagePollerConfiguration.IsFatalException;
 
     /// <summary>
     /// Validates that the options are valid against the message framework's and/or SQS limits
