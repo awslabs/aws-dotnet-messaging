@@ -8,6 +8,8 @@ using AWS.Messaging.Configuration;
 using AWS.Messaging.Serialization;
 using AWS.Messaging.Services;
 using AWS.Messaging.SQS;
+using AWS.Messaging.Telemetry;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace AWS.Messaging.Lambda.Services;
@@ -19,6 +21,7 @@ internal class DefaultLambdaMessageProcessor : ILambdaMessageProcessor, ISQSMess
     private readonly IMessageManager _messageManager;
     private readonly IEnvelopeSerializer _envelopeSerializer;
     private readonly LambdaMessageProcessorConfiguration _configuration;
+    private readonly ITelemetryFactory _telemetryFactory;
 
     private readonly SQSBatchResponse _sqsBatchResponse;
 
@@ -33,12 +36,14 @@ internal class DefaultLambdaMessageProcessor : ILambdaMessageProcessor, ISQSMess
     /// <param name="awsClientProvider">Provides the AWS service client from the DI container.</param>
     /// <param name="configuration">The Lambda message processor configuration.</param>
     /// <param name="envelopeSerializer">Serializer used to deserialize the SQS messages</param>
+    /// <param name="telemetryFactory">Factory for telemetry data</param>
     public DefaultLambdaMessageProcessor(
         ILogger<DefaultLambdaMessageProcessor> logger,
         IMessageManagerFactory messageManagerFactory,
         IAWSClientProvider awsClientProvider,
         LambdaMessageProcessorConfiguration configuration,
-        IEnvelopeSerializer envelopeSerializer)
+        IEnvelopeSerializer envelopeSerializer,
+        ITelemetryFactory telemetryFactory)
     {
         _logger = logger;
         _sqsClient = awsClientProvider.GetServiceClient<IAmazonSQS>();
@@ -48,6 +53,7 @@ internal class DefaultLambdaMessageProcessor : ILambdaMessageProcessor, ISQSMess
         {
             SupportExtendingVisibilityTimeout = false
         });
+        _telemetryFactory = telemetryFactory;
 
         _sqsBatchResponse = new SQSBatchResponse();
     }
@@ -61,58 +67,75 @@ internal class DefaultLambdaMessageProcessor : ILambdaMessageProcessor, ISQSMess
 
     public async Task<SQSBatchResponse?> ProcessMessagesAsync(CancellationToken token = default)
     {
-        var sqsEvent = _configuration.SQSEvent;
-        if (sqsEvent is null || !sqsEvent.Records.Any())
+        using (var trace = _telemetryFactory.Trace("Process Lambda messages"))
         {
-            return _sqsBatchResponse;
-        }
-
-        var taskList = new List<Task>(sqsEvent.Records.Count);
-        var index = 0;
-        try
-        {
-            while (!token.IsCancellationRequested && index < sqsEvent.Records.Count)
+            try
             {
-                var numberOfMessagesToRead = _configuration.MaxNumberOfConcurrentMessages - _messageManager.ActiveMessageCount;
+                var sqsEvent = _configuration.SQSEvent;
 
-                // If already processing the maximum number of messages, wait for at least one to complete and then try again
-                if (numberOfMessagesToRead <= 0)
+                trace.AddMetadata(TelemetryKeys.QueueUrl, _configuration.SubscriberEndpoint);
+                
+                if (sqsEvent is null || !sqsEvent.Records.Any())
                 {
-                    _logger.LogTrace("The maximum number of {Max} concurrent messages is already being processed. " +
-                        "Waiting for one or more to complete for a maximum of {Timeout} seconds before attempting to poll again.",
-                        _configuration.MaxNumberOfConcurrentMessages, CONCURRENT_CAPACITY_WAIT_TIMEOUT.TotalSeconds);
-
-                    await _messageManager.WaitAsync(CONCURRENT_CAPACITY_WAIT_TIMEOUT);
-                    continue;
+                    return _sqsBatchResponse;
                 }
 
-                var message = ConvertToStandardSQSMessage(sqsEvent.Records[index]);
-                var messageEnvelopeResult = await _envelopeSerializer.ConvertToEnvelopeAsync(message);
+                var taskList = new List<Task>(sqsEvent.Records.Count);
+                var index = 0;
+                try
+                {
+                    while (!token.IsCancellationRequested && index < sqsEvent.Records.Count)
+                    {
+                        var numberOfMessagesToRead = _configuration.MaxNumberOfConcurrentMessages - _messageManager.ActiveMessageCount;
 
-                // Don't await this result, we want to process multiple messages concurrently.
-                var task = _messageManager.ProcessMessageAsync(messageEnvelopeResult.Envelope, messageEnvelopeResult.Mapping, token);
-                taskList.Add(task);
-                index++;
+                        // If already processing the maximum number of messages, wait for at least one to complete and then try again
+                        if (numberOfMessagesToRead <= 0)
+                        {
+                            _logger.LogTrace("The maximum number of {Max} concurrent messages is already being processed. " +
+                                "Waiting for one or more to complete for a maximum of {Timeout} seconds before attempting to poll again.",
+                                _configuration.MaxNumberOfConcurrentMessages, CONCURRENT_CAPACITY_WAIT_TIMEOUT.TotalSeconds);
+
+                            await _messageManager.WaitAsync(CONCURRENT_CAPACITY_WAIT_TIMEOUT);
+                            continue;
+                        }
+
+                        var message = ConvertToStandardSQSMessage(sqsEvent.Records[index]);
+                        var messageEnvelopeResult = await _envelopeSerializer.ConvertToEnvelopeAsync(message);
+
+                        trace.AddMetadata(TelemetryKeys.MessageId, messageEnvelopeResult.Envelope.Id);
+                        trace.AddMetadata(TelemetryKeys.MessageType, messageEnvelopeResult.Envelope.MessageTypeIdentifier);
+
+                        // Don't await this result, we want to process multiple messages concurrently.
+                        var task = _messageManager.ProcessMessageAsync(messageEnvelopeResult.Envelope, messageEnvelopeResult.Mapping, token);
+                        taskList.Add(task);
+                        index++;
+                    }
+
+                    await Task.WhenAll(taskList);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "An unknown exception initiating message handlers for incoming SQS messages.");
+
+                    // If there are any errors queuing messages into the handlers then let the exception bubble up to allow Lambda to report a function invocation failure.
+                    throw;
+                }
+
+                // If partial failure mode is not enabled then if there are any errors reported from the message handlers we
+                // need to communicate up to Lambda via an exception that the invocation failed.
+                if (!_configuration.UseBatchResponse && _sqsBatchResponse.BatchItemFailures?.Count > 0)
+                {
+                    throw new LambdaInvocationFailureException($"Lambda invocation failed because {_sqsBatchResponse.BatchItemFailures.Count} message reported failures during handling");
+                }
+
+                return _configuration.UseBatchResponse ? _sqsBatchResponse : null;
             }
-
-            await Task.WhenAll(taskList);
+            catch (Exception ex)
+            {
+                trace.AddException(ex);
+                throw;
+            }
         }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "An unknown exception initiating message handlers for incoming SQS messages.");
-
-            // If there are any errors queuing messages into the handlers then let the exception bubble up to allow Lambda to report a function invocation failure.
-            throw;
-        }
-
-        // If partial failure mode is not enabled then if there are any errors reported from the message handlers we
-        // need to communicate up to Lambda via an exception that the invocation failed.
-        if(!_configuration.UseBatchResponse && _sqsBatchResponse.BatchItemFailures?.Count > 0)
-        {
-            throw new LambdaInvocationFailureException($"Lambda invocation failed because {_sqsBatchResponse.BatchItemFailures.Count} message reported failures during handling");
-        }
-
-        return _configuration.UseBatchResponse ? _sqsBatchResponse : null;
     }
 
     /// <inheritdoc/>

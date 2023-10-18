@@ -5,6 +5,7 @@ using Amazon.EventBridge;
 using Amazon.EventBridge.Model;
 using AWS.Messaging.Configuration;
 using AWS.Messaging.Serialization;
+using AWS.Messaging.Telemetry;
 using Microsoft.Extensions.Logging;
 
 namespace AWS.Messaging.Publishers.EventBridge;
@@ -18,6 +19,7 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
     private readonly ILogger<IMessagePublisher> _logger;
     private readonly IMessageConfiguration _messageConfiguration;
     private readonly IEnvelopeSerializer _envelopeSerializer;
+    private readonly ITelemetryFactory _telemetryFactory;
 
     /// <summary>
     /// Creates an instance of <see cref="EventBridgePublisher"/>.
@@ -26,12 +28,14 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
         IAWSClientProvider awsClientProvider,
         ILogger<IMessagePublisher> logger,
         IMessageConfiguration messageConfiguration,
-        IEnvelopeSerializer envelopeSerializer)
+        IEnvelopeSerializer envelopeSerializer,
+        ITelemetryFactory telemetryFactory)
     {
         _eventBridgeClient = awsClientProvider.GetServiceClient<IAmazonEventBridge>();
         _logger = logger;
         _messageConfiguration = messageConfiguration;
         _envelopeSerializer = envelopeSerializer;
+        _telemetryFactory = telemetryFactory;
     }
 
     /// <summary>
@@ -54,25 +58,43 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
     /// <exception cref="MissingMessageTypeConfigurationException">If cannot find the publisher configuration for the message type.</exception>
     public async Task PublishAsync<T>(T message, EventBridgeOptions? eventBridgeOptions, CancellationToken token = default)
     {
-        _logger.LogDebug("Publishing the message of type '{MessageType}' using the {PublisherType}.", typeof(T), nameof(EventBridgePublisher));
-
-        if (message == null)
+        using (var trace = _telemetryFactory.Trace("Publish to AWS EventBridge"))
         {
-            _logger.LogError("A message of type '{MessageType}' has a null value.", typeof(T));
-            throw new InvalidMessageException("The message cannot be null.");
+            try
+            {
+                trace.AddMetadata(TelemetryKeys.ObjectType, typeof(T).FullName!);
+
+                _logger.LogDebug("Publishing the message of type '{MessageType}' using the {PublisherType}.", typeof(T), nameof(EventBridgePublisher));
+
+                if (message == null)
+                {
+                    _logger.LogError("A message of type '{MessageType}' has a null value.", typeof(T));
+                    throw new InvalidMessageException("The message cannot be null.");
+                }
+
+                var publisherMapping = GetPublisherMapping(trace, typeof(T));
+                var publisherEndpoint = publisherMapping.PublisherConfiguration.PublisherEndpoint;
+                trace.AddMetadata(TelemetryKeys.EventBusName, publisherEndpoint);
+
+                _logger.LogDebug("Creating the message envelope for the message of type '{MessageType}'.", typeof(T));
+                var messageEnvelope = await _envelopeSerializer.CreateEnvelopeAsync(message);
+
+                trace.AddMetadata(TelemetryKeys.MessageId, messageEnvelope.Id);
+                trace.RecordTelemetryContext(messageEnvelope);
+
+                var messageBody = await _envelopeSerializer.SerializeAsync(messageEnvelope);
+
+                _logger.LogDebug("Sending the message of type '{MessageType}' to EventBridge. Publisher Endpoint: {Endpoint}", typeof(T), publisherEndpoint);
+                var request = CreatePutEventsRequest(publisherMapping, messageEnvelope.Source?.ToString(), messageBody, eventBridgeOptions);
+                await _eventBridgeClient.PutEventsAsync(request, token);
+                _logger.LogDebug("The message of type '{MessageType}' has been pushed to EventBridge.", typeof(T));
+            }
+            catch (Exception ex)
+            {
+                trace.AddException(ex);
+                throw;
+            }
         }
-
-        var publisherMapping = GetPublisherMapping(typeof(T));
-        var publisherEndpoint = publisherMapping.PublisherConfiguration.PublisherEndpoint;
-
-        _logger.LogDebug("Creating the message envelope for the message of type '{MessageType}'.", typeof(T));
-        var messageEnvelope = await _envelopeSerializer.CreateEnvelopeAsync(message);
-        var messageBody = await _envelopeSerializer.SerializeAsync(messageEnvelope);
-
-        _logger.LogDebug("Sending the message of type '{MessageType}' to EventBridge. Publisher Endpoint: {Endpoint}", typeof(T), publisherEndpoint);
-        var request = CreatePutEventsRequest(publisherMapping, messageEnvelope.Source?.ToString(), messageBody, eventBridgeOptions);
-        await _eventBridgeClient.PutEventsAsync(request, token);
-        _logger.LogDebug("The message of type '{MessageType}' has been pushed to EventBridge.", typeof(T));
     }
 
     private PutEventsRequest CreatePutEventsRequest(PublisherMapping publisherMapping, string? source, string messageBody, EventBridgeOptions? eventBridgeOptions)
@@ -113,7 +135,7 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
         return putEventsRequest;
     }
 
-    private PublisherMapping GetPublisherMapping(Type messageType)
+    private PublisherMapping GetPublisherMapping(ITelemetryTrace trace, Type messageType)
     {
         var mapping = _messageConfiguration.GetPublisherMapping(messageType);
         if (mapping is null)
@@ -126,6 +148,9 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
             _logger.LogError("Messages of type '{MessageType}' are not configured for publishing to EventBridge.", messageType.FullName);
             throw new MissingMessageTypeConfigurationException($"Messages of type '{messageType.FullName}' are not configured for publishing to EventBridge.");
         }
+
+        trace.AddMetadata(TelemetryKeys.MessageType, mapping.MessageTypeIdentifier);
+
         return mapping;
     }
 }
