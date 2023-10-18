@@ -6,8 +6,7 @@ using Amazon.Lambda.Core;
 using Amazon.Lambda.SQSEvents;
 using AWS.Messaging.Lambda.Services;
 using AWS.Messaging.Lambda.Services.Internal;
-using AWS.Messaging.Services;
-using Microsoft.Extensions.DependencyInjection;
+using AWS.Messaging.Telemetry;
 using Microsoft.Extensions.Logging;
 
 namespace AWS.Messaging.Lambda;
@@ -21,6 +20,7 @@ internal class DefaultLambdaMessaging : ILambdaMessaging
     private readonly ILambdaMessageProcessorFactory _messageProcessorFactory;
     private readonly LambdaContextServiceHolder _lambdaContextHolder;
     private readonly LambdaMessagingOptions _lambdaMessagingOptions;
+    private readonly ITelemetryFactory _telemetryFactory;
 
     /// <summary>
     /// Creates an instance of <see cref="DefaultLambdaMessaging" />
@@ -29,66 +29,98 @@ internal class DefaultLambdaMessaging : ILambdaMessaging
     /// <param name="messageProcessorFactory">Factory for creating a <see cref="ILambdaMessageProcessor"/> for each configuration</param>
     /// <param name="lambdaContextHolder">Used to hold the ILambdaContext for DI injections</param>
     /// <param name="lambdaMessagingOptions">Configuration options for concurrency processing of messages inside Lambda functions.</param>
-    public DefaultLambdaMessaging(ILogger<DefaultLambdaMessaging> logger, ILambdaMessageProcessorFactory messageProcessorFactory, LambdaContextServiceHolder lambdaContextHolder, LambdaMessagingOptions lambdaMessagingOptions)
+    /// <param name="telemetryFactory">Factory for telemetry data</param>
+    public DefaultLambdaMessaging(
+        ILogger<DefaultLambdaMessaging> logger,
+        ILambdaMessageProcessorFactory messageProcessorFactory,
+        LambdaContextServiceHolder lambdaContextHolder,
+        LambdaMessagingOptions lambdaMessagingOptions,
+        ITelemetryFactory telemetryFactory)
     {
         _logger = logger;
         _messageProcessorFactory = messageProcessorFactory;
         _lambdaContextHolder = lambdaContextHolder;
         _lambdaMessagingOptions = lambdaMessagingOptions;
+        _telemetryFactory = telemetryFactory;
     }
 
     /// <inheritdoc/>
     public async Task ProcessLambdaEventAsync(SQSEvent sqsEvent, ILambdaContext context)
     {
-        if (sqsEvent.Records?.Any() == false)
-            return;
+        using (var trace = _telemetryFactory.Trace("Processing Lambda event from AWS SQS"))
+        {
+            try
+            {
+                if (sqsEvent.Records?.Any() == false)
+                    return;
 
-        _lambdaContextHolder.Context = context;
-        using var cts = new CancellationTokenSource();
-        try
-        {
-            var lambdaMessageProcessorConfiguration = CreateLambdaMessageProcessorConfiguration(sqsEvent, useBatchResponse: false, _lambdaMessagingOptions);
-            var lambdaMessageProcessor = _messageProcessorFactory.CreateLambdaMessageProcessor(lambdaMessageProcessorConfiguration);
-            await lambdaMessageProcessor.ProcessMessagesAsync(cts.Token);
-        }
-        finally
-        {
-            // At this point all background tasks should have either succeeded or we are in an error state. If we are in an
-            // error state we need to cancel any background tasks so they don't continue running in future Lambda invocations.
-            cts.Cancel();
+                _lambdaContextHolder.Context = context;
+                using var cts = new CancellationTokenSource();
+                try
+                {
+                    var lambdaMessageProcessorConfiguration = CreateLambdaMessageProcessorConfiguration(sqsEvent, useBatchResponse: false, trace, _lambdaMessagingOptions);
+                    var lambdaMessageProcessor = _messageProcessorFactory.CreateLambdaMessageProcessor(lambdaMessageProcessorConfiguration);
+                    await lambdaMessageProcessor.ProcessMessagesAsync(cts.Token);
+                }
+                finally
+                {
+                    // At this point all background tasks should have either succeeded or we are in an error state. If we are in an
+                    // error state we need to cancel any background tasks so they don't continue running in future Lambda invocations.
+                    cts.Cancel();
+                }
+            }
+            catch (Exception ex)
+            {
+                trace.AddException(ex);
+                throw;
+            }
         }
     }
 
     /// <inheritdoc/>
     public async Task<SQSBatchResponse> ProcessLambdaEventWithBatchResponseAsync(SQSEvent sqsEvent, ILambdaContext context)
     {
-        if (sqsEvent.Records?.Any() == false)
-            return new SQSBatchResponse();
+        using (var trace = _telemetryFactory.Trace("Processing Lambda event with batch response from AWS SQS"))
+        {
+            try
+            {
+                if (sqsEvent.Records?.Any() == false)
+                    return new SQSBatchResponse();
 
-        _lambdaContextHolder.Context = context;
-        using var cts = new CancellationTokenSource();
-        try
-        {
-            var lambdaMessageProcessorConfiguration = CreateLambdaMessageProcessorConfiguration(sqsEvent, useBatchResponse: true, _lambdaMessagingOptions);
-            var lambdaMessageProcessor = _messageProcessorFactory.CreateLambdaMessageProcessor(lambdaMessageProcessorConfiguration);
-            var sqsBatchResponse = await lambdaMessageProcessor.ProcessMessagesAsync(cts.Token);
-            return sqsBatchResponse ?? new SQSBatchResponse();
-        }
-        finally
-        {
-            // At this point all background tasks should have either succeeded or we are in an error state. If we are in an
-            // error state we need to cancel any background tasks so they don't continue running in future Lambda invocations.
-            cts.Cancel();
+                _lambdaContextHolder.Context = context;
+                using var cts = new CancellationTokenSource();
+                try
+                {
+                    var lambdaMessageProcessorConfiguration = CreateLambdaMessageProcessorConfiguration(sqsEvent, useBatchResponse: true, trace, _lambdaMessagingOptions);
+                    var lambdaMessageProcessor = _messageProcessorFactory.CreateLambdaMessageProcessor(lambdaMessageProcessorConfiguration);
+                    var sqsBatchResponse = await lambdaMessageProcessor.ProcessMessagesAsync(cts.Token);
+                    return sqsBatchResponse ?? new SQSBatchResponse();
+                }
+                finally
+                {
+                    // At this point all background tasks should have either succeeded or we are in an error state. If we are in an
+                    // error state we need to cancel any background tasks so they don't continue running in future Lambda invocations.
+                    cts.Cancel();
+                }
+            }
+            catch (Exception ex)
+            {
+                trace.AddException(ex);
+                throw;
+            }
         }
     }
 
-    private LambdaMessageProcessorConfiguration CreateLambdaMessageProcessorConfiguration(SQSEvent sqsEvent, bool useBatchResponse, LambdaMessagingOptions? options = null)
+    private LambdaMessageProcessorConfiguration CreateLambdaMessageProcessorConfiguration(SQSEvent sqsEvent, bool useBatchResponse, ITelemetryTrace trace, LambdaMessagingOptions? options = null)
     {
         options ??= new LambdaMessagingOptions();
 
         options.Validate();
         var sqsQueueArn = sqsEvent.Records[0].EventSourceArn;
         var sqsQueueUrl = GetSQSQueueUrl(sqsQueueArn);
+
+        trace.AddMetadata(TelemetryKeys.QueueUrl, sqsQueueUrl);
+
         var lambdaMessageProcessorConfiguration = new LambdaMessageProcessorConfiguration(sqsQueueUrl)
         {
             SQSEvent = sqsEvent,

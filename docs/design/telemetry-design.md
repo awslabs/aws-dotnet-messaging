@@ -111,7 +111,7 @@ The trace is wrapped around a `using` block to ensure the trace is disposed when
 ```csharp
 public async Task<MessageProcessStatus> InvokeAsync(MessageEnvelope messageEnvelope, SubscriberMapping subscriberMapping, CancellationToken token = default)
 {
-    using (var trace = _telemetryWriter.Trace("Process Message", messageEnvelope))
+    using (var trace = _telemetryWriter.Trace("Processing message", messageEnvelope))
     {
         try
         {

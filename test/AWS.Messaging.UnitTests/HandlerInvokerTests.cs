@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using AWS.Messaging.Configuration;
 using AWS.Messaging.Services;
+using AWS.Messaging.Telemetry;
 using AWS.Messaging.UnitTests.MessageHandlers;
 using AWS.Messaging.UnitTests.Models;
 using Microsoft.Extensions.DependencyInjection;
@@ -34,7 +35,10 @@ public class HandlerInvokerTests
 
         var serviceProvider = serviceCollection.BuildServiceProvider();
 
-        var handlerInvoker = new HandlerInvoker(serviceProvider, new NullLogger<HandlerInvoker>());
+        var handlerInvoker = new HandlerInvoker(
+            serviceProvider,
+            new NullLogger<HandlerInvoker>(),
+            new DefaultTelemetryFactory(serviceProvider));
 
         var envelope = new MessageEnvelope<ChatMessage>();
         var subscriberMapping = new SubscriberMapping(typeof(ChatMessageHandler), typeof(ChatMessage));
@@ -59,7 +63,10 @@ public class HandlerInvokerTests
 
         var serviceProvider = serviceCollection.BuildServiceProvider();
 
-        var handlerInvoker = new HandlerInvoker(serviceProvider, new NullLogger<HandlerInvoker>());
+        var handlerInvoker = new HandlerInvoker(
+            serviceProvider,
+            new NullLogger<HandlerInvoker>(),
+            new DefaultTelemetryFactory(serviceProvider));
 
         // Assert that ChatMessage is routed to the right handler method, which always succeeds
         var chatEnvelope = new MessageEnvelope<ChatMessage>();
@@ -94,7 +101,10 @@ public class HandlerInvokerTests
 
         var serviceProvider = serviceCollection.BuildServiceProvider();
 
-        var handlerInvoker = new HandlerInvoker(serviceProvider, mockLogger.Object);
+        var handlerInvoker = new HandlerInvoker(
+            serviceProvider,
+            mockLogger.Object,
+            new DefaultTelemetryFactory(serviceProvider));
         var envelope = new MessageEnvelope<ChatMessage>()
         {
             Id = "123"
@@ -123,7 +133,10 @@ public class HandlerInvokerTests
         serviceCollection.AddSingleton<TempStorage<string>>();
 
         var serviceProvider = serviceCollection.BuildServiceProvider();
-        var handlerInvoker = new HandlerInvoker(serviceProvider, new NullLogger<HandlerInvoker>());
+        var handlerInvoker = new HandlerInvoker(
+            serviceProvider,
+            new NullLogger<HandlerInvoker>(),
+            new DefaultTelemetryFactory(serviceProvider));
 
         // ACT and ASSERT - Invoke the GreetingHandler multiple times and verify that a new instance of IGreeter is created each time.
         var envelope = new MessageEnvelope<string>();
