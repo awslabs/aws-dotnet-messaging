@@ -18,6 +18,8 @@ using Amazon.SimpleNotificationService.Model;
 using Amazon.EventBridge;
 using Amazon.EventBridge.Model;
 using AWS.Messaging.Publishers.EventBridge;
+using AWS.Messaging.Publishers.SQS;
+using AWS.Messaging.Publishers.SNS;
 
 namespace AWS.Messaging.UnitTests;
 
@@ -100,9 +102,9 @@ public class MessagePublisherTests
         await Assert.ThrowsAsync<InvalidMessageException>(() => messagePublisher.PublishAsync<ChatMessage?>(null));
     }
 
-    private void SetupSQSPublisherDIServices()
+    private void SetupSQSPublisherDIServices(string queueUrl = "endpoint")
     {
-        var publisherConfiguration = new SQSPublisherConfiguration("endpoint");
+        var publisherConfiguration = new SQSPublisherConfiguration(queueUrl);
         var publisherMapping = new PublisherMapping(typeof(ChatMessage), publisherConfiguration, PublisherTargetType.SQS_PUBLISHER);
         var awsClientProvider = new AWSClientProvider(_serviceProvider.Object);
 
@@ -129,9 +131,9 @@ public class MessagePublisherTests
         await Assert.ThrowsAsync<UnsupportedPublisherException>(() => messagePublisher.PublishAsync(_chatMessage));
     }
 
-    private void SetupSNSPublisherDIServices()
+    private void SetupSNSPublisherDIServices(string topicArn = "endpoint")
     {
-        var publisherConfiguration = new SNSPublisherConfiguration("endpoint");
+        var publisherConfiguration = new SNSPublisherConfiguration(topicArn);
         var publisherMapping = new PublisherMapping(typeof(ChatMessage), publisherConfiguration, PublisherTargetType.SNS_PUBLISHER);
         var awsClientProvider = new AWSClientProvider(_serviceProvider.Object);
 
@@ -313,5 +315,49 @@ public class MessagePublisherTests
             );
 
         await Assert.ThrowsAsync<InvalidMessageException>(() => messagePublisher.PublishAsync<ChatMessage?>(null));
+    }
+
+    [Fact]
+    public async Task PublishToFifoQueue_WithoutMessageGroupId_ThrowsException()
+    {
+        SetupSQSPublisherDIServices("endpoint.fifo");
+
+        var messagePublisher = new MessageRoutingPublisher(
+            _serviceProvider.Object,
+            _messageConfiguration.Object,
+            _logger.Object
+            );
+
+        var sqsMessagePublisher = new SQSPublisher(
+            (IAWSClientProvider)_serviceProvider.Object.GetService(typeof(IAWSClientProvider))!,
+            _logger.Object,
+            _messageConfiguration.Object,
+            _envelopeSerializer.Object
+            );
+
+        await Assert.ThrowsAsync<InvalidFifoPublishingRequestException>(() => messagePublisher.PublishAsync<ChatMessage?>(new ChatMessage()));
+        await Assert.ThrowsAsync<InvalidFifoPublishingRequestException>(() => sqsMessagePublisher.PublishAsync<ChatMessage?>(new ChatMessage(), new SQSOptions()));
+    }
+
+    [Fact]
+    public async Task PublishToFifoTopic_WithoutMessageGroupId_ThrowsException()
+    {
+        SetupSNSPublisherDIServices("endpoint.fifo");
+
+        var messagePublisher = new MessageRoutingPublisher(
+            _serviceProvider.Object,
+            _messageConfiguration.Object,
+            _logger.Object
+            );
+
+        var snsMessagePublisher = new SNSPublisher(
+            (IAWSClientProvider)_serviceProvider.Object.GetService(typeof(IAWSClientProvider))!,
+            _logger.Object,
+            _messageConfiguration.Object,
+            _envelopeSerializer.Object
+            );
+
+        await Assert.ThrowsAsync<InvalidFifoPublishingRequestException>(() => messagePublisher.PublishAsync<ChatMessage?>(new ChatMessage()));
+        await Assert.ThrowsAsync<InvalidFifoPublishingRequestException>(() => snsMessagePublisher.PublishAsync<ChatMessage?>(new ChatMessage(), new SNSOptions()));
     }
 }
