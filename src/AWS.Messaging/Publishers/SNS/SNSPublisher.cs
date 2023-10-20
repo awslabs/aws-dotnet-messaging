@@ -19,6 +19,8 @@ internal class SNSPublisher : IMessagePublisher, ISNSPublisher
     private readonly IMessageConfiguration _messageConfiguration;
     private readonly IEnvelopeSerializer _envelopeSerializer;
 
+    private const string FIFO_SUFFIX = ".fifo";
+
     /// <summary>
     /// Creates an instance of <see cref="SNSPublisher"/>.
     /// </summary>
@@ -83,6 +85,19 @@ internal class SNSPublisher : IMessagePublisher, ISNSPublisher
             TopicArn = topicArn,
             Message = messageBody,
         };
+
+        if (topicArn.EndsWith(FIFO_SUFFIX) && string.IsNullOrEmpty(snsOptions?.MessageGroupId))
+        {
+            var errorMessage =
+                $"You are attempting to publish to a FIFO SNS topic but the request does not include a message group ID. " +
+                $"Please use {nameof(ISNSPublisher)} from the service collection to publish to FIFO topics. " +
+                $"It exposes a {nameof(PublishAsync)} method that accepts {nameof(SNSOptions)} as a parameter. " +
+                $"A message group ID must be specified via {nameof(SNSOptions.MessageGroupId)}. " +
+                $"Additionally, {nameof(SNSOptions.MessageDeduplicationId)} must also be specified if content based de-duplication is not enabled on the topic.";
+
+            _logger.LogError(errorMessage);
+            throw new InvalidFifoPublishingRequestException(errorMessage);
+        }
 
         if (snsOptions is null)
             return request;

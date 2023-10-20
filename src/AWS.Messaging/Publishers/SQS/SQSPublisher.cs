@@ -19,6 +19,8 @@ internal class SQSPublisher : IMessagePublisher, ISQSPublisher
     private readonly IMessageConfiguration _messageConfiguration;
     private readonly IEnvelopeSerializer _envelopeSerializer;
 
+    private const string FIFO_SUFFIX = ".fifo";
+
     /// <summary>
     /// Creates an instance of <see cref="SQSPublisher"/>.
     /// </summary>
@@ -83,6 +85,19 @@ internal class SQSPublisher : IMessagePublisher, ISQSPublisher
             QueueUrl = queueUrl,
             MessageBody = messageBody,
         };
+
+        if (queueUrl.EndsWith(FIFO_SUFFIX) && string.IsNullOrEmpty(sqsOptions?.MessageGroupId))
+        {
+            var errorMessage =
+                $"You are attempting to publish to a FIFO SQS queue but the request does not include a message group ID. " +
+                $"Please use {nameof(ISQSPublisher)} from the service collection to publish to FIFO queues. " +
+                $"It exposes a {nameof(PublishAsync)} method that accepts {nameof(SQSOptions)} as a parameter. " +
+                $"A message group ID must be specified via {nameof(SQSOptions.MessageGroupId)}. " +
+                $"Additionally, {nameof(SQSOptions.MessageDeduplicationId)} must also be specified if content based de-duplication is not enabled on the queue.";
+
+            _logger.LogError(errorMessage);
+            throw new InvalidFifoPublishingRequestException(errorMessage);
+        }
 
         if (sqsOptions is null)
             return request;

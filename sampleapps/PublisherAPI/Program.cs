@@ -17,6 +17,11 @@ builder.Services.AddAWSMessageBus(bus =>
     bus.AddSQSPublisher<ChatMessage>("https://sqs.us-west-2.amazonaws.com/012345678910/MPF", "chatMessage");
     bus.AddSNSPublisher<OrderInfo>("arn:aws:sns:us-west-2:012345678910:MPF", "orderInfo");
     bus.AddEventBridgePublisher<FoodItem>("arn:aws:events:us-west-2:012345678910:event-bus/default", "foodItem");
+
+    // FIFO endpoints
+    bus.AddSQSPublisher<TransactionInfo>("https://sqs.us-west-2.amazonaws.com/012345678910/MPF.fifo", "transactionInfo");
+    bus.AddSNSPublisher<BidInfo>("arn:aws:sns:us-west-2:012345678910:MPF.fifo", "bidInfo");
+
     bus.ConfigureSerializationOptions(options =>
     {
         options.SystemTextJsonOptions = new JsonSerializerOptions

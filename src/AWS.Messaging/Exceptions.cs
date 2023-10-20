@@ -238,3 +238,14 @@ public class InvalidSQSQueueArnException : AWSMessagingException
     /// </summary>
     public InvalidSQSQueueArnException(string message, Exception? innerException = null) : base(message, innerException) { }
 }
+
+/// <summary>
+/// Thrown when the publish request to a FIFO endpoint is invalid.
+/// </summary>
+public class InvalidFifoPublishingRequestException : AWSMessagingException
+{
+    /// <summary>
+    /// Creates an instance of <see cref="InvalidFifoPublishingRequestException"/>.
+    /// </summary>
+    public InvalidFifoPublishingRequestException(string message, Exception? innerException = null) : base(message, innerException) { }
+}
