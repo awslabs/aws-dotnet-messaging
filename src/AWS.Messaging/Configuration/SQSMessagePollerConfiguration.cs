@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using Amazon.SQS;
 using Amazon.SQS.Model;
 
 namespace AWS.Messaging.Configuration;
@@ -88,6 +89,11 @@ internal class SQSMessagePollerConfiguration : IMessagePollerConfiguration
     public int WaitTimeSeconds { get; init; } = DEFAULT_WAIT_TIME_SECONDS;
 
     /// <summary>
+    /// Function that indicates whether an <see cref="AmazonSQSException"/> should stop the poller or continue.
+    /// </summary>
+    public Func<AmazonSQSException, bool> IsSQSExceptionFatal { get; set; } = IsFatalException;
+
+    /// <summary>
     /// Construct an instance of <see cref="SQSMessagePollerConfiguration" />
     /// </summary>
     /// <param name="queueUrl">The SQS QueueUrl to poll messages from.</param>
@@ -112,5 +118,23 @@ internal class SQSMessagePollerConfiguration : IMessagePollerConfiguration
             VisibilityTimeoutExtensionThreshold = VisibilityTimeoutExtensionThreshold,
             VisibilityTimeoutExtensionHeartbeatInterval = VisibilityTimeoutExtensionHeartbeatInterval
         };
+    }
+
+    /// <summary>
+    /// <see cref="AmazonSQSException"/> error codes that should be treated as fatal and stop the poller
+    /// </summary>
+    private static readonly HashSet<string> _fatalSQSErrorCodes = new HashSet<string>
+    {
+        "InvalidAddress",   // Returned for an invalid queue URL
+        "AccessDenied"      // Returned with insufficient IAM permissions to read from the configured queue
+    };
+
+    /// <summary>
+    /// Determines if a given SQS exception should be treated as fatal and rethrown to stop the poller
+    /// </summary>
+    /// <param name="sqsException">SQS Exception</param>
+    internal static bool IsFatalException(AmazonSQSException sqsException)
+    {
+        return sqsException is QueueDoesNotExistException ? true : _fatalSQSErrorCodes.Contains(sqsException.ErrorCode);
     }
 }
