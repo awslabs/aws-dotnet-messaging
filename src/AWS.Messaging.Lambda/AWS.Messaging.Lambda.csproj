@@ -17,11 +17,16 @@
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\..\public.snk</AssemblyOriginatorKeyFile>
     <Version>0.1.0-beta</Version>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Amazon.Lambda.Core" Version="2.2.0" />
     <PackageReference Include="Amazon.Lambda.SQSEvents" Version="2.2.0" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.1.1" PrivateAssets="All"/>
   </ItemGroup>
 
   <ItemGroup>
@@ -37,6 +42,6 @@
 
   <ItemGroup>
     <None Include=".\README.md" Pack="true" PackagePath="" />
-  </ItemGroup>  
+  </ItemGroup>
 
 </Project>
