@@ -164,7 +164,7 @@ public class OpenTelemetryTests
         }
 
         Assert.Single(activities);
-        Assert.Equal("AWS.Messaging: Process Message", activities[0].OperationName);
+        Assert.Equal("AWS.Messaging: Processing message", activities[0].OperationName);
         Assert.Equal(4, activities[0].Tags.Count());
         Assert.Contains(new KeyValuePair<string, string?>("aws.messaging.messageId", "1234"), activities[0].Tags);
         Assert.Contains(new KeyValuePair<string, string?>("aws.messaging.messageType", "AWS.Messaging.UnitTests.Models.ChatMessage"), activities[0].Tags);
@@ -205,7 +205,7 @@ public class OpenTelemetryTests
         }
 
         Assert.Single(activities);
-        Assert.Equal("AWS.Messaging: Process Message", activities[0].OperationName);
+        Assert.Equal("AWS.Messaging: Processing message", activities[0].OperationName);
 
         // The MPF activity's parent should be the one specified in envelope.Metadata above
         Assert.Equal("00-d2d8865217873923d2d74cf680a30ac3-d63e320582f9ff94-01", activities[0].ParentId);
