@@ -10,8 +10,11 @@ using AWS.Messaging.Configuration;
 using AWS.Messaging.Serialization;
 using AWS.Messaging.Services;
 using AWS.Messaging.SQS;
+using AWS.Messaging.Tests.Common.Handlers;
+using AWS.Messaging.Tests.Common.Models;
 using AWS.Messaging.UnitTests.MessageHandlers;
 using AWS.Messaging.UnitTests.Models;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
@@ -229,7 +232,7 @@ namespace AWS.Messaging.UnitTests
         }
 
         [Fact]
-        public async Task DefaultMessageManager_FifoMessages()
+        public async Task DefaultMessageManager_ProcessMessageGroup()
         {
             var mockSQSMessageCommunication = CreateMockSQSMessageCommunication();
             var mockHandlerInvoker = CreateMockHandlerInvoker(MessageProcessStatus.Success(), messageHandlingDelay: TimeSpan.FromSeconds(3));
@@ -261,8 +264,8 @@ namespace AWS.Messaging.UnitTests
             };
 
             // Start handling two message groups at roughly the same time
-            var messageATask = manager.ProcessMessageGroupAsync(messageGroupA);
-            var messageBTask = manager.ProcessMessageGroupAsync(messageGroupB);
+            var messageATask = manager.ProcessMessageGroupAsync(messageGroupA, "A");
+            var messageBTask = manager.ProcessMessageGroupAsync(messageGroupB, "B");
 
             // verify that the active message count was incremented once per each message group
             Assert.Equal(2, manager.ActiveMessageCount);
@@ -290,6 +293,63 @@ namespace AWS.Messaging.UnitTests
 
             // Verify that the active message count was decremented back to 0
             Assert.Equal(0, manager.ActiveMessageCount);
+        }
+
+        /// <summary>
+        /// Verifies if handler invocation fails for any message in a group, then the entire group is skipped
+        /// </summary>
+        [Fact]
+        public async Task DefaultMessageManager_MessageGroupIsSkipped()
+        {
+            var serviceCollection = new ServiceCollection();
+            serviceCollection.AddSingleton<Tests.Common.Models.TempStorage<TransactionInfo>>();
+            serviceCollection.AddAWSMessageBus(bus =>
+            {
+                bus.AddMessageHandler<TransactionInfoHandler, TransactionInfo>();
+            });
+
+            var serviceProvider = serviceCollection.BuildServiceProvider();
+
+            var handlerInvoker = serviceProvider.GetRequiredService<IHandlerInvoker>();
+            var mockSQSMessageCommunication = CreateMockSQSMessageCommunication();
+
+            var messageManager = new DefaultMessageManager(mockSQSMessageCommunication.Object, handlerInvoker, new NullLogger<DefaultMessageManager>(), new MessageManagerConfiguration
+            {
+                VisibilityTimeout = 5,
+                VisibilityTimeoutExtensionThreshold = 5,
+                VisibilityTimeoutExtensionHeartbeatInterval = 5
+            });
+
+            var subscriberMapping = new SubscriberMapping(typeof(TransactionInfoHandler), typeof(TransactionInfoHandler));
+
+            var messageGroup = new List<ConvertToEnvelopeResult>
+            {
+                new ConvertToEnvelopeResult(CreateTransactionEnvelope("1", "A", false), subscriberMapping),
+                new ConvertToEnvelopeResult(CreateTransactionEnvelope("2", "A", false), subscriberMapping),
+                new ConvertToEnvelopeResult(CreateTransactionEnvelope("3", "A", true), subscriberMapping),
+                new ConvertToEnvelopeResult(CreateTransactionEnvelope("4", "A", false), subscriberMapping),
+                new ConvertToEnvelopeResult(CreateTransactionEnvelope("5", "A", false), subscriberMapping),
+            };
+
+            await messageManager.ProcessMessageGroupAsync(messageGroup, "A");
+
+            var messageStorage = serviceProvider.GetRequiredService<Tests.Common.Models.TempStorage<TransactionInfo>>();
+
+            var transactionsInGroupA = messageStorage.FifoMessages["A"];
+
+            // Since message ID = "3" failed, all messages after it are skipped from processing
+            Assert.Equal(2, transactionsInGroupA.Count);
+            Assert.Equal("1", transactionsInGroupA[0].Id);
+            Assert.Equal("2", transactionsInGroupA[1].Id);
+        }
+
+        private MessageEnvelope<TransactionInfo> CreateTransactionEnvelope(string id, string userId, bool shouldFail)
+        {
+            return new MessageEnvelope<TransactionInfo>
+            {
+                Id = id,
+                Message = new TransactionInfo { TransactionId = id, UserId = userId, shouldFail = shouldFail }
+            };
         }
 
         /// <summary>

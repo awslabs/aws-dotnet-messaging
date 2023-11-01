@@ -194,7 +194,7 @@ internal class DefaultLambdaMessageProcessor : ILambdaMessageProcessor, ISQSMess
             }
 
             var groupId = messageGroups[index];
-            var task = _messageManager.ProcessMessageGroupAsync(messageGroupMapping[groupId], token);
+            var task = _messageManager.ProcessMessageGroupAsync(messageGroupMapping[groupId], groupId, token);
             taskList.Add(task);
             index++;
         }

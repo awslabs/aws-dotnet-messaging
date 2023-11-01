@@ -194,10 +194,10 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
                 messageGroupMapping[groupId] = new() { messageEnvelopResult };
         }
 
-        foreach (var messageGroup in messageGroupMapping.Values)
+        foreach (var item in messageGroupMapping)
         {
             // Don't await this result, we want to process multiple message groups concurrently
-            _ = _messageManager.ProcessMessageGroupAsync(messageGroup, token);
+            _ = _messageManager.ProcessMessageGroupAsync(item.Value, item.Key, token);
         }
     }
 

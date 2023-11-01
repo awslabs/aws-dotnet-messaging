@@ -3,7 +3,7 @@
 
 using System;
 
-namespace AWS.Messaging.IntegrationTests.Models;
+namespace AWS.Messaging.Tests.Common.Models;
 
 public class TransactionInfo
 {
@@ -14,4 +14,6 @@ public class TransactionInfo
     public DateTime PublishTimeStamp { get; set; }
 
     public TimeSpan WaitTime { get; set; }
+
+    public bool shouldFail { get; set; } = false;
 }

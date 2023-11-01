@@ -8,10 +8,10 @@ using System.Threading;
 using System.Threading.Tasks;
 using Amazon.SQS;
 using Amazon.SQS.Model;
-using AWS.Messaging.IntegrationTests.Handlers;
-using AWS.Messaging.IntegrationTests.Models;
 using AWS.Messaging.Publishers.SQS;
 using AWS.Messaging.Services;
+using AWS.Messaging.Tests.Common.Handlers;
+using AWS.Messaging.Tests.Common.Models;
 using AWS.Messaging.Tests.Common.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -151,20 +151,13 @@ public class FifoSubscriberTests : IAsyncLifetime
     {
         _serviceCollection.AddAWSMessageBus(builder =>
         {
-            builder.AddSQSPublisher<ChatMessage>(_sqsQueueUrl);
+            builder.AddSQSPublisher<TransactionInfo>(_sqsQueueUrl);
             builder.AddSQSPoller(_sqsQueueUrl);
         });
         var serviceProvider = _serviceCollection.BuildServiceProvider();
 
-        var publisher = serviceProvider.GetRequiredService<ISQSPublisher>();
-        for (var i = 0; i < numberOfMessages; i++)
-        {
-            var chatMessage = new ChatMessage { MessageDescription = $"UsingFramework-{Guid.NewGuid()}" };
-            await publisher.PublishAsync(chatMessage, new SQSOptions
-            {
-                MessageGroupId = "A"
-            });
-        }
+        var sqsPublisher = serviceProvider.GetRequiredService<ISQSPublisher>();
+        await PublishTransactions(sqsPublisher, numberOfMessages, userId: "A");
 
         var pump = serviceProvider.GetRequiredService<IHostedService>() as MessagePumpService;
         Assert.NotNull(pump);
@@ -178,7 +171,7 @@ public class FifoSubscriberTests : IAsyncLifetime
         var timeElapsed = DateTime.UtcNow - processStartTime;
 
         var inMemoryLogger = serviceProvider.GetRequiredService<InMemoryLogger>();
-        var errorMessages = inMemoryLogger.Logs.Where(x => x.Message.Equals("_messageConfiguration does not have a valid subscriber mapping for message ID 'AWS.Messaging.IntegrationTests.Models.ChatMessage'"));
+        var errorMessages = inMemoryLogger.Logs.Where(x => x.Message.Equals("_messageConfiguration does not have a valid subscriber mapping for message ID 'AWS.Messaging.Tests.Common.Models.TransactionInfo'"));
         Assert.NotEmpty(errorMessages);
         Assert.True(errorMessages.Count() >= numberOfMessages);
         Assert.True(timeElapsed.TotalSeconds > 29);
@@ -189,23 +182,19 @@ public class FifoSubscriberTests : IAsyncLifetime
     [InlineData(5)]
     public async Task MessagesWithFailedHandlers(int numberOfMessages)
     {
+        _serviceCollection.AddSingleton<TempStorage<TransactionInfo>>();
         _serviceCollection.AddAWSMessageBus(builder =>
         {
-            builder.AddSQSPublisher<ChatMessage>(_sqsQueueUrl);
+            builder.AddSQSPublisher<TransactionInfo>(_sqsQueueUrl);
             builder.AddSQSPoller(_sqsQueueUrl);
-            builder.AddMessageHandler<ChatMessageHandler_Failed, ChatMessage>();
+            builder.AddMessageHandler<TransactionInfoHandler, TransactionInfo>();
+            builder.AddMessageSource("/aws/messaging");
         });
         var serviceProvider = _serviceCollection.BuildServiceProvider();
 
-        var publisher = serviceProvider.GetRequiredService<ISQSPublisher>();
-        for (var i = 0; i < numberOfMessages; i++)
-        {
-            var chatMessage = new ChatMessage { MessageDescription = $"UsingFramework-{Guid.NewGuid()}" };
-            await publisher.PublishAsync(chatMessage, new SQSOptions
-            {
-                MessageGroupId = "A"
-            });
-        }
+        var sqsPublisher = serviceProvider.GetRequiredService<ISQSPublisher>();
+
+        await PublishTransactions(sqsPublisher, numberOfMessages, userId: "A", shouldFail: true);
 
         var pump = serviceProvider.GetRequiredService<IHostedService>() as MessagePumpService;
         Assert.NotNull(pump);
@@ -219,14 +208,17 @@ public class FifoSubscriberTests : IAsyncLifetime
         var timeElapsed = DateTime.UtcNow - processStartTime;
 
         var inMemoryLogger = serviceProvider.GetRequiredService<InMemoryLogger>();
-        var errorMessages = inMemoryLogger.Logs.Where(x => x.Message.Contains("Message handling failed unexpectedly for message"));
+        
+        var errorMessages = inMemoryLogger.Logs.Where(x => x.Message.Contains("Message handling completed unsuccessfully for message"));
+        var skippingGroup = inMemoryLogger.Logs.Where(x => x.Message.Contains("Handler invocation failed for a message belonging to message group 'A'. Skipping processing of subsequent messages from the same group."));
+
         Assert.NotEmpty(errorMessages);
-        Assert.True(errorMessages.Count() >= numberOfMessages);
+        Assert.NotEmpty(skippingGroup);
         Assert.True(timeElapsed.TotalSeconds > 29);
         Assert.True(source.IsCancellationRequested);
     }
 
-    private async Task PublishTransactions(ISQSPublisher sqsPublisher, int numTransactions, string userId, bool addWaitTime = false)
+    private async Task PublishTransactions(ISQSPublisher sqsPublisher, int numTransactions, string userId, bool addWaitTime = false, bool shouldFail = false)
     {
         var rnd = new Random();
 
@@ -241,8 +233,14 @@ public class FifoSubscriberTests : IAsyncLifetime
 
             if (addWaitTime)
             {
-                // Add a random delay between 0 to 1 seconds
+                // Add a random delay between 0 to 1 seconds during the handler invocation.
                 transactionInfo.WaitTime = TimeSpan.FromMilliseconds(rnd.Next(0, 1001));
+            }
+
+            if (shouldFail)
+            {
+                // The handler invocation for this message will fail.
+                transactionInfo.shouldFail = true;
             }
 
             await sqsPublisher.PublishAsync(transactionInfo, new SQSOptions

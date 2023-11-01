@@ -1,11 +1,9 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-using System.Threading;
-using System.Threading.Tasks;
-using AWS.Messaging.IntegrationTests.Models;
+using AWS.Messaging.Tests.Common.Models;
 
-namespace AWS.Messaging.IntegrationTests.Handlers;
+namespace AWS.Messaging.Tests.Common.Handlers;
 
 public class TransactionInfoHandler : IMessageHandler<TransactionInfo>
 {
@@ -19,7 +17,12 @@ public class TransactionInfoHandler : IMessageHandler<TransactionInfo>
     public async Task<MessageProcessStatus> HandleAsync(MessageEnvelope<TransactionInfo> messageEnvelope, CancellationToken token = default)
     {
         var transactionInfo = messageEnvelope.Message;
-        await Task.Delay(transactionInfo.WaitTime);
+        await Task.Delay(transactionInfo.WaitTime, token);
+
+        if (messageEnvelope.Message.shouldFail)
+        {
+            return await Task.FromResult(MessageProcessStatus.Failed());
+        }
 
         if (_tempStorage.FifoMessages.TryGetValue(transactionInfo.UserId, out var messageGroup))
             messageGroup.Add(messageEnvelope);

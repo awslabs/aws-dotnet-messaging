@@ -107,13 +107,7 @@ public class DefaultMessageManager : IMessageManager
         {
             UpdateActiveMessageCount(1);
 
-            // Add that metadata to the dictionary of running handlers, used to extend the visibility timeout if necessary
-            _inFlightMessageMetadata.TryAdd(messageEnvelope, new InFlightMetadata(
-                DateTimeOffset.UtcNow + TimeSpan.FromSeconds(_configuration.VisibilityTimeout)
-            ));
-
-            if (_configuration.SupportExtendingVisibilityTimeout)
-                StartMessageVisibilityExtensionTaskIfNotRunning(token);
+            acknowledgeMessage(messageEnvelope, token);
 
             await InvokeHandler(messageEnvelope, subscriberMapping, token);
         }
@@ -124,7 +118,7 @@ public class DefaultMessageManager : IMessageManager
     }
 
     /// <inheritdoc/>
-    public async Task ProcessMessageGroupAsync(List<ConvertToEnvelopeResult> messageGroup, CancellationToken token = default)
+    public async Task ProcessMessageGroupAsync(List<ConvertToEnvelopeResult> messageGroup, string groupId, CancellationToken token = default)
     {
         try
         {
@@ -133,19 +127,19 @@ public class DefaultMessageManager : IMessageManager
 
             foreach (var message in messageGroup)
             {
-                // Add that metadata to the dictionary of running handlers, used to extend the visibility timeout if necessary
-                _inFlightMessageMetadata.TryAdd(message.Envelope, new InFlightMetadata(
-                    DateTimeOffset.UtcNow + TimeSpan.FromSeconds(_configuration.VisibilityTimeout)
-                ));
+                acknowledgeMessage(message.Envelope, token);
             }
-
-            if (_configuration.SupportExtendingVisibilityTimeout)
-                StartMessageVisibilityExtensionTaskIfNotRunning(token);
 
             // Sequentially process each message within the group
             foreach (var message in messageGroup)
             {
-                await InvokeHandler(message.Envelope, message.Mapping, token);
+                var isSuccessful = await InvokeHandler(message.Envelope, message.Mapping, token);
+                if (!isSuccessful)
+                {
+                    // If the handler invocation fails for any message, skip processing subsequent messages in the group.
+                    _logger.LogError("Handler invocation failed for a message belonging to message group '{groupdId}'. Skipping processing of subsequent messages from the same group.", groupId);
+                    break;
+                }
             }
         }
         finally
@@ -155,8 +149,20 @@ public class DefaultMessageManager : IMessageManager
         }
     }
 
-    private async Task InvokeHandler(MessageEnvelope messageEnvelope, SubscriberMapping subscriberMapping, CancellationToken cancelToken)
+    private void acknowledgeMessage(MessageEnvelope messageEnvelope, CancellationToken token)
     {
+        // Add that metadata to the dictionary of running handlers, used to extend the visibility timeout if necessary
+        _inFlightMessageMetadata.TryAdd(messageEnvelope, new InFlightMetadata(
+            DateTimeOffset.UtcNow + TimeSpan.FromSeconds(_configuration.VisibilityTimeout)
+        ));
+
+        if (_configuration.SupportExtendingVisibilityTimeout)
+            StartMessageVisibilityExtensionTaskIfNotRunning(token);
+    }
+
+    private async Task<bool> InvokeHandler(MessageEnvelope messageEnvelope, SubscriberMapping subscriberMapping, CancellationToken cancelToken)
+    {
+        var isSuccessful = false;
         var handlerTask = _handlerInvoker.InvokeAsync(messageEnvelope, subscriberMapping, cancelToken);
         try
         {
@@ -179,6 +185,7 @@ public class DefaultMessageManager : IMessageManager
             {
                 // Delete the message from the queue if it was processed successfully
                 await _sqsMessageCommunication.DeleteMessagesAsync(new MessageEnvelope[] { messageEnvelope });
+                isSuccessful = true;
             }
             else // the handler still finished, but returned MessageProcessStatus.Failed
             {
@@ -191,6 +198,8 @@ public class DefaultMessageManager : IMessageManager
             _logger.LogError(handlerTask.Exception, "Message handling failed unexpectedly for message ID {MessageId}", messageEnvelope.Id);
             await _sqsMessageCommunication.ReportMessageFailureAsync(messageEnvelope);
         }
+
+        return isSuccessful;
     }
 
     /// <summary>

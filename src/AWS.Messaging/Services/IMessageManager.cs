@@ -44,6 +44,7 @@ public interface IMessageManager
     /// These messages are processed sequentially in the order in which they appear.
     /// </summary>
     /// <param name="messageGroup">The ordered list of messages that will be processed sequentially</param>
+    /// <param name="groupId">The ID that uniquely identifies a message group</param>
     /// <param name="token">Optional token to cancel the message processing</param>
-    Task ProcessMessageGroupAsync(List<ConvertToEnvelopeResult> messageGroup, CancellationToken token = default);
+    Task ProcessMessageGroupAsync(List<ConvertToEnvelopeResult> messageGroup, string groupId, CancellationToken token = default);
 }
