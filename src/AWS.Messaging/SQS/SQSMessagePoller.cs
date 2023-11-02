@@ -154,14 +154,25 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "An unknown exception occurred while processing messages from {SubscriberEndpoint}", _configuration.SubscriberEndpoint);
+                    _logger.LogError(ex, "An unknown exception occurred while polling {SubscriberEndpoint}", _configuration.SubscriberEndpoint);
                 }
             }
 
-            if (_isFifoEndpoint)
-                ProcessInFifoMode(messageEnvelopResults, token);
-            else
-                ProcessInStandardMode(messageEnvelopResults, token);
+            try
+            {
+                if (_isFifoEndpoint)
+                    ProcessInFifoMode(messageEnvelopResults, token);
+                else
+                    ProcessInStandardMode(messageEnvelopResults, token);
+            }
+            catch (AWSMessagingException)
+            {
+                // Swallow exceptions thrown by the framework, and rely on the thrower to log
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An unknown exception occurred while processing messages from {SubscriberEndpoint}", _configuration.SubscriberEndpoint);
+            }
         }
     }
 
@@ -185,7 +196,9 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
             if (string.IsNullOrEmpty(groupId))
             {
                 // This should never happen. But if it does, its an issue with the framework. This is not a customer induced error.
-                throw new InvalidOperationException($"This SQS message cannot be processed in FIFO mode because it does not have a valid message group ID");
+                var errorMessage = "This SQS message cannot be processed in FIFO mode because it does not have a valid message group ID";
+                _logger.LogError(errorMessage);
+                throw new InvalidOperationException(errorMessage);
             }
 
             if (messageGroupMapping.TryGetValue(groupId, out var messageGroup))

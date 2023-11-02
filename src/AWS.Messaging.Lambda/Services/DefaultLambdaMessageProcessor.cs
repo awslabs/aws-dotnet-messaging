@@ -154,18 +154,20 @@ internal class DefaultLambdaMessageProcessor : ILambdaMessageProcessor, ISQSMess
         await Task.WhenAll(taskList);
     }
 
-    private async Task ProcessInFifoMode(List<ConvertToEnvelopeResult> messageEnvelopResults, CancellationToken token)
+    private async Task ProcessInFifoMode(List<ConvertToEnvelopeResult> messageEnvelopeResults, CancellationToken token)
     {
         var messageGroupMapping = new Dictionary<string, List<ConvertToEnvelopeResult>>();
 
-        foreach (var messageEnvelopResult in messageEnvelopResults)
+        foreach (var messageEnvelopResult in messageEnvelopeResults)
         {
             var groupId = messageEnvelopResult.Envelope.SQSMetadata?.MessageGroupId;
 
             if (string.IsNullOrEmpty(groupId))
             {
                 // This should never happen. But if it does, its an issue with the framework. This is not a customer induced error.
-                throw new InvalidOperationException($"This SQS message cannot be processed in FIFO mode because it does not have a valid message group ID");
+                var errorMessage = "This SQS message cannot be processed in FIFO mode because it does not have a valid message group ID";
+                _logger.LogError(errorMessage);
+                throw new InvalidOperationException(errorMessage);
             }
 
             if (messageGroupMapping.TryGetValue(groupId, out var messageGroup))

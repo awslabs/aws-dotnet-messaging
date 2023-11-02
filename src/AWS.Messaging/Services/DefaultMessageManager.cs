@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Collections.Concurrent;
-using System.ComponentModel.DataAnnotations;
 using AWS.Messaging.Configuration;
 using AWS.Messaging.Serialization;
 using AWS.Messaging.SQS;
@@ -153,6 +152,10 @@ public class DefaultMessageManager : IMessageManager
         }
     }
 
+    /// <summary>
+    /// Places the message in the internal collection of in-flight messages
+    /// and starts the background task to extend their visibility timeout if the configuration supports it.
+    /// </summary>
     private void AcknowledgeMessage(MessageEnvelope messageEnvelope, CancellationToken token)
     {
         // Add that metadata to the dictionary of running handlers, used to extend the visibility timeout if necessary
