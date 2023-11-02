@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Collections.Concurrent;
+using System.ComponentModel.DataAnnotations;
 using AWS.Messaging.Configuration;
 using AWS.Messaging.Serialization;
 using AWS.Messaging.SQS;
@@ -107,7 +108,7 @@ public class DefaultMessageManager : IMessageManager
         {
             UpdateActiveMessageCount(1);
 
-            acknowledgeMessage(messageEnvelope, token);
+            AcknowledgeMessage(messageEnvelope, token);
 
             await InvokeHandler(messageEnvelope, subscriberMapping, token);
         }
@@ -127,8 +128,10 @@ public class DefaultMessageManager : IMessageManager
 
             foreach (var message in messageGroup)
             {
-                acknowledgeMessage(message.Envelope, token);
+                AcknowledgeMessage(message.Envelope, token);
             }
+
+            var remaining = messageGroup.Count;
 
             // Sequentially process each message within the group
             foreach (var message in messageGroup)
@@ -137,9 +140,10 @@ public class DefaultMessageManager : IMessageManager
                 if (!isSuccessful)
                 {
                     // If the handler invocation fails for any message, skip processing subsequent messages in the group.
-                    _logger.LogError("Handler invocation failed for a message belonging to message group '{groupdId}'. Skipping processing of subsequent messages from the same group.", groupId);
+                    _logger.LogError("Handler invocation failed for a message belonging to message group '{groupdId}' having message ID '{messageID}'. Skipping processing of {remaining} messages from the same group.", groupId, message.Envelope.Id, remaining);
                     break;
                 }
+                remaining -= 1;
             }
         }
         finally
@@ -149,7 +153,7 @@ public class DefaultMessageManager : IMessageManager
         }
     }
 
-    private void acknowledgeMessage(MessageEnvelope messageEnvelope, CancellationToken token)
+    private void AcknowledgeMessage(MessageEnvelope messageEnvelope, CancellationToken token)
     {
         // Add that metadata to the dictionary of running handlers, used to extend the visibility timeout if necessary
         _inFlightMessageMetadata.TryAdd(messageEnvelope, new InFlightMetadata(
@@ -174,7 +178,7 @@ public class DefaultMessageManager : IMessageManager
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "An unknown exception occurred while processing message ID {messageId}", messageEnvelope.Id);
+            _logger.LogError(ex, "An exception has been thrown from handler '{handlerType}' while processing message with ID '{messageId}'", subscriberMapping.HandlerType.Name, messageEnvelope.Id);
         }
 
         _inFlightMessageMetadata.Remove(messageEnvelope, out _);
@@ -195,7 +199,7 @@ public class DefaultMessageManager : IMessageManager
         }
         else if (handlerTask.IsFaulted)
         {
-            _logger.LogError(handlerTask.Exception, "Message handling failed unexpectedly for message ID {MessageId}", messageEnvelope.Id);
+            _logger.LogError(handlerTask.Exception, "An exception has been thrown from handler '{handlerType}' while processing message with ID '{messageId}'", subscriberMapping.HandlerType.Name, messageEnvelope.Id);
             await _sqsMessageCommunication.ReportMessageFailureAsync(messageEnvelope);
         }
 

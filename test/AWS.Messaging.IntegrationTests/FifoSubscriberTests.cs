@@ -208,9 +208,9 @@ public class FifoSubscriberTests : IAsyncLifetime
         var timeElapsed = DateTime.UtcNow - processStartTime;
 
         var inMemoryLogger = serviceProvider.GetRequiredService<InMemoryLogger>();
-        
+
         var errorMessages = inMemoryLogger.Logs.Where(x => x.Message.Contains("Message handling completed unsuccessfully for message"));
-        var skippingGroup = inMemoryLogger.Logs.Where(x => x.Message.Contains("Handler invocation failed for a message belonging to message group 'A'. Skipping processing of subsequent messages from the same group."));
+        var skippingGroup = inMemoryLogger.Logs.Where(x => x.Message.Contains("Handler invocation failed for a message belonging to message group 'A'"));
 
         Assert.NotEmpty(errorMessages);
         Assert.NotEmpty(skippingGroup);
