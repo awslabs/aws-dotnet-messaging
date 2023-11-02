@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using AWS.Messaging.Configuration;
+using AWS.Messaging.Serialization;
 using AWS.Messaging.SQS;
 using Microsoft.Extensions.Logging;
 
@@ -103,24 +103,77 @@ public class DefaultMessageManager : IMessageManager
     /// <inheritdoc/>
     public async Task ProcessMessageAsync(MessageEnvelope messageEnvelope, SubscriberMapping subscriberMapping, CancellationToken token = default)
     {
-        UpdateActiveMessageCount(1);
+        try
+        {
+            UpdateActiveMessageCount(1);
 
-        // Start the handler task (but not await it), and set the timestamp that the initial visibility timeout window is expected to expire
-        var metadata = new InFlightMetadata(
-            _handlerInvoker.InvokeAsync(messageEnvelope, subscriberMapping, token),
-            DateTimeOffset.UtcNow + TimeSpan.FromSeconds(_configuration.VisibilityTimeout)
-        );
+            AcknowledgeMessage(messageEnvelope, token);
 
+            await InvokeHandler(messageEnvelope, subscriberMapping, token);
+        }
+        finally
+        {
+            UpdateActiveMessageCount(-1);
+        }
+    }
+
+    /// <inheritdoc/>
+    public async Task ProcessMessageGroupAsync(List<ConvertToEnvelopeResult> messageGroup, string groupId, CancellationToken token = default)
+    {
+        try
+        {
+            // Update the active message count by 1 once for the entire message group.
+            UpdateActiveMessageCount(1);
+
+            foreach (var message in messageGroup)
+            {
+                AcknowledgeMessage(message.Envelope, token);
+            }
+
+            var remaining = messageGroup.Count;
+
+            // Sequentially process each message within the group
+            foreach (var message in messageGroup)
+            {
+                var isSuccessful = await InvokeHandler(message.Envelope, message.Mapping, token);
+                if (!isSuccessful)
+                {
+                    // If the handler invocation fails for any message, skip processing subsequent messages in the group.
+                    _logger.LogError("Handler invocation failed for a message belonging to message group '{groupdId}' having message ID '{messageID}'. Skipping processing of {remaining} messages from the same group.", groupId, message.Envelope.Id, remaining);
+                    break;
+                }
+                remaining -= 1;
+            }
+        }
+        finally
+        {
+            // Decrement the active message count by 1 indicating that the message group is done being processed.
+            UpdateActiveMessageCount(-1);
+        }
+    }
+
+    /// <summary>
+    /// Places the message in the internal collection of in-flight messages
+    /// and starts the background task to extend their visibility timeout if the configuration supports it.
+    /// </summary>
+    private void AcknowledgeMessage(MessageEnvelope messageEnvelope, CancellationToken token)
+    {
         // Add that metadata to the dictionary of running handlers, used to extend the visibility timeout if necessary
-        _inFlightMessageMetadata.TryAdd(messageEnvelope, metadata);
+        _inFlightMessageMetadata.TryAdd(messageEnvelope, new InFlightMetadata(
+            DateTimeOffset.UtcNow + TimeSpan.FromSeconds(_configuration.VisibilityTimeout)
+        ));
 
         if (_configuration.SupportExtendingVisibilityTimeout)
             StartMessageVisibilityExtensionTaskIfNotRunning(token);
+    }
 
-        // Wait for the handler to finish processing the message
+    private async Task<bool> InvokeHandler(MessageEnvelope messageEnvelope, SubscriberMapping subscriberMapping, CancellationToken cancelToken)
+    {
+        var isSuccessful = false;
+        var handlerTask = _handlerInvoker.InvokeAsync(messageEnvelope, subscriberMapping, cancelToken);
         try
         {
-            await metadata.HandlerTask;
+            await handlerTask;
         }
         catch (AWSMessagingException)
         {
@@ -128,17 +181,18 @@ public class DefaultMessageManager : IMessageManager
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "An unknown exception occurred while processing message ID {SubscriberEndpoint}", messageEnvelope.Id);
+            _logger.LogError(ex, "An exception has been thrown from handler '{handlerType}' while processing message with ID '{messageId}'", subscriberMapping.HandlerType.Name, messageEnvelope.Id);
         }
 
         _inFlightMessageMetadata.Remove(messageEnvelope, out _);
 
-        if (metadata.HandlerTask.IsCompletedSuccessfully)
+        if (handlerTask.IsCompletedSuccessfully)
         {
-            if (metadata.HandlerTask.Result.IsSuccess)
+            if (handlerTask.Result.IsSuccess)
             {
                 // Delete the message from the queue if it was processed successfully
                 await _sqsMessageCommunication.DeleteMessagesAsync(new MessageEnvelope[] { messageEnvelope });
+                isSuccessful = true;
             }
             else // the handler still finished, but returned MessageProcessStatus.Failed
             {
@@ -146,13 +200,13 @@ public class DefaultMessageManager : IMessageManager
                 await _sqsMessageCommunication.ReportMessageFailureAsync(messageEnvelope);
             }
         }
-        else if (metadata.HandlerTask.IsFaulted)
+        else if (handlerTask.IsFaulted)
         {
-            _logger.LogError(metadata.HandlerTask.Exception, "Message handling failed unexpectedly for message ID {MessageId}", messageEnvelope.Id);
+            _logger.LogError(handlerTask.Exception, "An exception has been thrown from handler '{handlerType}' while processing message with ID '{messageId}'", subscriberMapping.HandlerType.Name, messageEnvelope.Id);
             await _sqsMessageCommunication.ReportMessageFailureAsync(messageEnvelope);
         }
 
-        UpdateActiveMessageCount(-1);
+        return isSuccessful;
     }
 
     /// <summary>

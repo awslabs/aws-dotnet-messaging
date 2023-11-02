@@ -327,6 +327,7 @@ public class SubscriberTests : IAsyncLifetime
     [InlineData(5)]
     public async Task MessagesWithFailedHandlers(int numberOfMessages)
     {
+        _serviceCollection.AddSingleton<TempStorage<ChatMessage>>();
         _serviceCollection.AddAWSMessageBus(builder =>
         {
             builder.AddSQSPublisher<ChatMessage>(_sqsQueueUrl);
@@ -356,7 +357,7 @@ public class SubscriberTests : IAsyncLifetime
         var timeElapsed = DateTime.UtcNow - processStartTime;
 
         var inMemoryLogger = serviceProvider.GetRequiredService<InMemoryLogger>();
-        var errorMessages = inMemoryLogger.Logs.Where(x => x.Message.Contains("Message handling failed unexpectedly for message"));
+        var errorMessages = inMemoryLogger.Logs.Where(x => x.Message.Contains("Message handling completed unsuccessfully for message"));
         Assert.NotEmpty(errorMessages);
         Assert.True(errorMessages.Count() >= numberOfMessages);
         Assert.True(timeElapsed.TotalSeconds > 59);

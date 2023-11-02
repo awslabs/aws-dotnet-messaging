@@ -7,10 +7,14 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using AWS.Messaging.Configuration;
+using AWS.Messaging.Serialization;
 using AWS.Messaging.Services;
 using AWS.Messaging.SQS;
+using AWS.Messaging.Tests.Common.Handlers;
+using AWS.Messaging.Tests.Common.Models;
 using AWS.Messaging.UnitTests.MessageHandlers;
 using AWS.Messaging.UnitTests.Models;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using Xunit;
@@ -181,9 +185,9 @@ namespace AWS.Messaging.UnitTests
             mockSQSMessageCommunication.VerifyDeleteMessagesAsyncWasCalledWith(laterMessage, Times.Once());
 
             // Since the message handler takes 3 seconds, verify the the visibility was extended
-            // The 1 to 3 allows for some instability around the second boundaries
-            mockSQSMessageCommunication.VerifyExtendMessageVisibilityTimeoutAsync(new[] { earlyMessage }, Times.Between(1, 3, Moq.Range.Inclusive));
-            mockSQSMessageCommunication.VerifyExtendMessageVisibilityTimeoutAsync(new[] { laterMessage }, Times.Between(1, 3, Moq.Range.Inclusive));
+            // The 1 to 4 allows for some instability around the second boundaries
+            mockSQSMessageCommunication.VerifyExtendMessageVisibilityTimeoutAsync(new[] { earlyMessage }, Times.Between(1, 4, Moq.Range.Inclusive));
+            mockSQSMessageCommunication.VerifyExtendMessageVisibilityTimeoutAsync(new[] { laterMessage }, Times.Between(1, 4, Moq.Range.Inclusive));
 
             // Verify that there were no other calls, which is guarding against ExtendMessageVisibilityTimeoutAsync
             // being called with both messages since we never expect them to be batched together
@@ -225,6 +229,127 @@ namespace AWS.Messaging.UnitTests
 
             // Verify that the active message count was deprecated back to 0
             Assert.Equal(0, manager.ActiveMessageCount);
+        }
+
+        [Fact]
+        public async Task DefaultMessageManager_ProcessMessageGroup()
+        {
+            var mockSQSMessageCommunication = CreateMockSQSMessageCommunication();
+            var mockHandlerInvoker = CreateMockHandlerInvoker(MessageProcessStatus.Success(), messageHandlingDelay: TimeSpan.FromSeconds(3));
+
+            var manager = new DefaultMessageManager(mockSQSMessageCommunication.Object, mockHandlerInvoker.Object, new NullLogger<DefaultMessageManager>(), new MessageManagerConfiguration
+            {
+                VisibilityTimeout = 2,
+                VisibilityTimeoutExtensionThreshold = 1,
+                VisibilityTimeoutExtensionHeartbeatInterval = 1
+            });
+
+            var subscriberMapping = new SubscriberMapping(typeof(ChatMessageHandler), typeof(ChatMessage));
+
+            // Create 2 message groups "A" and "B"
+            var message1 = new MessageEnvelope<ChatMessage>() { Id = "1" };
+            var message2 = new MessageEnvelope<ChatMessage>() { Id = "2" };
+            var messageGroupA = new List<ConvertToEnvelopeResult>
+            {
+                new ConvertToEnvelopeResult(message1, subscriberMapping),
+                new ConvertToEnvelopeResult(message2, subscriberMapping),
+            };
+
+            var message3 = new MessageEnvelope<ChatMessage>() { Id = "3" };
+            var message4 = new MessageEnvelope<ChatMessage>() { Id = "4" };
+            var messageGroupB = new List<ConvertToEnvelopeResult>
+            {
+                new ConvertToEnvelopeResult(message3, subscriberMapping),
+                new ConvertToEnvelopeResult(message4, subscriberMapping),
+            };
+
+            // Start handling two message groups at roughly the same time
+            var messageATask = manager.ProcessMessageGroupAsync(messageGroupA, "A");
+            var messageBTask = manager.ProcessMessageGroupAsync(messageGroupB, "B");
+
+            // verify that the active message count was incremented once per each message group
+            Assert.Equal(2, manager.ActiveMessageCount);
+
+            // Now finish awaiting the processing of both message groups
+            await Task.WhenAll(messageATask, messageBTask);
+
+            // Verify that the handler was invoked with the expected messages and mapping
+            mockHandlerInvoker.VerifyInvokeAsyncWasCalledWith(message1, subscriberMapping, Times.Once());
+            mockHandlerInvoker.VerifyInvokeAsyncWasCalledWith(message2, subscriberMapping, Times.Once());
+            mockHandlerInvoker.VerifyInvokeAsyncWasCalledWith(message3, subscriberMapping, Times.Once());
+            mockHandlerInvoker.VerifyInvokeAsyncWasCalledWith(message4, subscriberMapping, Times.Once());
+
+            // Since the mock handler invoker returns success, verify that delete was called
+            mockSQSMessageCommunication.VerifyDeleteMessagesAsyncWasCalledWith(message1, Times.Once());
+            mockSQSMessageCommunication.VerifyDeleteMessagesAsyncWasCalledWith(message2, Times.Once());
+            mockSQSMessageCommunication.VerifyDeleteMessagesAsyncWasCalledWith(message3, Times.Once());
+            mockSQSMessageCommunication.VerifyDeleteMessagesAsyncWasCalledWith(message4, Times.Once());
+
+            // The exact set for which the visibility was extended is hard to determine so we assert on an arbitrary set of messages.
+            mockSQSMessageCommunication.VerifyAnyExtendMessageVisibilityTimeoutAsync(Times.AtLeastOnce());
+
+            // Verify that all handler invocations are accounted for
+            mockHandlerInvoker.VerifyNoOtherCalls();
+
+            // Verify that the active message count was decremented back to 0
+            Assert.Equal(0, manager.ActiveMessageCount);
+        }
+
+        /// <summary>
+        /// Verifies if handler invocation fails for any message in a group, then the entire group is skipped
+        /// </summary>
+        [Fact]
+        public async Task DefaultMessageManager_MessageGroupIsSkipped()
+        {
+            var serviceCollection = new ServiceCollection();
+            serviceCollection.AddSingleton<Tests.Common.Models.TempStorage<TransactionInfo>>();
+            serviceCollection.AddAWSMessageBus(bus =>
+            {
+                bus.AddMessageHandler<TransactionInfoHandler, TransactionInfo>();
+            });
+
+            var serviceProvider = serviceCollection.BuildServiceProvider();
+
+            var handlerInvoker = serviceProvider.GetRequiredService<IHandlerInvoker>();
+            var mockSQSMessageCommunication = CreateMockSQSMessageCommunication();
+
+            var messageManager = new DefaultMessageManager(mockSQSMessageCommunication.Object, handlerInvoker, new NullLogger<DefaultMessageManager>(), new MessageManagerConfiguration
+            {
+                VisibilityTimeout = 5,
+                VisibilityTimeoutExtensionThreshold = 5,
+                VisibilityTimeoutExtensionHeartbeatInterval = 5
+            });
+
+            var subscriberMapping = new SubscriberMapping(typeof(TransactionInfoHandler), typeof(TransactionInfoHandler));
+
+            var messageGroup = new List<ConvertToEnvelopeResult>
+            {
+                new ConvertToEnvelopeResult(CreateTransactionEnvelope("1", "A", false), subscriberMapping),
+                new ConvertToEnvelopeResult(CreateTransactionEnvelope("2", "A", false), subscriberMapping),
+                new ConvertToEnvelopeResult(CreateTransactionEnvelope("3", "A", true), subscriberMapping),
+                new ConvertToEnvelopeResult(CreateTransactionEnvelope("4", "A", false), subscriberMapping),
+                new ConvertToEnvelopeResult(CreateTransactionEnvelope("5", "A", false), subscriberMapping),
+            };
+
+            await messageManager.ProcessMessageGroupAsync(messageGroup, "A");
+
+            var messageStorage = serviceProvider.GetRequiredService<Tests.Common.Models.TempStorage<TransactionInfo>>();
+
+            var transactionsInGroupA = messageStorage.FifoMessages["A"];
+
+            // Since message ID = "3" failed, all messages after it are skipped from processing
+            Assert.Equal(2, transactionsInGroupA.Count);
+            Assert.Equal("1", transactionsInGroupA[0].Id);
+            Assert.Equal("2", transactionsInGroupA[1].Id);
+        }
+
+        private MessageEnvelope<TransactionInfo> CreateTransactionEnvelope(string id, string userId, bool shouldFail)
+        {
+            return new MessageEnvelope<TransactionInfo>
+            {
+                Id = id,
+                Message = new TransactionInfo { TransactionId = id, UserId = userId, shouldFail = shouldFail }
+            };
         }
 
         /// <summary>
@@ -321,6 +446,17 @@ namespace AWS.Messaging.UnitTests
         {
             mockSQSMessageCommunication.Verify(sqsMessageCommunication => sqsMessageCommunication.ExtendMessageVisibilityTimeoutAsync(
                     It.Is<IEnumerable<MessageEnvelope>>(x => x.ToHashSet().SetEquals(messages.ToHashSet())), // use HashSets becuase the order may differ
+                    It.IsAny<CancellationToken>()),
+                times);
+        }
+
+        /// <summary>
+        /// Verifies that <see cref="IMessagePoller.ExtendMessageVisibilityTimeoutAsync"/> was called with an arbitrary non-empty set of messages a specified number of times
+        /// </summary>
+        public static void VerifyAnyExtendMessageVisibilityTimeoutAsync(this Mock<ISQSMessageCommunication> mockSQSMessageCommunication, Times times)
+        {
+            mockSQSMessageCommunication.Verify(sqsMessageCommunication => sqsMessageCommunication.ExtendMessageVisibilityTimeoutAsync(
+                    It.Is<IEnumerable<MessageEnvelope>>(enumerable => enumerable.Count() > 0),
                     It.IsAny<CancellationToken>()),
                 times);
         }

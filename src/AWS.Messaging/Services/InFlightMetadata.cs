@@ -8,16 +8,10 @@ namespace AWS.Messaging.Services;
 /// </summary>
 internal class InFlightMetadata
 {
-    internal InFlightMetadata(Task<MessageProcessStatus> handlerTask, DateTimeOffset expectedVisibilityTimeoutExpiration)
+    internal InFlightMetadata(DateTimeOffset expectedVisibilityTimeoutExpiration)
     {
-        HandlerTask = handlerTask;
         ExpectedVisibilityTimeoutExpiration = expectedVisibilityTimeoutExpiration;
     }
-
-    /// <summary>
-    /// Task for handling the message, created via <see cref="HandlerInvoker.InvokeAsync"/>
-    /// </summary>
-    internal Task<MessageProcessStatus> HandlerTask { get; set; }
 
     /// <summary>
     /// The timestamp that the message's visibility timeout is expected to expire

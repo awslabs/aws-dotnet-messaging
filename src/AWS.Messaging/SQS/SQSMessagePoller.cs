@@ -11,7 +11,7 @@ using Microsoft.Extensions.Logging;
 namespace AWS.Messaging.SQS;
 
 /// <summary>
-/// SQS implementation of the <see cref="AWS.Messaging.Services.IMessagePoller" />
+/// SQS implementation of the <see cref="IMessagePoller" />
 /// </summary>
 internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
 {
@@ -20,6 +20,7 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
     private readonly IMessageManager _messageManager;
     private readonly SQSMessagePollerConfiguration _configuration;
     private readonly IEnvelopeSerializer _envelopeSerializer;
+    private readonly bool _isFifoEndpoint;
 
     /// <summary>
     /// Maximum valid value for <see cref="ReceiveMessageRequest.MaxNumberOfMessages"/>
@@ -56,6 +57,7 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
         _sqsClient = awsClientProvider.GetServiceClient<IAmazonSQS>();
         _configuration = configuration;
         _envelopeSerializer = envelopeSerializer;
+        _isFifoEndpoint = configuration.SubscriberEndpoint.EndsWith(".fifo");
 
         _messageManager = messageManagerFactory.CreateMessageManager(this, _configuration.ToMessageManagerConfiguration());
     }
@@ -117,7 +119,7 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
                     receiveMessageResponse.Messages.Count, receiveMessageRequest.QueueUrl, receiveMessageResponse.ResponseMetadata.RequestId);
 
                 receivedMessages = receiveMessageResponse.Messages;
-                }
+            }
             catch (AmazonSQSException ex)
             {
                 _logger.LogError(ex, "An {ExceptionName} occurred while polling", nameof(AmazonSQSException));
@@ -138,25 +140,77 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
             if (receivedMessages is null)
                 continue;
 
+            var messageEnvelopResults = new List<ConvertToEnvelopeResult>();
             foreach (var message in receivedMessages)
             {
                 try
                 {
                     var messageEnvelopeResult = await _envelopeSerializer.ConvertToEnvelopeAsync(message);
-
-                    // Don't await this result, we want to process multiple messages concurrently
-                    _ = _messageManager.ProcessMessageAsync(messageEnvelopeResult.Envelope, messageEnvelopeResult.Mapping, token);
-        }
+                    messageEnvelopResults.Add(messageEnvelopeResult);
+                }
                 catch (AWSMessagingException)
                 {
                     // Swallow exceptions thrown by the framework, and rely on the thrower to log
-    }
+                }
                 catch (Exception ex)
                 {
-                    // TODO: explore a "cool down mode" for repeated exceptions
                     _logger.LogError(ex, "An unknown exception occurred while polling {SubscriberEndpoint}", _configuration.SubscriberEndpoint);
                 }
             }
+
+            try
+            {
+                if (_isFifoEndpoint)
+                    ProcessInFifoMode(messageEnvelopResults, token);
+                else
+                    ProcessInStandardMode(messageEnvelopResults, token);
+            }
+            catch (AWSMessagingException)
+            {
+                // Swallow exceptions thrown by the framework, and rely on the thrower to log
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "An unknown exception occurred while processing messages from {SubscriberEndpoint}", _configuration.SubscriberEndpoint);
+            }
+        }
+    }
+
+    private void ProcessInStandardMode(List<ConvertToEnvelopeResult> messageEnvelopResults, CancellationToken token)
+    {
+        foreach (var result in messageEnvelopResults)
+        {
+            // Don't await this result, we want to process multiple messages concurrently
+            _ = _messageManager.ProcessMessageAsync(result.Envelope, result.Mapping, token);
+        }
+    }
+
+    private void ProcessInFifoMode(List<ConvertToEnvelopeResult> messageEnvelopResults, CancellationToken token)
+    {
+        var messageGroupMapping = new Dictionary<string, List<ConvertToEnvelopeResult>>();
+
+        foreach (var messageEnvelopResult in messageEnvelopResults)
+        {
+            var groupId = messageEnvelopResult.Envelope.SQSMetadata?.MessageGroupId;
+
+            if (string.IsNullOrEmpty(groupId))
+            {
+                // This should never happen. But if it does, its an issue with the framework. This is not a customer induced error.
+                var errorMessage = "This SQS message cannot be processed in FIFO mode because it does not have a valid message group ID";
+                _logger.LogError(errorMessage);
+                throw new InvalidOperationException(errorMessage);
+            }
+
+            if (messageGroupMapping.TryGetValue(groupId, out var messageGroup))
+                messageGroup.Add(messageEnvelopResult);
+            else
+                messageGroupMapping[groupId] = new() { messageEnvelopResult };
+        }
+
+        foreach (var item in messageGroupMapping)
+        {
+            // Don't await this result, we want to process multiple message groups concurrently
+            _ = _messageManager.ProcessMessageGroupAsync(item.Value, item.Key, token);
         }
     }
 

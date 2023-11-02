@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using AWS.Messaging.Configuration;
+using AWS.Messaging.Serialization;
 
 namespace AWS.Messaging.Services;
 
@@ -37,4 +38,13 @@ public interface IMessageManager
     /// <param name="subscriberMapping">The mapping between the message's type and its handler</param>
     /// <param name="token">Optional token to cancel the message processing</param>
     Task ProcessMessageAsync(MessageEnvelope messageEnvelope, SubscriberMapping subscriberMapping, CancellationToken token = default);
+
+    /// <summary>
+    /// Starts the async processing of messages within an ordered group.
+    /// These messages are processed sequentially in the order in which they appear.
+    /// </summary>
+    /// <param name="messageGroup">The ordered list of messages that will be processed sequentially</param>
+    /// <param name="groupId">The ID that uniquely identifies a message group</param>
+    /// <param name="token">Optional token to cancel the message processing</param>
+    Task ProcessMessageGroupAsync(List<ConvertToEnvelopeResult> messageGroup, string groupId, CancellationToken token = default);
 }

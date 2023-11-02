@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Amazon.Lambda.Core;
@@ -10,14 +11,12 @@ using Amazon.Lambda.SQSEvents;
 using Amazon.Lambda.TestUtilities;
 using Amazon.SQS;
 using Amazon.SQS.Model;
-using AWS.Messaging.Configuration;
 using AWS.Messaging.Lambda;
 using AWS.Messaging.Serialization;
-using AWS.Messaging.Services;
+using AWS.Messaging.UnitTests.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Xunit;
-using Xunit.Sdk;
 using static Amazon.Lambda.SQSEvents.SQSEvent;
 
 namespace AWS.Messaging.UnitTests;
@@ -25,6 +24,7 @@ namespace AWS.Messaging.UnitTests;
 public class LambdaTests
 {
     Mock<IAmazonSQS>? _mockSqs;
+    IServiceProvider? _serviceProvider;
 
     [Fact]
     public async Task OneSuccessfulMessage()
@@ -168,10 +168,82 @@ public class LambdaTests
         await Assert.ThrowsAsync<FailedToCreateMessageEnvelopeException>(async () => await Execute(new SimulatedMessage[] { }, addInvalidMessageFormatRecord: true));
     }
 
-    private async Task<string> Execute(SimulatedMessage[] messages, int maxNumberOfConcurrentMessages = 1, bool deleteMessagesWhenCompleted = false, bool addInvalidMessageFormatRecord = false)
+    [Theory]
+    [InlineData(1)]
+    [InlineData(5)]
+    public async Task FifoMessageHandling_SingleMessageGroup(int maxNumberOfConcurrentMessages)
     {
-        var provider = CreateServiceProvider(maxNumberOfConcurrentMessages: maxNumberOfConcurrentMessages, deleteMessagesWhenCompleted: deleteMessagesWhenCompleted);
-        var sqsEvent = await CreateLambdaEvent(provider, messages, addInvalidMessageFormatRecord: addInvalidMessageFormatRecord);
+        // create messages that belong to the same group with processing times as message3 < message2 < message1
+        var message1 = new SimulatedMessage { Id = "1", MessageGroupId = "A", WaitTime = TimeSpan.FromSeconds(3) };
+        var message2 = new SimulatedMessage { Id = "2", MessageGroupId = "A", WaitTime = TimeSpan.FromSeconds(2) };
+        var message3 = new SimulatedMessage { Id = "3", MessageGroupId = "A", WaitTime = TimeSpan.FromSeconds(1) };
+
+        var log = await Execute(new SimulatedMessage[] { message1, message2, message3 },
+            maxNumberOfConcurrentMessages: maxNumberOfConcurrentMessages, isFifoQueue: true);
+
+        var messageStorage = _serviceProvider!.GetRequiredService<TempStorage<SimulatedMessage>>();
+
+        // Since all messages belong to the same group and we are polling from a FIFO queue,
+        // the message processing must also respect the FIFO ordering.
+        var message1Pos = FindFinishFifoPos(messageStorage, message1);
+        var message2Pos = FindFinishFifoPos(messageStorage, message2);
+        var message3Pos = FindFinishFifoPos(messageStorage, message3);
+
+        Assert.True(message1Pos != -1);
+        Assert.True(message2Pos != -1);
+        Assert.True(message3Pos != -1);
+        Assert.True(message1Pos < message2Pos);
+        Assert.True(message2Pos < message3Pos);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(5)]
+    [InlineData(10)]
+    public async Task FifoMessageHandling_MultipleMessageGroups(int maxNumberOfConcurrentMessages)
+    {
+        // create messages that belong to group "A" with processing times as message3A < message2A < message1A
+        var message1A = new SimulatedMessage { Id = "1", MessageGroupId = "A", WaitTime = TimeSpan.FromSeconds(3) };
+        var message2A = new SimulatedMessage { Id = "2", MessageGroupId = "A", WaitTime = TimeSpan.FromSeconds(2) };
+        var message3A = new SimulatedMessage { Id = "3", MessageGroupId = "A", WaitTime = TimeSpan.FromSeconds(1) };
+
+        // create messages that belong to group "B" with processing times as message6B < message5B < message4B
+        var message4B = new SimulatedMessage { Id = "4", MessageGroupId = "B", WaitTime = TimeSpan.FromSeconds(3) };
+        var message5B = new SimulatedMessage { Id = "5", MessageGroupId = "B", WaitTime = TimeSpan.FromSeconds(2) };
+        var message6B = new SimulatedMessage { Id = "6", MessageGroupId = "B", WaitTime = TimeSpan.FromSeconds(1) };
+
+        // send messages with interleaved message groups
+        await Execute(new SimulatedMessage[] { message4B, message1A, message2A, message5B, message3A, message6B },
+            maxNumberOfConcurrentMessages: maxNumberOfConcurrentMessages, isFifoQueue: true);
+
+        var messageStorage = _serviceProvider!.GetRequiredService<TempStorage<SimulatedMessage>>();
+
+        // Messages belonging to the same group must be processed in FIFO order.
+        var message1APos = FindFinishFifoPos(messageStorage, message1A);
+        var message2APos = FindFinishFifoPos(messageStorage, message2A);
+        var message3APos = FindFinishFifoPos(messageStorage, message3A);
+
+        Assert.True(message1APos != -1);
+        Assert.True(message2APos != -1);
+        Assert.True(message3APos != -1);
+        Assert.True(message1APos < message2APos);
+        Assert.True(message2APos < message3APos);
+
+        var message4BPos = FindFinishFifoPos(messageStorage, message4B);
+        var message5BPos = FindFinishFifoPos(messageStorage, message5B);
+        var message6BPos = FindFinishFifoPos(messageStorage, message6B);
+
+        Assert.True(message4BPos != -1);
+        Assert.True(message5BPos != -1);
+        Assert.True(message6BPos != -1);
+        Assert.True(message4BPos < message5BPos);
+        Assert.True(message5BPos < message6BPos);
+    }
+
+    private async Task<string> Execute(SimulatedMessage[] messages, int maxNumberOfConcurrentMessages = 1, bool deleteMessagesWhenCompleted = false, bool addInvalidMessageFormatRecord = false, bool isFifoQueue = false)
+    {
+        var provider = CreateServiceProvider(maxNumberOfConcurrentMessages: maxNumberOfConcurrentMessages, deleteMessagesWhenCompleted: deleteMessagesWhenCompleted, isFifoQueue: isFifoQueue);
+        var sqsEvent = await CreateLambdaEvent(provider, messages, addInvalidMessageFormatRecord: addInvalidMessageFormatRecord, isFifoQueue: isFifoQueue);
 
         var logger = new TestLambdaLogger();
         var context = new TestLambdaContext()
@@ -190,7 +262,6 @@ public class LambdaTests
         var provider = CreateServiceProvider(maxNumberOfConcurrentMessages: maxNumberOfConcurrentMessages, deleteMessagesWhenCompleted: deleteMessagesWhenCompleted);
         var sqsEvent = await CreateLambdaEvent(provider, messages);
 
-
         var logger = new TestLambdaLogger();
         var context = new TestLambdaContext()
         {
@@ -203,14 +274,18 @@ public class LambdaTests
         return (logger.Buffer.ToString(), batchResponse);
     }
 
-    private async Task<SQSEvent> CreateLambdaEvent(IServiceProvider provider,  SimulatedMessage[] messages, bool addInvalidMessageFormatRecord = false)
+    private async Task<SQSEvent> CreateLambdaEvent(IServiceProvider provider,  SimulatedMessage[] messages, bool addInvalidMessageFormatRecord = false, bool isFifoQueue = false)
     {
         var envelopeSerializer = provider.GetRequiredService<IEnvelopeSerializer>();
         
         var sqsEvent = new SQSEvent()
         {
-            Records = new List<SQSEvent.SQSMessage>()
+            Records = new List<SQSMessage>()
         };
+
+        var eventSourceArn = "arn:aws:sqs:us-west-2:123412341234:SimulatedMessage";
+        if (isFifoQueue)
+            eventSourceArn += ".fifo";
 
         if (addInvalidMessageFormatRecord)
         {
@@ -223,7 +298,7 @@ public class LambdaTests
                 ReceiptHandle = "fake-receipt-handle-" + i,
                 AwsRegion = "us-west-2",
                 EventSource = "aws:sqs",
-                EventSourceArn = "arn:aws:sqs:us-west-2:123412341234:SimulatedMessage",
+                EventSourceArn = eventSourceArn,
                 MessageAttributes = new Dictionary<string, MessageAttribute>(),
                 Attributes = new Dictionary<string, string>()
             };
@@ -232,28 +307,33 @@ public class LambdaTests
 
         for (int i = 1; i <= messages.Length; i++)
         {
-            var messageEnvelope = await envelopeSerializer.CreateEnvelopeAsync(messages[i - 1]);
+            var message = messages[i-1];
+            var messageEnvelope = await envelopeSerializer.CreateEnvelopeAsync(message);
             var messageBody = await envelopeSerializer.SerializeAsync(messageEnvelope);
 
             var sqsMessage = new SQSEvent.SQSMessage
             {
                 Body = messageBody,
-                    
+
                 MessageId = i.ToString(),
                 ReceiptHandle = "fake-receipt-handle-" + i,
                 AwsRegion = "us-west-2",
                 EventSource = "aws:sqs",
-                EventSourceArn = "arn:aws:sqs:us-west-2:123412341234:SimulatedMessage",
+                EventSourceArn = eventSourceArn,
                 MessageAttributes = new Dictionary<string, MessageAttribute>(),
                 Attributes = new Dictionary<string, string>()
             };
+
+            if (!string.IsNullOrEmpty(message.MessageGroupId))
+                sqsMessage.Attributes.Add("MessageGroupId", message.MessageGroupId);
+
             sqsEvent.Records.Add(sqsMessage);
         }
 
         return sqsEvent;
     }
 
-    private IServiceProvider CreateServiceProvider(int maxNumberOfConcurrentMessages = 1, bool deleteMessagesWhenCompleted = false)
+    private IServiceProvider CreateServiceProvider(int maxNumberOfConcurrentMessages = 1, bool deleteMessagesWhenCompleted = false, bool isFifoQueue = false)
     {
         _mockSqs = new Mock<IAmazonSQS>();
 
@@ -264,11 +344,16 @@ public class LambdaTests
 
         IServiceCollection services = new ServiceCollection();
 
-        services.AddSingleton<IAmazonSQS>(_mockSqs.Object);
+        services.AddSingleton(_mockSqs.Object);
+        services.AddSingleton<TempStorage<SimulatedMessage>>();
 
         services.AddAWSMessageBus(builder =>
         {
-            builder.AddSQSPublisher<SimulatedMessage>("https://sqs.us-west-2.amazonaws.com/123412341234/SimulatedMessage");
+            var sqsQueueUrl = "https://sqs.us-west-2.amazonaws.com/123412341234/SimulatedMessage";
+            if (isFifoQueue)
+                sqsQueueUrl += ".fifo";
+
+            builder.AddSQSPublisher<SimulatedMessage>(sqsQueueUrl);
             builder.AddMessageHandler<SimulatedMessageHandler, SimulatedMessage>();
 
             builder.AddLambdaMessageProcessor(options =>
@@ -278,13 +363,30 @@ public class LambdaTests
             });
         });
 
-        return services.BuildServiceProvider();
+        var provider = services.BuildServiceProvider();
+        _serviceProvider = provider;
+
+        return provider;
     }
 
     private int FindFinishPos(string log, SimulatedMessage message)
     {
         var token = "Finished handler: " + message.Id;
         return log.IndexOf(token);
+    }
+
+    private int FindFinishFifoPos(TempStorage<SimulatedMessage> tempStorage, SimulatedMessage message)
+    {
+        for (var i = 0; i < tempStorage.FifoMessages.Count; i++)
+        {
+            var id = tempStorage.FifoMessages.ElementAt(i).Message.Id;
+            if (id == message.Id)
+            {
+                return i;
+            }
+        }
+
+        return -1;
     }
 }
 
@@ -315,14 +417,19 @@ public class SimulatedMessage
     public bool ReturnFailedStatus { get; set; } = false;
 
     public TimeSpan WaitTime { get; set; }
+
+    public string? MessageGroupId { get; set; }
 }
 
 public class SimulatedMessageHandler : IMessageHandler<SimulatedMessage>
 {
     public readonly ILambdaContext _lambdaContext;
-    public SimulatedMessageHandler(ILambdaContext lambdaContext)
+    public readonly TempStorage<SimulatedMessage> _messageStorage;
+
+    public SimulatedMessageHandler(ILambdaContext lambdaContext, TempStorage<SimulatedMessage> messageStorage)
     {
         _lambdaContext = lambdaContext;
+        _messageStorage = messageStorage;
     }
 
     public async Task<MessageProcessStatus> HandleAsync(MessageEnvelope<SimulatedMessage> messageEnvelope, CancellationToken token = default)
@@ -343,6 +450,7 @@ public class SimulatedMessageHandler : IMessageHandler<SimulatedMessage>
         finally
         {
             _lambdaContext.Logger.LogInformation("Finished handler: " + message.Id);
+            _messageStorage.FifoMessages.Enqueue(messageEnvelope);
         }
     }
 }

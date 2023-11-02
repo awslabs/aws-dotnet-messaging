@@ -22,6 +22,7 @@ internal class DefaultLambdaMessageProcessor : ILambdaMessageProcessor, ISQSMess
     private readonly IEnvelopeSerializer _envelopeSerializer;
     private readonly LambdaMessageProcessorConfiguration _configuration;
     private readonly ITelemetryFactory _telemetryFactory;
+    private readonly bool _isFifoEndpoint;
 
     private readonly SQSBatchResponse _sqsBatchResponse;
 
@@ -56,6 +57,7 @@ internal class DefaultLambdaMessageProcessor : ILambdaMessageProcessor, ISQSMess
         _telemetryFactory = telemetryFactory;
 
         _sqsBatchResponse = new SQSBatchResponse();
+        _isFifoEndpoint = _configuration.SubscriberEndpoint.EndsWith(".fifo");
     }
 
     /// <summary>
@@ -80,38 +82,24 @@ internal class DefaultLambdaMessageProcessor : ILambdaMessageProcessor, ISQSMess
                     return _sqsBatchResponse;
                 }
 
-                var taskList = new List<Task>(sqsEvent.Records.Count);
-                var index = 0;
+                var messageEnvelopeResults = new List<ConvertToEnvelopeResult>();
+
                 try
                 {
-                    while (!token.IsCancellationRequested && index < sqsEvent.Records.Count)
+                    foreach (var record in sqsEvent.Records)
                     {
-                        var numberOfMessagesToRead = _configuration.MaxNumberOfConcurrentMessages - _messageManager.ActiveMessageCount;
-
-                        // If already processing the maximum number of messages, wait for at least one to complete and then try again
-                        if (numberOfMessagesToRead <= 0)
-                        {
-                            _logger.LogTrace("The maximum number of {Max} concurrent messages is already being processed. " +
-                                "Waiting for one or more to complete for a maximum of {Timeout} seconds before attempting to poll again.",
-                                _configuration.MaxNumberOfConcurrentMessages, CONCURRENT_CAPACITY_WAIT_TIMEOUT.TotalSeconds);
-
-                            await _messageManager.WaitAsync(CONCURRENT_CAPACITY_WAIT_TIMEOUT);
-                            continue;
-                        }
-
-                        var message = ConvertToStandardSQSMessage(sqsEvent.Records[index]);
+                        var message = ConvertToStandardSQSMessage(record);
                         var messageEnvelopeResult = await _envelopeSerializer.ConvertToEnvelopeAsync(message);
+                        messageEnvelopeResults.Add(messageEnvelopeResult);
 
                         trace.AddMetadata(TelemetryKeys.MessageId, messageEnvelopeResult.Envelope.Id);
                         trace.AddMetadata(TelemetryKeys.MessageType, messageEnvelopeResult.Envelope.MessageTypeIdentifier);
-
-                        // Don't await this result, we want to process multiple messages concurrently.
-                        var task = _messageManager.ProcessMessageAsync(messageEnvelopeResult.Envelope, messageEnvelopeResult.Mapping, token);
-                        taskList.Add(task);
-                        index++;
                     }
 
-                    await Task.WhenAll(taskList);
+                    if (_isFifoEndpoint)
+                        await ProcessInFifoMode(messageEnvelopeResults, token);
+                    else
+                        await ProcessInStandardMode(messageEnvelopeResults, token);
                 }
                 catch (Exception ex)
                 {
@@ -136,6 +124,84 @@ internal class DefaultLambdaMessageProcessor : ILambdaMessageProcessor, ISQSMess
                 throw;
             }
         }
+    }
+
+    private async Task ProcessInStandardMode(List<ConvertToEnvelopeResult> messageEnvelopeResults, CancellationToken token)
+    {
+        var taskList = new List<Task>(messageEnvelopeResults.Count);
+        var index = 0;
+
+        while (!token.IsCancellationRequested && index < messageEnvelopeResults.Count)
+        {
+            var concurrencyCapacity = _configuration.MaxNumberOfConcurrentMessages - _messageManager.ActiveMessageCount;
+
+            // If already processing the maximum number of messages, wait for at least one to complete and then try again
+            if (concurrencyCapacity <= 0)
+            {
+                _logger.LogTrace("The maximum number of {Max} concurrent messages is already being processed. " +
+                    "Waiting for one or more to complete for a maximum of {Timeout} seconds before attempting to poll again.",
+                    _configuration.MaxNumberOfConcurrentMessages, CONCURRENT_CAPACITY_WAIT_TIMEOUT.TotalSeconds);
+
+                await _messageManager.WaitAsync(CONCURRENT_CAPACITY_WAIT_TIMEOUT);
+                continue;
+            }
+
+            var task = _messageManager.ProcessMessageAsync(messageEnvelopeResults[index].Envelope, messageEnvelopeResults[index].Mapping, token);
+            taskList.Add(task);
+            index++;
+        }
+
+        await Task.WhenAll(taskList);
+    }
+
+    private async Task ProcessInFifoMode(List<ConvertToEnvelopeResult> messageEnvelopeResults, CancellationToken token)
+    {
+        var messageGroupMapping = new Dictionary<string, List<ConvertToEnvelopeResult>>();
+
+        foreach (var messageEnvelopResult in messageEnvelopeResults)
+        {
+            var groupId = messageEnvelopResult.Envelope.SQSMetadata?.MessageGroupId;
+
+            if (string.IsNullOrEmpty(groupId))
+            {
+                // This should never happen. But if it does, its an issue with the framework. This is not a customer induced error.
+                var errorMessage = "This SQS message cannot be processed in FIFO mode because it does not have a valid message group ID";
+                _logger.LogError(errorMessage);
+                throw new InvalidOperationException(errorMessage);
+            }
+
+            if (messageGroupMapping.TryGetValue(groupId, out var messageGroup))
+                messageGroup.Add(messageEnvelopResult);
+            else
+                messageGroupMapping[groupId] = new() { messageEnvelopResult };
+        }
+
+        var messageGroups = messageGroupMapping.Keys.ToList();
+        var taskList = new List<Task>();
+        var index = 0;
+
+        while (!token.IsCancellationRequested && index < messageGroups.Count)
+        {
+            var concurrencyCapacity = _configuration.MaxNumberOfConcurrentMessages - _messageManager.ActiveMessageCount;
+
+            // If already processing the maximum number of message groups, wait for at least one to complete and then try again
+            if (concurrencyCapacity <= 0)
+            {
+                _logger.LogTrace("The maximum number of {Max} concurrent message groups are already being processed. " +
+                    "Waiting for one or more to complete for a maximum of {Timeout} seconds before attempting to poll again.",
+                    _configuration.MaxNumberOfConcurrentMessages, CONCURRENT_CAPACITY_WAIT_TIMEOUT.TotalSeconds);
+
+                await _messageManager.WaitAsync(CONCURRENT_CAPACITY_WAIT_TIMEOUT);
+                continue;
+            }
+
+            var groupId = messageGroups[index];
+            var task = _messageManager.ProcessMessageGroupAsync(messageGroupMapping[groupId], groupId, token);
+            taskList.Add(task);
+            index++;
+        }
+
+        await Task.WhenAll(taskList);
     }
 
     /// <inheritdoc/>
