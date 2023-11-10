@@ -11,11 +11,6 @@ namespace AWS.Messaging.Telemetry;
 public static class TelemetryKeys
 {
     /// <summary>
-    /// OpenTelemetry activity source name
-    /// </summary>
-    public const string Source = "AWS.Messaging";
-
-    /// <summary>
     /// Current version of the AWS.Messaging package
     /// </summary>
     public static string AWSMessagingAssemblyVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? string.Empty;

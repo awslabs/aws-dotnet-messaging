@@ -362,7 +362,7 @@ public class EnvelopeSerializerTests
         Assert.Equal("1.0", envelope.Version);
         Assert.Equal("/aws/messaging", envelope.Source?.ToString());
         Assert.Equal("addressInfo", envelope.MessageTypeIdentifier);
-        Assert.Equal(true, envelope.Metadata["Is-Delivered"]);
+        Assert.Equal(true, envelope.Metadata["Is-Delivered"].GetBoolean());
 
         var subscribeMapping = conversionResult.Mapping;
         Assert.NotNull(subscribeMapping);
@@ -376,7 +376,7 @@ public class MockSerializationCallback : ISerializationCallback
 {
     public ValueTask PreSerializationAsync(MessageEnvelope messageEnvelope)
     {
-        messageEnvelope.Metadata["Is-Delivered"] = false;
+        messageEnvelope.Metadata["Is-Delivered"] = JsonSerializer.SerializeToElement(false);
         return ValueTask.CompletedTask;
     }
 
@@ -396,7 +396,7 @@ public class MockSerializationCallback : ISerializationCallback
 
     public ValueTask PostDeserializationAsync(MessageEnvelope messageEnvelope)
     {
-        messageEnvelope.Metadata["Is-Delivered"] = true;
+        messageEnvelope.Metadata["Is-Delivered"] = JsonSerializer.SerializeToElement(true);
         return ValueTask.CompletedTask;
     }
 }

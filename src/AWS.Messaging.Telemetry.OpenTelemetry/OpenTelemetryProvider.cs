@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Diagnostics;
-using System.Text.Json;
 using OpenTelemetry;
 using OpenTelemetry.Context.Propagation;
 
@@ -13,7 +12,7 @@ namespace AWS.Messaging.Telemetry.OpenTelemetry
     /// </summary>
     public class OpenTelemetryProvider : ITelemetryProvider
     {
-        private static readonly ActivitySource _activitySource = new ActivitySource(TelemetryKeys.Source, TelemetryKeys.AWSMessagingAssemblyVersion);
+        private static readonly ActivitySource _activitySource = new ActivitySource(Constants.SourceName, TelemetryKeys.AWSMessagingAssemblyVersion);
 
         /// <inheritdoc/>
         public ITelemetryTrace Trace(string traceName)
@@ -74,16 +73,9 @@ namespace AWS.Messaging.Telemetry.OpenTelemetry
         /// <returns>Context value</returns>
         private IEnumerable<string> ExtractTraceContextFromEnvelope(MessageEnvelope envelope, string key)
         {
-            if (envelope.Metadata.TryGetValue(key, out var value))
-            {               
-                if (value is JsonElement jsonValue)
-                {
-                    return new string[] { jsonValue.ToString() };
-                }
-                else if (value is string stringValue)
-                {
-                    return new string[] { stringValue };
-                }
+            if (envelope.Metadata.TryGetValue(key, out var jsonElement))
+            {
+                return new string[] { jsonElement.ToString() };
             }
 
             return Enumerable.Empty<string>();

@@ -88,7 +88,7 @@ public class OpenTelemetryTests
         var activities = new List<Activity>();
 
         using (var tracerProvider = Sdk.CreateTracerProviderBuilder()
-            .AddSource(TelemetryKeys.Source)
+            .AddSource(Constants.SourceName)
             .ConfigureResource(resource => resource.AddService("unittest"))
             .AddInMemoryExporter(activities).Build())
         {
@@ -124,7 +124,7 @@ public class OpenTelemetryTests
         Activity.Current = existingActivity;
 
         using (var tracerProvider = Sdk.CreateTracerProviderBuilder()
-            .AddSource(TelemetryKeys.Source)
+            .AddSource(Constants.SourceName)
             .ConfigureResource(resource => resource.AddService("unittest"))
             .AddInMemoryExporter(activities).Build())
         {
@@ -155,7 +155,7 @@ public class OpenTelemetryTests
         };
 
         using (var tracerProvider = Sdk.CreateTracerProviderBuilder()
-            .AddSource(TelemetryKeys.Source)
+            .AddSource(Constants.SourceName)
             .ConfigureResource(resource => resource.AddService("unittest"))
             .AddInMemoryExporter(activities).Build())
         {
@@ -188,7 +188,7 @@ public class OpenTelemetryTests
             {
                 MessageID = "4567"
             },
-            Metadata = new Dictionary<string, object>
+            Metadata = new Dictionary<string, JsonElement>
             {
                 { "traceparent", JsonDocument.Parse("\"00-d2d8865217873923d2d74cf680a30ac3-d63e320582f9ff94-01\"").RootElement }
             },
@@ -196,7 +196,7 @@ public class OpenTelemetryTests
         };
 
         using (var tracerProvider = Sdk.CreateTracerProviderBuilder()
-            .AddSource(TelemetryKeys.Source)
+            .AddSource(Constants.SourceName)
             .ConfigureResource(resource => resource.AddService("unittest"))
             .AddInMemoryExporter(activities).Build())
         {

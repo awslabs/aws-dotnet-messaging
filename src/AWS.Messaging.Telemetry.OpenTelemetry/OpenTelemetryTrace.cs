@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Diagnostics;
+using System.Text.Json;
 using OpenTelemetry;
 using OpenTelemetry.Context.Propagation;
 using OpenTelemetry.Trace;
@@ -43,7 +44,7 @@ namespace AWS.Messaging.Telemetry.OpenTelemetry
         {
             if (_activity != null && _activity.IsAllDataRequested)
             {
-               _activity.SetTag(key, value);
+                _activity.SetTag(key, value);
             }
         }
 
@@ -57,7 +58,7 @@ namespace AWS.Messaging.Telemetry.OpenTelemetry
             }
             // Even if an "AWS.Messaging" activity was not created, we still
             // propogate the the current activity (if it exists) through the message envelope
-            else if (Activity.Current != null) 
+            else if (Activity.Current != null)
             {
                 contextToInject = Activity.Current.Context;
             }
@@ -73,7 +74,7 @@ namespace AWS.Messaging.Telemetry.OpenTelemetry
         /// <param name="value">Context value</param>
         private void InjectTraceContextIntoEnvelope(MessageEnvelope envelope, string key, string value)
         {
-            envelope.Metadata[key] = value;
+            envelope.Metadata[key] = JsonSerializer.SerializeToElement(value);
         }
 
         private bool _disposed;

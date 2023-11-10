@@ -23,7 +23,7 @@ public static class TracerProviderBuilderExtensions
             services.AddSingleton<ITelemetryProvider, OpenTelemetryProvider>();
         });
 
-        builder.AddSource(TelemetryKeys.Source);
+        builder.AddSource(Constants.SourceName);
 
         return builder;
     }

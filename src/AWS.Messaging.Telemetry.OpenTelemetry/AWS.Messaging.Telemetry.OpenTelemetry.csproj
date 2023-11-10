@@ -10,6 +10,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <RollForward>Major</RollForward>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <WarningsAsErrors>CA1727</WarningsAsErrors>
   </PropertyGroup>
 
   <ItemGroup>
