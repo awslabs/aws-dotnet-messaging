@@ -139,7 +139,7 @@ public class DefaultMessageManager : IMessageManager
                 if (!isSuccessful)
                 {
                     // If the handler invocation fails for any message, skip processing subsequent messages in the group.
-                    _logger.LogError("Handler invocation failed for a message belonging to message group '{groupdId}' having message ID '{messageID}'. Skipping processing of {remaining} messages from the same group.", groupId, message.Envelope.Id, remaining);
+                    _logger.LogError("Handler invocation failed for a message belonging to message group '{GroupdId}' having message ID '{MessageID}'. Skipping processing of {Remaining} messages from the same group.", groupId, message.Envelope.Id, remaining);
                     break;
                 }
                 remaining -= 1;
@@ -181,7 +181,7 @@ public class DefaultMessageManager : IMessageManager
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "An exception has been thrown from handler '{handlerType}' while processing message with ID '{messageId}'", subscriberMapping.HandlerType.Name, messageEnvelope.Id);
+            _logger.LogError(ex, "An exception has been thrown from handler '{HandlerType}' while processing message with ID '{MessageId}'", subscriberMapping.HandlerType.Name, messageEnvelope.Id);
         }
 
         _inFlightMessageMetadata.Remove(messageEnvelope, out _);
@@ -202,7 +202,7 @@ public class DefaultMessageManager : IMessageManager
         }
         else if (handlerTask.IsFaulted)
         {
-            _logger.LogError(handlerTask.Exception, "An exception has been thrown from handler '{handlerType}' while processing message with ID '{messageId}'", subscriberMapping.HandlerType.Name, messageEnvelope.Id);
+            _logger.LogError(handlerTask.Exception, "An exception has been thrown from handler '{HandlerType}' while processing message with ID '{MessageId}'", subscriberMapping.HandlerType.Name, messageEnvelope.Id);
             await _sqsMessageCommunication.ReportMessageFailureAsync(messageEnvelope);
         }
 
@@ -224,7 +224,7 @@ public class DefaultMessageManager : IMessageManager
                 {
                     _visibilityTimeoutExtensionTask = ExtendUnfinishedMessageVisibilityTimeoutBatch(token);
 
-                    _logger.LogTrace("Started task with id {id} to extend the visibility timeout of in flight messages", _visibilityTimeoutExtensionTask.Id);
+                    _logger.LogTrace("Started task with id {Id} to extend the visibility timeout of in flight messages", _visibilityTimeoutExtensionTask.Id);
                 }
             }
         }
