@@ -3,14 +3,22 @@
 
 using System;
 
-namespace AWS.Messaging.IntegrationTests.Models
+namespace AWS.Messaging.IntegrationTests.Models;
+
+/// <summary>
+/// Test message than can be used to drive behavior in a test handler
+/// </summary>
+public class SimulatedMessage
 {
-    public class SimulatedMessage
-    {
-        public string? Id { get; set; }
+    public string? Id { get; set; }
 
-        public bool ReturnFailedStatus { get; set; } = false;
+    /// <summary>
+    /// Whether the handler should fail or succeed
+    /// </summary>
+    public bool ReturnFailedStatus { get; set; } = false;
 
-        public TimeSpan WaitTime { get; set; }
-    }
+    /// <summary>
+    /// How long the handler should simulate work before returning
+    /// </summary>
+    public TimeSpan WaitTime { get; set; }
 }
