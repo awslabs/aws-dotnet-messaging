@@ -68,7 +68,7 @@ namespace AWS.Messaging.IntegrationTests
             {
                 StartInfo = new ProcessStartInfo()
                 {
-                    FileName = "dotnet.exe",
+                    FileName = "dotnet",
                     CreateNoWindow = true,
                     Arguments = "tool install -g Amazon.Lambda.Tools"
                 }
@@ -83,7 +83,7 @@ namespace AWS.Messaging.IntegrationTests
             {
                 StartInfo = new ProcessStartInfo()
                 {
-                    FileName = "dotnet.exe",
+                    FileName = "dotnet",
                     CreateNoWindow = true,
                     Arguments = "lambda package -c Release",
                     WorkingDirectory = path
