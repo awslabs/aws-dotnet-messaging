@@ -65,7 +65,7 @@ public static class AWSUtilities
             var executionRoleArn = (await iamClient.CreateRoleAsync(createRoleRequest)).Role.Arn;
 
             // Wait for role to propagate.
-            await Task.Delay(10000);
+            await WaitTillRoleAvailableAsync(iamClient, roleName);
 
             await iamClient.AttachRolePolicyAsync(new AttachRolePolicyRequest
             {
@@ -74,6 +74,36 @@ public static class AWSUtilities
             });
 
             return executionRoleArn;
+        }
+    }
+
+    public async static Task WaitTillRoleAvailableAsync(IAmazonIdentityManagementService iamClient, string roleName)
+    {
+        const int POLL_INTERVAL = 3000;
+        const int MAX_TIMEOUT_MINUTES = 1;
+
+        var getRoleRequest = new GetRoleRequest()
+        {
+            RoleName = roleName
+        };
+
+        var startTime = DateTime.Now;
+        while (DateTime.Now < startTime.AddMinutes(MAX_TIMEOUT_MINUTES))
+        {
+            try
+            {
+                var response = await iamClient.GetRoleAsync(getRoleRequest);
+            }
+            catch (NoSuchEntityException)
+            {
+                // If the role doesn't exist yet, wait then try polling again
+                await Task.Delay(POLL_INTERVAL);
+            }
+            catch (Exception)
+            {
+                // Rethrow all other exceptions
+                throw;
+            }
         }
     }
 
@@ -180,12 +210,60 @@ public static class AWSUtilities
                 }
             }
         }
-        await Task.Delay(5000);
+
+        await WaitTillFunctionAvailableAsync(lambdaClient, functionName.Replace(".", ""));
 
         if (!created)
         {
             throw new Exception($"Timed out trying to create Lambda function {functionName}");
         }
+    }
+
+    /// <summary>
+    /// Waits until the specified Lambda function is no longer "Pending"
+    /// </summary>
+    /// <param name="lambdaClient">Lambda client</param>
+    /// <param name="functionName">Function name</param>
+    private static async Task WaitTillFunctionAvailableAsync(IAmazonLambda lambdaClient, string functionName)
+    {
+        const int POLL_INTERVAL = 3000;
+        const int MAX_TIMEOUT_MINUTES = 5;
+
+        try
+        {
+            var request = new GetFunctionConfigurationRequest
+            {
+                FunctionName = functionName
+            };
+
+            GetFunctionConfigurationResponse response;
+
+            var timeout = DateTime.UtcNow.AddMinutes(MAX_TIMEOUT_MINUTES);
+            var startTime = DateTime.UtcNow;
+            do
+            {
+                response = await lambdaClient.GetFunctionConfigurationAsync(request);
+                if (response.LastUpdateStatus != LastUpdateStatus.InProgress && response.State != State.Pending)
+                {
+                    if (response.LastUpdateStatus == LastUpdateStatus.Failed)
+                    {
+                        // Not throwing exception because it is possible the calling code could be fixing the failed state.
+                    }
+
+                    return;
+                }
+
+                await Task.Delay(POLL_INTERVAL);
+
+            } while (DateTime.UtcNow < timeout);
+
+        }
+        catch (Exception e)
+        {
+            throw new Exception($"Error waiting for Lambda function to be in available status: {e.Message}");
+        }
+
+        throw new Exception($"Timeout waiting for function {functionName} to become available");
     }
 
     /// <summary>

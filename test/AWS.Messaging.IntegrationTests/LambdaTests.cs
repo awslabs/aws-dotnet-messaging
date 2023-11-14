@@ -38,9 +38,14 @@ namespace AWS.Messaging.IntegrationTests
 
         public string ArtifactBucketName { get; set; } = string.Empty;
 
+        /// <summary>
+        /// This is both the name of the local package containing the Lambda function(s) under test,
+        /// as well as the name of the deployed Lambda function
+        /// </summary>
+        public  string FunctionPackageName => "AWS.Messaging.Tests.LambdaFunctions";
+
         private const string TestBucketRoot = "mpf-lambda-artifacts-";
         private const string LambdaExecutionRoleName = "ExecutionRoleForMPFTestLambdas";
-        private const string FunctionPackageName = "AWS.Messaging.Tests.LambdaFunctions";
 
         private readonly IAmazonIdentityManagementService _iamClient;
         private readonly IAmazonS3 _s3Client;
@@ -73,7 +78,7 @@ namespace AWS.Messaging.IntegrationTests
             token.ThrowIfCancellationRequested();   // if this has thrown, setup took longer than expected
 
             // Package the project containing the functions that are under test (individual tests will deploy functions as needed) 
-            var path = Path.Combine(TestUtilities.FindParentDirectoryWithName(Environment.CurrentDirectory, "test"), "AWS.Messaging.Tests.LambdaFunctions");
+            var path = Path.Combine(TestUtilities.FindParentDirectoryWithName(Environment.CurrentDirectory, "test"), FunctionPackageName);
             var buildProcess = new Process()
             {
                 StartInfo = new ProcessStartInfo()
@@ -99,7 +104,10 @@ namespace AWS.Messaging.IntegrationTests
         public async Task DisposeAsync()
         {
             // Delete the S3 bucket
-            await AWSUtilities.DeleteDeploymentZipAndBucketAsync(_s3Client, ArtifactBucketName!);
+            if (!string.IsNullOrEmpty(ArtifactBucketName))
+            {
+                await AWSUtilities.DeleteDeploymentZipAndBucketAsync(_s3Client, ArtifactBucketName);
+            }
 
             // Delete the Lambda execution role, which requires detaching the policy first
             await _iamClient.DetachRolePolicyAsync(new DetachRolePolicyRequest
@@ -131,7 +139,6 @@ namespace AWS.Messaging.IntegrationTests
 
         private string _queueUrl = "";
         private string _dlqUrl = "";
-        private string _functionName = "";
 
         public LambdaEventTests(LambdaIntegrationTestFixture fixture)
         {
@@ -144,14 +151,13 @@ namespace AWS.Messaging.IntegrationTests
 
         public async Task InitializeAsync()
         {
-            _functionName = "AWS.Messaging.Tests.LambdaFunctions";
 
             // Create the function 
-            await AWSUtilities.CreateFunctionAsync(_lambdaClient, _fixture.ArtifactBucketName, _functionName, "LambdaEventHandler", _fixture.ExecutionRoleArn, 3);
+            await AWSUtilities.CreateFunctionAsync(_lambdaClient, _fixture.ArtifactBucketName, _fixture.FunctionPackageName, "LambdaEventHandler", _fixture.ExecutionRoleArn, 3);
 
             // Create the queue and DLQ and map it to the function
             (_queueUrl, _dlqUrl) = await AWSUtilities.CreateQueueWithDLQAsync(_sqsClient, 3);
-            await AWSUtilities.CreateQueueLambdaMapping(_sqsClient, _lambdaClient, _functionName, _queueUrl);
+            await AWSUtilities.CreateQueueLambdaMapping(_sqsClient, _lambdaClient, _fixture.FunctionPackageName, _queueUrl);
 
             // Create the publisher
             var serviceCollection = new ServiceCollection();
@@ -167,7 +173,7 @@ namespace AWS.Messaging.IntegrationTests
         public async Task DisposeAsync()
         {
             // Delete the function
-            await AWSUtilities.DeleteFunctionIfExistsAsync(_lambdaClient, _functionName);
+            await AWSUtilities.DeleteFunctionIfExistsAsync(_lambdaClient, _fixture.FunctionPackageName);
 
             // Delete the queues
             await _sqsClient.DeleteQueueAsync(_queueUrl);
@@ -191,7 +197,7 @@ namespace AWS.Messaging.IntegrationTests
             await Task.Delay(TimeSpan.FromSeconds(10));
 
             // Assert that the message was processed and logged successfully
-            var logs = await AWSUtilities.GetMostRecentLambdaLogs(_cloudWatchLogsClient, _functionName, publishTimestamp);
+            var logs = await AWSUtilities.GetMostRecentLambdaLogs(_cloudWatchLogsClient, _fixture.FunctionPackageName, publishTimestamp);
             var logsWithHandler = logs.Where(logEvent => logEvent.Message.Contains("Processed message with Id: "));
             Assert.Single(logsWithHandler);
             Assert.Contains($"Processed message with Id: {message.Id}", logsWithHandler.First().Message);
@@ -215,7 +221,7 @@ namespace AWS.Messaging.IntegrationTests
             await Task.Delay(TimeSpan.FromSeconds(10));
 
             // Assert that the message was not processed, since it's expected to fail
-            var logs = await AWSUtilities.GetMostRecentLambdaLogs(_cloudWatchLogsClient, _functionName, publishTimestamp);
+            var logs = await AWSUtilities.GetMostRecentLambdaLogs(_cloudWatchLogsClient, _fixture.FunctionPackageName, publishTimestamp);
             var logsWithHandler = logs.Where(logEvent => logEvent.Message.Contains("Processed message with Id: "));
             Assert.Empty(logsWithHandler);
 
@@ -240,7 +246,6 @@ namespace AWS.Messaging.IntegrationTests
 
         private string _queueUrl = "";
         private string _dlqUrl = "";
-        private string _functionName = "";
 
         public LambdaBatchTests(LambdaIntegrationTestFixture fixture)
         {
@@ -253,14 +258,12 @@ namespace AWS.Messaging.IntegrationTests
 
         public async Task InitializeAsync()
         {
-            _functionName = "AWS.Messaging.Tests.LambdaFunctions";
-
             // Create the function 
-            await AWSUtilities.CreateFunctionAsync(_lambdaClient, _fixture.ArtifactBucketName, _functionName, "LambdaEventWithBatchResponseHandler", _fixture.ExecutionRoleArn, 3);
+            await AWSUtilities.CreateFunctionAsync(_lambdaClient, _fixture.ArtifactBucketName, _fixture.FunctionPackageName, "LambdaEventWithBatchResponseHandler", _fixture.ExecutionRoleArn, 3);
 
             // Create the queue and DLQ and map it to the function
             (_queueUrl, _dlqUrl) = await AWSUtilities.CreateQueueWithDLQAsync(_sqsClient, 3);
-            await AWSUtilities.CreateQueueLambdaMapping(_sqsClient, _lambdaClient, _functionName, _queueUrl, true);
+            await AWSUtilities.CreateQueueLambdaMapping(_sqsClient, _lambdaClient, _fixture.FunctionPackageName, _queueUrl, true);
 
             // Create the publisher
             var serviceCollection = new ServiceCollection();
@@ -276,7 +279,7 @@ namespace AWS.Messaging.IntegrationTests
         public async Task DisposeAsync()
         {
             // Delete the function
-            await AWSUtilities.DeleteFunctionIfExistsAsync(_lambdaClient, _functionName);
+            await AWSUtilities.DeleteFunctionIfExistsAsync(_lambdaClient, _fixture.FunctionPackageName);
 
             // Delete the queue
             await _sqsClient.DeleteQueueAsync(_queueUrl);
@@ -300,7 +303,7 @@ namespace AWS.Messaging.IntegrationTests
             await Task.Delay(TimeSpan.FromSeconds(10));
 
             // Assert that the message was processed and logged successfully
-            var logs = await AWSUtilities.GetMostRecentLambdaLogs(_cloudWatchLogsClient, _functionName, publishTimestamp);
+            var logs = await AWSUtilities.GetMostRecentLambdaLogs(_cloudWatchLogsClient, _fixture.FunctionPackageName, publishTimestamp);
             var logsWithHandler = logs.Where(logEvent => logEvent.Message.Contains("Processed message with Id: "));
             Assert.Single(logsWithHandler);
             Assert.Contains($"Processed message with Id: {message.Id}", logsWithHandler.First().Message);
@@ -324,7 +327,7 @@ namespace AWS.Messaging.IntegrationTests
             await Task.Delay(TimeSpan.FromSeconds(10));
 
             // Assert that the message was not processed, since it's expected to fail
-            var logs = await AWSUtilities.GetMostRecentLambdaLogs(_cloudWatchLogsClient, _functionName, publishTimestamp);
+            var logs = await AWSUtilities.GetMostRecentLambdaLogs(_cloudWatchLogsClient, _fixture.FunctionPackageName, publishTimestamp);
             var logsWithHandler = logs.Where(logEvent => logEvent.Message.Contains("Processed message with Id: "));
             Assert.Empty(logsWithHandler);
 
