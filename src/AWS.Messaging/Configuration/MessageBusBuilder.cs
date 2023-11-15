@@ -276,7 +276,6 @@ public class MessageBusBuilder : IMessageBusBuilder
         services.TryAddSingleton<IAWSClientProvider, AWSClientProvider>();
         services.TryAddSingleton<IMessageSourceHandler, MessageSourceHandler>();
         services.TryAddSingleton<IEnvironmentManager, EnvironmentManager>();
-        services.TryAddSingleton<IDnsManager, DnsManager>();
         services.TryAddSingleton<IEC2InstanceMetadataManager, EC2InstanceMetadataManager>();
         services.TryAddSingleton<IECSContainerMetadataManager, ECSContainerMetadataManager>();
         services.AddHttpClient("ECSMetadataClient");
