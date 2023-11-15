@@ -10,7 +10,7 @@ using OpenTelemetry.Trace;
 namespace AWS.Messaging.Telemetry.OpenTelemetry;
 
 /// <summary>
-/// An OpenTelemetry trace (wrapper around a <see cref="Activity"/>
+/// An OpenTelemetry trace (wrapper around a <see cref="Activity"/>)
 /// </summary>
 public class OpenTelemetryTrace : ITelemetryTrace
 {
@@ -57,7 +57,7 @@ public class OpenTelemetryTrace : ITelemetryTrace
             contextToInject = _activity.Context;
         }
         // Even if an "AWS.Messaging" activity was not created, we still
-        // propogate the the current activity (if it exists) through the message envelope
+        // propogate the current activity (if it exists) through the message envelope
         else if (Activity.Current != null)
         {
             contextToInject = Activity.Current.Context;
@@ -78,6 +78,7 @@ public class OpenTelemetryTrace : ITelemetryTrace
     }
 
     private bool _disposed;
+
     /// <summary>
     /// Disposes the inner <see cref="Activity"/>, and also restores the parent activity if set
     /// </summary>

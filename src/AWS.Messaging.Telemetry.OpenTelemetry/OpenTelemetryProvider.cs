@@ -66,7 +66,7 @@ public class OpenTelemetryProvider : ITelemetryProvider
     }
 
     /// <summary>
-    /// Extracts propogation context from a <see cref="MessageEnvelope"/>, meant to be used with <see cref="TextMapPropagator"/>
+    /// Extracts propagation context from a <see cref="MessageEnvelope"/>, meant to be used with <see cref="TextMapPropagator"/>
     /// </summary>
     /// <param name="envelope">Inbound message envelope</param>
     /// <param name="key">Context key</param>

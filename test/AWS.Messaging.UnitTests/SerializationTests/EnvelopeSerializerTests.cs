@@ -362,7 +362,7 @@ public class EnvelopeSerializerTests
         Assert.Equal("1.0", envelope.Version);
         Assert.Equal("/aws/messaging", envelope.Source?.ToString());
         Assert.Equal("addressInfo", envelope.MessageTypeIdentifier);
-        Assert.Equal(true, envelope.Metadata["Is-Delivered"].GetBoolean());
+        Assert.True(envelope.Metadata["Is-Delivered"].GetBoolean());
 
         var subscribeMapping = conversionResult.Mapping;
         Assert.NotNull(subscribeMapping);
