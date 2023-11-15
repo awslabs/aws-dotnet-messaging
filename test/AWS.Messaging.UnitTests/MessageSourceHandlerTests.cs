@@ -15,7 +15,6 @@ namespace AWS.Messaging.UnitTests;
 public class MessageSourceHandlerTests
 {
     private readonly Mock<IEnvironmentManager> _environmentManager;
-    private readonly Mock<IDnsManager> _dnsManager;
     private readonly Mock<IEC2InstanceMetadataManager> _ec2InstanceMetadataManager;
     private readonly Mock<IECSContainerMetadataManager> _ecsContainerMetadataManager;
     private readonly IMessageConfiguration _messageConfiguration;
@@ -24,7 +23,6 @@ public class MessageSourceHandlerTests
     public MessageSourceHandlerTests()
     {
         _environmentManager = new Mock<IEnvironmentManager>();
-        _dnsManager = new Mock<IDnsManager>();
         _ec2InstanceMetadataManager = new Mock<IEC2InstanceMetadataManager>();
         _ecsContainerMetadataManager = new Mock<IECSContainerMetadataManager>();
         _messageConfiguration = new MessageConfiguration();
@@ -36,14 +34,7 @@ public class MessageSourceHandlerTests
     {
         _messageConfiguration.Source = "/aws/messaging";
 
-        var messageSourceHandler = new MessageSourceHandler(
-            _environmentManager.Object,
-            _dnsManager.Object,
-            _ecsContainerMetadataManager.Object,
-            _ec2InstanceMetadataManager.Object,
-            _messageConfiguration,
-            _logger.Object
-            );
+        var messageSourceHandler = GetMessageSourceHandler();
 
         var messageSource = await messageSourceHandler.ComputeMessageSource();
 
@@ -56,14 +47,7 @@ public class MessageSourceHandlerTests
         _messageConfiguration.Source = "/aws/messaging";
         _messageConfiguration.SourceSuffix = "/suffix";
 
-        var messageSourceHandler = new MessageSourceHandler(
-            _environmentManager.Object,
-            _dnsManager.Object,
-            _ecsContainerMetadataManager.Object,
-            _ec2InstanceMetadataManager.Object,
-            _messageConfiguration,
-            _logger.Object
-            );
+        var messageSourceHandler = GetMessageSourceHandler();
 
         var messageSource = await messageSourceHandler.ComputeMessageSource();
 
@@ -76,14 +60,7 @@ public class MessageSourceHandlerTests
         _messageConfiguration.Source = "/aws/messaging";
         _messageConfiguration.SourceSuffix = "suffix";
 
-        var messageSourceHandler = new MessageSourceHandler(
-            _environmentManager.Object,
-            _dnsManager.Object,
-            _ecsContainerMetadataManager.Object,
-            _ec2InstanceMetadataManager.Object,
-            _messageConfiguration,
-            _logger.Object
-            );
+        var messageSourceHandler = GetMessageSourceHandler();
 
         var messageSource = await messageSourceHandler.ComputeMessageSource();
 
@@ -96,14 +73,7 @@ public class MessageSourceHandlerTests
         _messageConfiguration.Source = "/aws/messaging/";
         _messageConfiguration.SourceSuffix = "/suffix";
 
-        var messageSourceHandler = new MessageSourceHandler(
-            _environmentManager.Object,
-            _dnsManager.Object,
-            _ecsContainerMetadataManager.Object,
-            _ec2InstanceMetadataManager.Object,
-            _messageConfiguration,
-            _logger.Object
-            );
+        var messageSourceHandler = GetMessageSourceHandler();
 
         var messageSource = await messageSourceHandler.ComputeMessageSource();
 
@@ -116,14 +86,7 @@ public class MessageSourceHandlerTests
         _messageConfiguration.Source = " /aws/messaging/ ";
         _messageConfiguration.SourceSuffix = " /suffix ";
 
-        var messageSourceHandler = new MessageSourceHandler(
-            _environmentManager.Object,
-            _dnsManager.Object,
-            _ecsContainerMetadataManager.Object,
-            _ec2InstanceMetadataManager.Object,
-            _messageConfiguration,
-            _logger.Object
-            );
+        var messageSourceHandler = GetMessageSourceHandler();
 
         var messageSource = await messageSourceHandler.ComputeMessageSource();
 
@@ -134,20 +97,12 @@ public class MessageSourceHandlerTests
     public async Task MessageSourceNotSet_RunningLocally()
     {
         _ecsContainerMetadataManager.Setup(x => x.GetContainerTaskMetadata()).ReturnsAsync(new Dictionary<string, object>());
-        _dnsManager.Setup(x => x.GetHostName()).Returns("local");
 
-        var messageSourceHandler = new MessageSourceHandler(
-            _environmentManager.Object,
-            _dnsManager.Object,
-            _ecsContainerMetadataManager.Object,
-            _ec2InstanceMetadataManager.Object,
-            _messageConfiguration,
-            _logger.Object
-            );
+        var messageSourceHandler = GetMessageSourceHandler();
 
         var messageSource = await messageSourceHandler.ComputeMessageSource();
 
-        Assert.Equal("/DNSHostName/local", messageSource.ToString());
+        Assert.Equal("/aws/messaging", messageSource.ToString());
     }
 
     [Fact]
@@ -155,20 +110,12 @@ public class MessageSourceHandlerTests
     {
         _messageConfiguration.SourceSuffix = "/suffix";
         _ecsContainerMetadataManager.Setup(x => x.GetContainerTaskMetadata()).ReturnsAsync(new Dictionary<string, object>());
-        _dnsManager.Setup(x => x.GetHostName()).Returns("local");
 
-        var messageSourceHandler = new MessageSourceHandler(
-            _environmentManager.Object,
-            _dnsManager.Object,
-            _ecsContainerMetadataManager.Object,
-            _ec2InstanceMetadataManager.Object,
-            _messageConfiguration,
-            _logger.Object
-            );
+        var messageSourceHandler = GetMessageSourceHandler();
 
         var messageSource = await messageSourceHandler.ComputeMessageSource();
 
-        Assert.Equal("/DNSHostName/local/suffix", messageSource.ToString());
+        Assert.Equal("/aws/messaging/suffix", messageSource.ToString());
     }
 
     [Fact]
@@ -176,14 +123,7 @@ public class MessageSourceHandlerTests
     {
         _environmentManager.Setup(x => x.GetEnvironmentVariable("AWS_LAMBDA_FUNCTION_NAME")).Returns("lambda");
 
-        var messageSourceHandler = new MessageSourceHandler(
-            _environmentManager.Object,
-            _dnsManager.Object,
-            _ecsContainerMetadataManager.Object,
-            _ec2InstanceMetadataManager.Object,
-            _messageConfiguration,
-            _logger.Object
-            );
+        var messageSourceHandler = GetMessageSourceHandler();
 
         var messageSource = await messageSourceHandler.ComputeMessageSource();
 
@@ -199,14 +139,7 @@ public class MessageSourceHandlerTests
             { "TaskARN", "taskArn" }
         });
 
-        var messageSourceHandler = new MessageSourceHandler(
-            _environmentManager.Object,
-            _dnsManager.Object,
-            _ecsContainerMetadataManager.Object,
-            _ec2InstanceMetadataManager.Object,
-            _messageConfiguration,
-            _logger.Object
-            );
+        var messageSourceHandler = GetMessageSourceHandler();
 
         var messageSource = await messageSourceHandler.ComputeMessageSource();
 
@@ -219,37 +152,23 @@ public class MessageSourceHandlerTests
         _ecsContainerMetadataManager.Setup(x => x.GetContainerTaskMetadata()).ReturnsAsync(new Dictionary<string, object>());
         _ec2InstanceMetadataManager.Setup(x => x.InstanceId).Returns("instanceId");
 
-        var messageSourceHandler = new MessageSourceHandler(
-            _environmentManager.Object,
-            _dnsManager.Object,
-            _ecsContainerMetadataManager.Object,
-            _ec2InstanceMetadataManager.Object,
-            _messageConfiguration,
-            _logger.Object
-            );
+        var messageSourceHandler = GetMessageSourceHandler();
 
         var messageSource = await messageSourceHandler.ComputeMessageSource();
 
         Assert.Equal("/AmazonEC2/instanceId", messageSource.ToString());
     }
 
-    [Fact]
-    public async Task MessageSourceNotSet_DnsThrowsException()
+    private IMessageSourceHandler GetMessageSourceHandler()
     {
-        _ecsContainerMetadataManager.Setup(x => x.GetContainerTaskMetadata()).ReturnsAsync(new Dictionary<string, object>());
-        _dnsManager.Setup(x => x.GetHostName()).Throws<Exception>();
-
         var messageSourceHandler = new MessageSourceHandler(
-            _environmentManager.Object,
-            _dnsManager.Object,
-            _ecsContainerMetadataManager.Object,
-            _ec2InstanceMetadataManager.Object,
-            _messageConfiguration,
-            _logger.Object
-            );
+           _environmentManager.Object,
+           _ecsContainerMetadataManager.Object,
+           _ec2InstanceMetadataManager.Object,
+           _messageConfiguration,
+           _logger.Object
+           );
 
-        var messageSource = await messageSourceHandler.ComputeMessageSource();
-
-        Assert.Equal("/aws/messaging", messageSource.ToString());
+        return messageSourceHandler;
     }
 }
