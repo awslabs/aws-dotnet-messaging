@@ -49,6 +49,10 @@ public class HandlerInvoker : IHandlerInvoker
                 trace.AddMetadata(TelemetryKeys.MessageId, messageEnvelope.Id);
                 trace.AddMetadata(TelemetryKeys.MessageType, messageEnvelope.MessageTypeIdentifier);
                 trace.AddMetadata(TelemetryKeys.HandlerType, subscriberMapping.HandlerType.FullName!);
+                if (!string.IsNullOrEmpty(messageEnvelope.SQSMetadata?.MessageID))
+                {
+                    trace.AddMetadata(TelemetryKeys.SqsMessageId, messageEnvelope.SQSMetadata.MessageID);
+                }
 
                 using (var scope = _serviceProvider.CreateScope())
                 {

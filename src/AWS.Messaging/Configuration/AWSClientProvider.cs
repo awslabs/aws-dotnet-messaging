@@ -3,6 +3,7 @@
 
 using System.Reflection;
 using Amazon.Runtime;
+using AWS.Messaging.Telemetry;
 
 namespace AWS.Messaging.Configuration;
 
@@ -12,8 +13,7 @@ namespace AWS.Messaging.Configuration;
 internal class AWSClientProvider : IAWSClientProvider
 {
     private const string _userAgentHeader = "User-Agent";
-    private static readonly string _assemblyVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? string.Empty;
-    private static readonly string _userAgentString = $"lib/aws-dotnet-messaging_{_assemblyVersion}";
+    private static readonly string _userAgentString = $"lib/aws-dotnet-messaging_{TelemetryKeys.AWSMessagingAssemblyVersion}";
 
     private readonly IServiceProvider _serviceProvider;
 

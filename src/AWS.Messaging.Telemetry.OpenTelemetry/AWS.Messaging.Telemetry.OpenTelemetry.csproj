@@ -1,0 +1,35 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>true</IsPackable>
+    <Product>AWS Message Processing Framework Instrumention for OpenTelemetry</Product>
+    <PackageProjectUrl>https://github.com/awslabs/aws-dotnet-messaging</PackageProjectUrl>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <RollForward>Major</RollForward>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <WarningsAsErrors>CA1727</WarningsAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="OpenTelemetry" Version="1.6.0" />
+    <PackageReference Include="OpenTelemetry.Api" Version="1.6.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AWS.Messaging\AWS.Messaging.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\LICENSE" Pack="true" PackagePath="" />
+    <None Include="..\..\NOTICE" Pack="true" PackagePath="" />
+    <None Include="..\..\THIRD_PARTY_LICENSES" Pack="true" PackagePath="" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include=".\README.md" Pack="true" PackagePath="" />
+  </ItemGroup>
+
+</Project>

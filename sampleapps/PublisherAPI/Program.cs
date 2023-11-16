@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Text.Json;
+using AWS.Messaging.Telemetry.OpenTelemetry;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using PublisherAPI.Models;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -33,6 +36,11 @@ builder.Services.AddAWSMessageBus(bus =>
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Services.AddOpenTelemetry()
+    .ConfigureResource(resource => resource.AddService("PublisherAPI"))
+    .WithTracing(tracing => tracing
+        .AddAWSMessagingInstrumentation()
+        .AddConsoleExporter());
 
 var app = builder.Build();
 
