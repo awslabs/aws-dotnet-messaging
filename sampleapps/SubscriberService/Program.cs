@@ -2,11 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Text.Json;
+using AWS.Messaging.Telemetry.OpenTelemetry;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 using SubscriberService.MessageHandlers;
 using SubscriberService.Models;
 
@@ -37,7 +39,12 @@ await Host.CreateDefaultBuilder(args)
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
                 };
             });
-        });
+        })
+        .AddOpenTelemetry()
+            .ConfigureResource(resource => resource.AddService("SubscriberService"))
+            .WithTracing(tracing => tracing
+                .AddAWSMessagingInstrumentation()
+                .AddConsoleExporter());
     })
     .Build()
     .RunAsync();

@@ -4,9 +4,12 @@
     <TargetFramework>net6.0</TargetFramework>
     <IsPackable>false</IsPackable>
     <Nullable>enable</Nullable>
+    <SignAssembly>true</SignAssembly>
+    <AssemblyOriginatorKeyFile>..\..\public.snk</AssemblyOriginatorKeyFile>
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\AWS.Messaging.Telemetry.OpenTelemetry\AWS.Messaging.Telemetry.OpenTelemetry.csproj" />
     <ProjectReference Include="..\..\src\AWS.Messaging.Lambda\AWS.Messaging.Lambda.csproj" />
     <ProjectReference Include="..\..\src\AWS.Messaging\AWS.Messaging.csproj" />
     <ProjectReference Include="..\AWS.Messaging.Tests.Common\AWS.Messaging.Tests.Common.csproj" />
@@ -20,6 +23,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.3.2" />
     <PackageReference Include="Moq" Version="4.18.4" />
+    <PackageReference Include="OpenTelemetry.Exporter.InMemory" Version="1.6.0" />
     <PackageReference Include="xunit" Version="2.4.2" />
     <PackageReference Include="xunit.runner.visualstudio" Version="2.4.5">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

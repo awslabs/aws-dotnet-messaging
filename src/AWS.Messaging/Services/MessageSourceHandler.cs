@@ -15,7 +15,6 @@ namespace AWS.Messaging.Services;
 internal class MessageSourceHandler : IMessageSourceHandler
 {
     private readonly IEnvironmentManager _environmentManager;
-    private readonly IDnsManager _dnsManager;
     private readonly IECSContainerMetadataManager _ecsContainerMetadataManager;
     private readonly IEC2InstanceMetadataManager _ec2InstanceMetadataHandler;
     private readonly IMessageConfiguration _messageConfiguration;
@@ -23,14 +22,12 @@ internal class MessageSourceHandler : IMessageSourceHandler
 
     public MessageSourceHandler(
         IEnvironmentManager environmentManager,
-        IDnsManager dnsManager,
         IECSContainerMetadataManager ecsContainerMetadataManager,
         IEC2InstanceMetadataManager ec2InstanceMetadataHandler,
         IMessageConfiguration messageConfiguration,
         ILogger<MessageSourceHandler> logger)
     {
         _environmentManager = environmentManager;
-        _dnsManager = dnsManager;
         _ecsContainerMetadataManager = ecsContainerMetadataManager;
         _ec2InstanceMetadataHandler = ec2InstanceMetadataHandler;
         _messageConfiguration = messageConfiguration;
@@ -56,7 +53,7 @@ internal class MessageSourceHandler : IMessageSourceHandler
     /// </item>
     /// <item>
     ///     <description>If the source cannot be resolved from the compute environment,
-    ///     we fallback to using <see cref="Dns.GetHostName"/></description>
+    ///     we fallback to using "/aws/messaging" as the source identifier</description>
     /// </item>
     /// </list>
     /// After a source is computed, the message source suffix is appended if one is set.
@@ -68,7 +65,7 @@ internal class MessageSourceHandler : IMessageSourceHandler
             return GetFullSourceUri(_messageConfiguration.Source, _messageConfiguration.SourceSuffix);
 
         _logger.LogTrace("Attempting to compute message source based on the current environment...");
-        string? messageSource = GetSourceFromLambda();
+        var messageSource = GetSourceFromLambda();
         if (string.IsNullOrEmpty(messageSource))
         {
             messageSource = await GetSourceFromECS();
@@ -76,10 +73,6 @@ internal class MessageSourceHandler : IMessageSourceHandler
         if (string.IsNullOrEmpty(messageSource))
         {
             messageSource = GetSourceFromEC2();
-        }
-        if (string.IsNullOrEmpty(messageSource))
-        {
-            messageSource = GetSourceFromDnsHostName();
         }
         if (string.IsNullOrEmpty(messageSource))
         {
@@ -171,24 +164,5 @@ internal class MessageSourceHandler : IMessageSourceHandler
             !string.IsNullOrEmpty(instanceID) ?
             $"/AmazonEC2/{instanceID}" :
             null;
-    }
-
-    /// <summary>
-    /// Retrieve the DNS host name using <see cref="Dns.GetHostName"/>.
-    /// </summary>
-    /// <returns>Message source from DNS host name</returns>
-    private string? GetSourceFromDnsHostName()
-    {
-        _logger.LogTrace("Retrieving the DNS host name...");
-
-        try
-        {
-            return $"/DNSHostName/{_dnsManager.GetHostName()}";
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Unable to retrieve the DNS host name.");
-            return null;
-        }
     }
 }

@@ -138,7 +138,7 @@ internal class DefaultLambdaMessaging : ILambdaMessaging
         Arn arn;
         if (!Arn.TryParse(queueArn, out arn))
         {
-            _logger.LogError("{queueArn} is not a valid SQS queue ARN", queueArn);
+            _logger.LogError("{QueueArn} is not a valid SQS queue ARN", queueArn);
             throw new InvalidSQSQueueArnException($"{queueArn} is not a valid SQS queue ARN");
         }
 

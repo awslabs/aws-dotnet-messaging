@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace AWS.Messaging;
@@ -45,9 +46,11 @@ public abstract class MessageEnvelope
 
     /// <summary>
     /// This stores different metadata that is not modeled as a top-level property in MessageEnvelope class.
+    /// These entries will also be serialized as top-level properties when sending the message, which
+    /// can be used for CloudEvents Extension Attributes.
     /// </summary>
     [JsonExtensionData]
-    public Dictionary<string, object> Metadata { get; set; } = new Dictionary<string, object>();
+    public Dictionary<string, JsonElement> Metadata { get; set; } = new Dictionary<string, JsonElement>();
 
     /// <summary>
     /// Stores metadata related to Amazon SQS.

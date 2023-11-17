@@ -2,8 +2,10 @@
 
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
     <IsPackable>true</IsPackable>
-    <Product>AWS Message Processing Framework plugin for AWS Lambda</Product>
+    <Product>AWS Message Processing Framework Instrumention for OpenTelemetry</Product>
     <PackageProjectUrl>https://github.com/awslabs/aws-dotnet-messaging</PackageProjectUrl>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <RollForward>Major</RollForward>
@@ -15,8 +17,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Amazon.Lambda.Core" Version="2.1.0" />
-    <PackageReference Include="Amazon.Lambda.SQSEvents" Version="2.1.0" />
+    <PackageReference Include="OpenTelemetry" Version="1.6.0" />
+    <PackageReference Include="OpenTelemetry.Api" Version="1.6.0" />
   </ItemGroup>
 
   <ItemGroup>
@@ -31,6 +33,6 @@
 
   <ItemGroup>
     <None Include=".\README.md" Pack="true" PackagePath="" />
-  </ItemGroup>  
+  </ItemGroup>
 
 </Project>

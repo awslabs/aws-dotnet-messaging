@@ -95,6 +95,17 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
                 ["data"] = _messageSerializer.Serialize(message)
             };
 
+            // Write any Metadata as top-level keys
+            // This may be useful for any extensions defined in
+            // https://github.com/cloudevents/spec/tree/main/cloudevents/extensions
+            foreach (var key in envelope.Metadata.Keys)
+            {
+                if (!blob.ContainsKey(key)) // don't overwrite any reserved keys
+                {
+                    blob[key] = JsonSerializer.SerializeToNode(envelope.Metadata[key]);
+                }
+            }
+
             var jsonString = blob.ToJsonString();
             var serializedMessage = await InvokePostSerializationCallback(jsonString);
 
