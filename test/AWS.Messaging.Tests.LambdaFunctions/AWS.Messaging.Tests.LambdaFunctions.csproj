@@ -21,5 +21,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\AWS.Messaging.Lambda\AWS.Messaging.Lambda.csproj" />
     <ProjectReference Include="..\..\src\AWS.Messaging\AWS.Messaging.csproj" />
+    <ProjectReference Include="..\AWS.Messaging.Tests.Common\AWS.Messaging.Tests.Common.csproj" />
   </ItemGroup>
 </Project>

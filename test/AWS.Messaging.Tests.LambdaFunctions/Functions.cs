@@ -1,6 +1,7 @@
 using Amazon.Lambda.Core;
 using Amazon.Lambda.SQSEvents;
 using AWS.Messaging.Lambda;
+using AWS.Messaging.Tests.Common.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -25,7 +26,7 @@ public class Functions
 
         serviceCollection.AddAWSMessageBus(builder =>
         {
-            builder.AddMessageHandler<SimulatedMessageHandler, SimulatedMessage>("SimulatedMessage");
+            builder.AddMessageHandler<TransactionInfoHandler, TransactionInfo>("TransactionInfo");
 
             builder.AddLambdaMessageProcessor();
         });
@@ -69,29 +70,20 @@ public class Functions
     }
 }
 
-public class SimulatedMessage
+public class TransactionInfoHandler : IMessageHandler<TransactionInfo>
 {
-    public string? Id { get; set; }
-
-    public bool ReturnFailedStatus { get; set; } = false;
-
-    public TimeSpan WaitTime { get; set; } = TimeSpan.Zero;
-}
-
-public class SimulatedMessageHandler : IMessageHandler<SimulatedMessage>
-{
-    public async Task<MessageProcessStatus> HandleAsync(MessageEnvelope<SimulatedMessage> messageEnvelope, CancellationToken token = default)
+    public async Task<MessageProcessStatus> HandleAsync(MessageEnvelope<TransactionInfo> messageEnvelope, CancellationToken token = default)
     {
         // Wait for the delay specified in the message
         await Task.Delay(messageEnvelope.Message.WaitTime, token);
 
-        if (messageEnvelope.Message.ReturnFailedStatus)
+        if (messageEnvelope.Message.ShouldFail)
         {
             return MessageProcessStatus.Failed();
         }
 
         // Log the received message's ID to the Lambda's logs, the test will assert via CloudWatchLogs
-        LambdaLogger.Log($"Processed message with Id: {messageEnvelope.Message.Id}");
+        LambdaLogger.Log($"Processed message with Id: {messageEnvelope.Message.TransactionId}");
 
         return MessageProcessStatus.Success();
     }

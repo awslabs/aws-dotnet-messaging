@@ -240,7 +240,7 @@ public class FifoSubscriberTests : IAsyncLifetime
             if (shouldFail)
             {
                 // The handler invocation for this message will fail.
-                transactionInfo.shouldFail = true;
+                transactionInfo.ShouldFail = true;
             }
 
             await sqsPublisher.PublishAsync(transactionInfo, new SQSOptions

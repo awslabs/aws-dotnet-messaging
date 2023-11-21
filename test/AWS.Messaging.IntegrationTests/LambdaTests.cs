@@ -13,8 +13,8 @@ using Amazon.IdentityManagement.Model;
 using Amazon.Lambda;
 using Amazon.S3;
 using Amazon.SQS;
-using AWS.Messaging.IntegrationTests.Models;
 using AWS.Messaging.Tests.Common;
+using AWS.Messaging.Tests.Common.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
@@ -42,7 +42,7 @@ public class LambdaIntegrationTestFixture : IAsyncLifetime, IDisposable
     /// This is both the name of the local package containing the Lambda function(s) under test,
     /// as well as the name of the deployed Lambda function
     /// </summary>
-    public  string FunctionPackageName => "AWS.Messaging.Tests.LambdaFunctions";
+    public const string FunctionPackageName = "AWS.Messaging.Tests.LambdaFunctions";
 
     private const string TestBucketRoot = "mpf-lambda-artifacts-";
     private const string LambdaExecutionRoleName = "ExecutionRoleForMPFTestLambdas";
@@ -153,18 +153,18 @@ public class LambdaEventTests : IAsyncLifetime
     {
 
         // Create the function 
-        await AWSUtilities.CreateFunctionAsync(_lambdaClient, _fixture.ArtifactBucketName, _fixture.FunctionPackageName, "LambdaEventHandler", _fixture.ExecutionRoleArn, 3);
+        await AWSUtilities.CreateFunctionAsync(_lambdaClient, _fixture.ArtifactBucketName, LambdaIntegrationTestFixture.FunctionPackageName, "LambdaEventHandler", _fixture.ExecutionRoleArn, 3);
 
         // Create the queue and DLQ and map it to the function
         (_queueUrl, _dlqUrl) = await AWSUtilities.CreateQueueWithDLQAsync(_sqsClient, 3);
-        await AWSUtilities.CreateQueueLambdaMapping(_sqsClient, _lambdaClient, _fixture.FunctionPackageName, _queueUrl);
+        await AWSUtilities.CreateQueueLambdaMapping(_sqsClient, _lambdaClient, LambdaIntegrationTestFixture.FunctionPackageName, _queueUrl);
 
         // Create the publisher
         var serviceCollection = new ServiceCollection();
         serviceCollection.AddLogging();
         serviceCollection.AddAWSMessageBus(builder =>
         {
-            builder.AddSQSPublisher<SimulatedMessage>(_queueUrl, "SimulatedMessage");
+            builder.AddSQSPublisher<TransactionInfo>(_queueUrl, "TransactionInfo");
         });
 
         _publisher = serviceCollection.BuildServiceProvider().GetRequiredService<IMessagePublisher>();
@@ -173,7 +173,7 @@ public class LambdaEventTests : IAsyncLifetime
     public async Task DisposeAsync()
     {
         // Delete the function
-        await AWSUtilities.DeleteFunctionIfExistsAsync(_lambdaClient, _fixture.FunctionPackageName);
+        await AWSUtilities.DeleteFunctionIfExistsAsync(_lambdaClient, LambdaIntegrationTestFixture.FunctionPackageName);
 
         // Delete the queues
         await _sqsClient.DeleteQueueAsync(_queueUrl);
@@ -186,9 +186,9 @@ public class LambdaEventTests : IAsyncLifetime
     [Fact]
     public async Task ProcessLambdaEventAsync_Success()
     {
-        var message = new SimulatedMessage
+        var message = new TransactionInfo
         {
-            Id = $"test-{Guid.NewGuid()}"
+            TransactionId = $"test-{Guid.NewGuid()}"
         };
 
         var publishTimestamp = DateTime.UtcNow;
@@ -197,10 +197,10 @@ public class LambdaEventTests : IAsyncLifetime
         await Task.Delay(TimeSpan.FromSeconds(10));
 
         // Assert that the message was processed and logged successfully
-        var logs = await AWSUtilities.GetMostRecentLambdaLogs(_cloudWatchLogsClient, _fixture.FunctionPackageName, publishTimestamp);
+        var logs = await AWSUtilities.GetMostRecentLambdaLogs(_cloudWatchLogsClient, LambdaIntegrationTestFixture.FunctionPackageName, publishTimestamp);
         var logsWithHandler = logs.Where(logEvent => logEvent.Message.Contains("Processed message with Id: "));
         Assert.Single(logsWithHandler);
-        Assert.Contains($"Processed message with Id: {message.Id}", logsWithHandler.First().Message);
+        Assert.Contains($"Processed message with Id: {message.TransactionId}", logsWithHandler.First().Message);
     }
 
     /// <summary>
@@ -209,10 +209,10 @@ public class LambdaEventTests : IAsyncLifetime
     [Fact]
     public async Task ProcessLambdaEventAsync_Failure()
     {
-        var message = new SimulatedMessage
+        var message = new TransactionInfo
         {
-            Id = $"test-{Guid.NewGuid()}",
-            ReturnFailedStatus = true
+            TransactionId = $"test-{Guid.NewGuid()}",
+            ShouldFail = true
         };
 
         var publishTimestamp = DateTime.UtcNow;
@@ -221,14 +221,14 @@ public class LambdaEventTests : IAsyncLifetime
         await Task.Delay(TimeSpan.FromSeconds(10));
 
         // Assert that the message was not processed, since it's expected to fail
-        var logs = await AWSUtilities.GetMostRecentLambdaLogs(_cloudWatchLogsClient, _fixture.FunctionPackageName, publishTimestamp);
+        var logs = await AWSUtilities.GetMostRecentLambdaLogs(_cloudWatchLogsClient, LambdaIntegrationTestFixture.FunctionPackageName, publishTimestamp);
         var logsWithHandler = logs.Where(logEvent => logEvent.Message.Contains("Processed message with Id: "));
         Assert.Empty(logsWithHandler);
 
         // Assert that the message was moved to the DLQ
         var receiveResponse = await _sqsClient.ReceiveMessageAsync(_dlqUrl);
         Assert.Single(receiveResponse.Messages);
-        Assert.Contains(message.Id, receiveResponse.Messages[0].Body);
+        Assert.Contains(message.TransactionId, receiveResponse.Messages[0].Body);
     }
 }
 
@@ -259,18 +259,18 @@ public class LambdaBatchTests : IAsyncLifetime
     public async Task InitializeAsync()
     {
         // Create the function 
-        await AWSUtilities.CreateFunctionAsync(_lambdaClient, _fixture.ArtifactBucketName, _fixture.FunctionPackageName, "LambdaEventWithBatchResponseHandler", _fixture.ExecutionRoleArn, 3);
+        await AWSUtilities.CreateFunctionAsync(_lambdaClient, _fixture.ArtifactBucketName, LambdaIntegrationTestFixture.FunctionPackageName, "LambdaEventWithBatchResponseHandler", _fixture.ExecutionRoleArn, 3);
 
         // Create the queue and DLQ and map it to the function
         (_queueUrl, _dlqUrl) = await AWSUtilities.CreateQueueWithDLQAsync(_sqsClient, 3);
-        await AWSUtilities.CreateQueueLambdaMapping(_sqsClient, _lambdaClient, _fixture.FunctionPackageName, _queueUrl, true);
+        await AWSUtilities.CreateQueueLambdaMapping(_sqsClient, _lambdaClient, LambdaIntegrationTestFixture.FunctionPackageName, _queueUrl, true);
 
         // Create the publisher
         var serviceCollection = new ServiceCollection();
         serviceCollection.AddLogging();
         serviceCollection.AddAWSMessageBus(builder =>
         {
-            builder.AddSQSPublisher<SimulatedMessage>(_queueUrl, "SimulatedMessage");
+            builder.AddSQSPublisher<TransactionInfo>(_queueUrl, "TransactionInfo");
         });
 
         _publisher = serviceCollection.BuildServiceProvider().GetRequiredService<IMessagePublisher>();
@@ -279,7 +279,7 @@ public class LambdaBatchTests : IAsyncLifetime
     public async Task DisposeAsync()
     {
         // Delete the function
-        await AWSUtilities.DeleteFunctionIfExistsAsync(_lambdaClient, _fixture.FunctionPackageName);
+        await AWSUtilities.DeleteFunctionIfExistsAsync(_lambdaClient, LambdaIntegrationTestFixture.FunctionPackageName);
 
         // Delete the queue
         await _sqsClient.DeleteQueueAsync(_queueUrl);
@@ -292,9 +292,9 @@ public class LambdaBatchTests : IAsyncLifetime
     [Fact]
     public async Task ProcessLambdaEventAsync_Success()
     {
-        var message = new SimulatedMessage
+        var message = new TransactionInfo
         {
-            Id = $"test-{Guid.NewGuid()}"
+            TransactionId = $"test-{Guid.NewGuid()}"
         };
 
         var publishTimestamp = DateTime.UtcNow;
@@ -303,10 +303,10 @@ public class LambdaBatchTests : IAsyncLifetime
         await Task.Delay(TimeSpan.FromSeconds(10));
 
         // Assert that the message was processed and logged successfully
-        var logs = await AWSUtilities.GetMostRecentLambdaLogs(_cloudWatchLogsClient, _fixture.FunctionPackageName, publishTimestamp);
+        var logs = await AWSUtilities.GetMostRecentLambdaLogs(_cloudWatchLogsClient, LambdaIntegrationTestFixture.FunctionPackageName, publishTimestamp);
         var logsWithHandler = logs.Where(logEvent => logEvent.Message.Contains("Processed message with Id: "));
         Assert.Single(logsWithHandler);
-        Assert.Contains($"Processed message with Id: {message.Id}", logsWithHandler.First().Message);
+        Assert.Contains($"Processed message with Id: {message.TransactionId}", logsWithHandler.First().Message);
     }
 
     /// <summary>
@@ -315,10 +315,10 @@ public class LambdaBatchTests : IAsyncLifetime
     [Fact]
     public async Task ProcessLambdaEventAsync_Failure()
     {
-        var message = new SimulatedMessage
+        var message = new TransactionInfo
         {
-            Id = $"test-{Guid.NewGuid()}",
-            ReturnFailedStatus = true
+            TransactionId = $"test-{Guid.NewGuid()}",
+            ShouldFail = true
         };
 
         var publishTimestamp = DateTime.UtcNow;
@@ -327,13 +327,13 @@ public class LambdaBatchTests : IAsyncLifetime
         await Task.Delay(TimeSpan.FromSeconds(10));
 
         // Assert that the message was not processed, since it's expected to fail
-        var logs = await AWSUtilities.GetMostRecentLambdaLogs(_cloudWatchLogsClient, _fixture.FunctionPackageName, publishTimestamp);
+        var logs = await AWSUtilities.GetMostRecentLambdaLogs(_cloudWatchLogsClient, LambdaIntegrationTestFixture.FunctionPackageName, publishTimestamp);
         var logsWithHandler = logs.Where(logEvent => logEvent.Message.Contains("Processed message with Id: "));
         Assert.Empty(logsWithHandler);
 
         // Assert that the message was moved to the DLQ
         var receiveResponse = await _sqsClient.ReceiveMessageAsync(_dlqUrl);
         Assert.Single(receiveResponse.Messages);
-        Assert.Contains(message.Id, receiveResponse.Messages[0].Body);
+        Assert.Contains(message.TransactionId, receiveResponse.Messages[0].Body);
     }
 }
