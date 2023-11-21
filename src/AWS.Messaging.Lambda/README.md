@@ -10,6 +10,13 @@ into the AWS Message Processing Framework so it can dispatch the messages to the
 
 ## Example
 
+**Notice:** *This library is still in active development and has not been published to NuGet.org yet.*
+
+To get started, add the `AWS.Messaging.Lambda` NuGet package to your project
+```
+dotnet add package AWS.Messaging.Lambda
+```
+
 The example below uses the [.NET Amazon Lambda Annotations](https://github.com/aws/aws-lambda-dotnet/tree/master/Libraries/src/Amazon.Lambda.Annotations) framework
 which makes it easy to setup .NET's dependency injection.
 

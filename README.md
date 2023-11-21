@@ -1,54 +1,52 @@
 # AWS Message Processing Framework for .NET
 
-**Notice:** *This library is still in early active development and is not ready for use beyond experimentation.*
+**Notice:** *This library is still in active development and is meant for early access and feedback purposes only. It should not be used in production environments, and future releases before 1.0.0 may include breaking changes.*
 
-The AWS Message Processing Framework for .NET is an AWS native framework that simplifies development of .NET message processing applications using AWS services. 
+The **AWS Message Processing Framework for .NET** is an AWS-native framework that simplifies the development of .NET message processing applications using AWS services. The framework reduces the amount of boiler-plate code developers need to write, allowing you to focus on your business logic when publishing and consuming messages.
+* For publishers, the framework serializes the the message from a .NET object to the appropriate AWS message, and publishes it to the configured SQS queue, SNS topic, or EventBridge event bus. 
+* For consumers, the framework deserializes the message to its .NET object and routes it to the appropriate business logic. It also keeps track of the message visibility while it is being processed (to avoid processing a message more than once), and deletes the message from the queue when completed.
 
-The purpose of the framework is to reduce the amount of boiler-plate code developers need to write. The primary responsibilities of the framework are:
+## Project Status
 
-* In a publisher, the framework will handle routing the messages to the correct queue/topic/event bus. 
-* In a consumer process, the framework will route the particular message type to the appropriate business logic.
-* The framework will handle serializing/deserializing the message to .NET objects, keeping track of the message visibility while it is being processed, and deleting the message when completed.
-
-# Project Status
-
-The framework is currently under active development. 
-
-Already done:
-* Support for publishing to SQS, SNS and EventBridge
-* Support for polling messages from an SQS queue
-* Support for customizing serialization
-* Message manager to manage message lifecycle
+The framework is currently under active development. It already supports:
+* Publishing to Amazon Simple Queue Service (SQS), Amazon Simple Notification Service (SNS), and Amazon EventBridge
+* Handling SQS messages in a long-running, polling process
+* Handling SQS messages in AWS Lambda functions
+* Handling messages from [FIFO (first-in-first-out) queues](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-fifo-queues.html), and respecting group ordering
+* OpenTelemetry Instrumentation
+* Customizing serialization
 
 Features to be added:
-* Polling messages from Lambda
-* Performance hardening
-* Improve exception handling
-* Configure the framework using `IConfiguration`
-* Add telemetry to track messages through the framework
+* AWS X-Ray Instrumentation
+* Performance and error hardening
 
 # Getting started
 
-Add the `AWS.Messaging` NuGet package to your project
+**Notice:** *This library is still in active development and has not been published to NuGet.org yet.*
+
+Add the `AWS.Messaging` NuGet package to your project:
 ```
 dotnet add package AWS.Messaging
 ```
 
-The framework integrates with Microsoft's dependency injection (DI) container. This can be done in your application startup by calling `AddAWSMessageBus` to add the AWS Message Processing Framework for .NET to the DI container.
+The framework integrates with .NET's [dependency injection (DI) service container](https://learn.microsoft.com/en-us/dotnet/core/extensions/dependency-injection). You can configure the framework during your application's startup by calling `AddAWSMessageBus` to add it to the DI container.
 
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
+
 // Register the AWS Message Processing Framework for .NET
 builder.Services.AddAWSMessageBus(builder =>
 {
-    // Register a .NET object to an SQS Queue
+    // Register that you'll publish messages of type ChatMessage to the following queue
     builder.AddSQSPublisher<ChatMessage>("https://sqs.us-west-2.amazonaws.com/012345678910/MyAppProd");
 });
 ```
 
-The message bus allows for adding the necessary configuration to support applications that are publishing messages, processing messages or doing both at the same time.
+The message bus supports publishing one or more message types, processing one or more message types, or doing both in the same application.
 
-Sample configuration for a `Publisher`:
+# Publishing Messages
+
+Here is a configuration for an application that is publishing different message types to different AWS services:
 
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
@@ -56,16 +54,16 @@ var builder = WebApplication.CreateBuilder(args);
 // Register the AWS Message Processing Framework for .NET
 builder.Services.AddAWSMessageBus(builder =>
 {
-    // Register a .NET object to an SQS Queue
+    // Register that you'll publish messages of type ChatMessage to the SQS queue
     builder.AddSQSPublisher<ChatMessage>("https://sqs.us-west-2.amazonaws.com/012345678910/MyAppProd");
 
-    // Register a .NET object to an SNS Topic
+    // Register that you'll publish messages of type OrderInfo to the SNS topic
     builder.AddSNSPublisher<OrderInfo>("arn:aws:sns:us-west-2:012345678910:MyAppProd");
 
-    // Register a .NET object to an EventBridge Event Bus
+    // Register that you'll publish messages of type FoodItem to the EventBridge bus
     builder.AddEventBridgePublisher<FoodItem>("arn:aws:events:us-west-2:012345678910:event-bus/default");
 
-    // Configure serialization options
+    // Configure serialization options for how the message types are serialized and deserialized to JSON
     builder.ConfigureSerializationOptions(options =>
     {
         options.SystemTextJsonOptions = new JsonSerializerOptions
@@ -76,9 +74,7 @@ builder.Services.AddAWSMessageBus(builder =>
 });
 ```
 
-Once you have registered the framework in the DI container, all you need to publish a message is inject the `IMessagePublisher` into your code and call the `PublishAsync` method.
-
-Here is an example showing a sample publisher for a hypothetical `ChatMessage` message.
+Once you have registered the framework during startup, inject the `IMessagePublisher` into your code and call its `PublishAsync` method to publish a message. Here is an example showing an ASP.NET MVC controller that receives a `ChatMessage` from the user and then publishes that same object to SQS.
 
 ```csharp
 [ApiController]
@@ -95,8 +91,7 @@ public class PublisherController : ControllerBase
     [HttpPost("chatmessage", Name = "Chat Message")]
     public async Task<IActionResult> PublishChatMessage([FromBody] ChatMessage message)
     {
-        // Add business and validation logic here
-
+        // Perform business and validation logic on the ChatMessage here
         if (message == null)
         {
             return BadRequest("A chat message was not used.");
@@ -106,68 +101,18 @@ public class PublisherController : ControllerBase
             return BadRequest("The MessageDescription cannot be null or empty.");
         }
 
+        // Publish the message to SQS, using the injected IMessagePublisher
         await _messagePublisher.PublishAsync(message);
 
         return Ok();
     }
 }
 ```
+## Service-specific publishers
 
-If your application is a subscriber, your need to implement a message handler `IMessageHandler` interface for the message you wish to process. The message type and message handler are set up in the project startup.
+The above example uses the generic `IPublisher`, which can publish to any supported AWS service based on the configured message type. The framework also provides *service-specific publishers* for SQS, SNS and EventBridge. These expose options that only apply to that service, and can be injected using the types `ISQSPublisher`, `ISNSPublisher` and `IEventBridgePublisher`. 
 
-Sample configuration for a `Subscriber`:
-
-```csharp
-await Host.CreateDefaultBuilder(args)
-    .ConfigureServices(services =>
-    {
-        // Register the AWS Message Processing Framework for .NET
-        services.AddAWSMessageBus(builder =>
-        {
-            // Register an SQS Queue for the message pump to poll for messages
-            builder.AddSQSPoller("https://sqs.us-west-2.amazonaws.com/012345678910/MyAppProd");
-
-            // Register all IMessageHandler implementations with the message type they should process
-            builder.AddMessageHandler<ChatMessageHandler, ChatMessage>();
-        });
-    })
-    .Build()
-    .RunAsync();
-```
-
-Here is an example showing a sample message handler for a hypothetical `ChatMessage` message.
-
-```csharp
-public class ChatMessageHandler : IMessageHandler<ChatMessage>
-{
-    public Task<MessageProcessStatus> HandleAsync(MessageEnvelope<ChatMessage> messageEnvelope, CancellationToken token = default)
-    {
-        // Add business and validation logic here
-
-        if (messageEnvelope == null)
-        {
-            return Task.FromResult(MessageProcessStatus.Failed());
-        }
-
-        if (messageEnvelope.Message == null)
-        {
-            return Task.FromResult(MessageProcessStatus.Failed());
-        }
-
-        var message = messageEnvelope.Message;
-
-        Console.WriteLine($"Message Description: {message.MessageDescription}");
-
-        return Task.FromResult(MessageProcessStatus.Success());
-    }
-}
-```
-
-## Using service-specific publishers
-
-The AWS Message Processing Framework for .NET exposes service-specific publishers for the supported services SQS, SNS and EventBridge. These publishers are accessible through the DI container via the types `ISQSPublisher`, `ISNSPublisher` and `IEventBridgePublisher`. When using these publishers, you have access to service-specific options/configurations that can be set when publishing a message.
-
-An example of using `ISQSPublisher` to set SQS-specific options:
+For example, when publishing messages to an SQS FIFO queue, you must set the the appropriate [message group ID](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/FIFO-key-terms.html). Here is the `ChatMessage` example again, but now using an `ISQSPublisher` to set SQS-specific options:
 ```csharp
 public class PublisherController : ControllerBase
 {
@@ -181,6 +126,7 @@ public class PublisherController : ControllerBase
     [HttpPost("chatmessage", Name = "Chat Message")]
     public async Task<IActionResult> PublishChatMessage([FromBody] ChatMessage message)
     {
+          // Perform business and validation logic on the ChatMessage here
         if (message == null)
         {
             return BadRequest("A chat message was not used.");
@@ -190,6 +136,7 @@ public class PublisherController : ControllerBase
             return BadRequest("The MessageDescription cannot be null or empty.");
         }
 
+        // Publish the message to SQS, using the injected IMessagePublisher, with SQS-specific options
         await _sqsPublisher.PublishAsync(message, new SQSOptions
         {
             DelaySeconds = <delay-in-seconds>,
@@ -203,7 +150,7 @@ public class PublisherController : ControllerBase
 }
 ```
 
-The same can be done for `SNS` and `EventBridge` publishers using `ISNSPublisher` and `IEventBridgePublisher` respectively:
+The same can be done for SNS and EventBridge, using `ISNSPublisher` and `IEventBridgePublisher` respectively:
 ```csharp
 await _snsPublisher.PublishAsync(message, new SNSOptions
 {
@@ -224,14 +171,148 @@ await _eventBridgePublisher.PublishAsync(message, new EventBridgeOptions
 });
 ```
 
-# Useful Links
-* [AWS Message Processing Framework for .NET Design Document](./docs/design/message-processing-framework-design.md)
+# Consuming Messages
 
-# Security
+To consume messages, implement a message handler using the `IMessageHandler` interface for each message type you wish to process. The mapping between message types and message handlers is configured in the project startup.
+
+```csharp
+await Host.CreateDefaultBuilder(args)
+    .ConfigureServices(services =>
+    {
+        // Register the AWS Message Processing Framework for .NET
+        services.AddAWSMessageBus(builder =>
+        {
+            // Register an SQS Queue that the framework will poll for messages
+            builder.AddSQSPoller("https://sqs.us-west-2.amazonaws.com/012345678910/MyAppProd");
+
+            // Register all IMessageHandler implementations with the message type they should process. 
+            // Here messages that match our ChatMessage .NET type will be handled by our ChatMessageHandler
+            builder.AddMessageHandler<ChatMessageHandler, ChatMessage>();
+        });
+    })
+    .Build()
+    .RunAsync();
+```
+
+Here is a sample message handler for a `ChatMessage` message. 
+
+```csharp
+public class ChatMessageHandler : IMessageHandler<ChatMessage>
+{
+    public Task<MessageProcessStatus> HandleAsync(MessageEnvelope<ChatMessage> messageEnvelope, CancellationToken token = default)
+    {
+        // Add business and validation logic here
+        if (messageEnvelope == null)
+        {
+            return Task.FromResult(MessageProcessStatus.Failed());
+        }
+
+        if (messageEnvelope.Message == null)
+        {
+            return Task.FromResult(MessageProcessStatus.Failed());
+        }
+
+        ChatMessage message = messageEnvelope.Message;
+
+        Console.WriteLine($"Message Description: {message.MessageDescription}");
+
+        // Return success, so the framework will delete the message from the queue
+        return Task.FromResult(MessageProcessStatus.Success());
+    }
+}
+```
+
+The outer `MessageEnvelope` contains metadata used by the framework. Its `message` property is the message type (in this case `ChatMessage`). 
+
+You can return `MessageProcessStatus.Success()` to indicate that the message was processed successfully and the framework will delete the message from the SQS queue. When returning `MessageProcessStatus.Failed()` the message will remain in the queue, where it can be processed again or moved to a [dead-letter queue](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-dead-letter-queues.html) if configured.
+
+## Handling Messages in a Long-Running Process
+You can call `AddSQSPoller` with a SQS queue URL to start a long-running [`BackgroundService`](https://learn.microsoft.com/en-us/dotnet/api/microsoft.extensions.hosting.backgroundservice) that will continuously poll the queue and process messages.
+
+```csharp
+await Host.CreateDefaultBuilder(args)
+    .ConfigureServices(services =>
+    {
+        // Register the AWS Message Processing Framework for .NET
+        services.AddAWSMessageBus(builder =>
+        {
+            // Register an SQS Queue that the framework will poll for messages
+            builder.AddSQSPoller("https://sqs.us-west-2.amazonaws.com/012345678910/MyAppProd", options => 
+            {
+                // The maximum number of messages from this queue that the framework will process concurrently on this client
+                options.MaxNumberOfConcurrentMessages = 10;
+
+                // The duration each call to SQS will wait for new messages
+                options.WaitTimeSeconds = 20; 
+            });
+
+            // Register all IMessageHandler implementations with the message type they should process
+            builder.AddMessageHandler<ChatMessageHandler, ChatMessage>();
+        });
+    })
+    .Build()
+    .RunAsync();
+```
+
+### Message Visibility Timeout Handling
+SQS messages have a [visibility timeout](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html) period. When one consumer begins handling a given message, it remains in the queue but is hidden from other consumers to avoid processing it more than once. If the message is not handled and deleted before becoming visible again, another consumer may attempt to handle the same message.
+
+The framework will track and attempt to extend the visibility timeout for messages that it is currently handling. You can configure this behavior on the `SQSMessagePollerOptions` when calling `AddSQSPoller`.
+* `VisibilityTimeout` - The duration in seconds that received messages are hidden from subsequent retrieve requests.
+* `VisibilityTimeoutExtensionThreshold` - When a message's visibility timeout is within this many seconds of expiring, the framework will extend the visibility timeout (by another `VisibilityTimeout` seconds).
+* `VisibilityTimeoutExtensionHeartbeatInterval`- How often in seconds that the framework will check for messages that are within `VisibilityTimeoutExtensionThreshold` seconds of expiring, and then extend their visibility timeout.
+
+For this example, the framework will check every 1 second for messages that are still being handled. For those messages within 5 seconds of becoming visible again, the framework will automatically extend the visibility timeout of each message by another 30 seconds.
+```csharp
+ builder.AddSQSPoller("https://sqs.us-west-2.amazonaws.com/012345678910/MyAppProd", options => 
+{
+    options.VisibilityTimeout = 30;
+    options.VisibilityTimeoutExtensionThreshold = 5;
+    VisibilityTimeoutExtensionHeartbeatInterval = 1;
+});
+```
+
+## Handling Messages in a AWS Lambda Functions
+You can use the AWS Message Processing Framework for .NET with [SQS's integration with Lambda](https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html). This is provided by the `AWS.Messaging.Lambda` package. Refer to its [README](https://github.com/awslabs/aws-dotnet-messaging/blob/main/src/AWS.Messaging.Lambda/README.md) to get started.
+
+# Telemetry
+The AWS Message Processing Framework for .NET is instrumented for OpenTelemetry to log [traces](https://opentelemetry.io/docs/concepts/signals/traces/) for each message that is published and/or handled by the framework. This is provided by the `AWS.Messaging.Telemetry.OpenTelemetry` package. Refer to its [README](https://github.com/awslabs/aws-dotnet-messaging/blob/main/src/AWS.Messaging.Telemetry.OpenTelemetry/README.md) to get started.
+
+# Customization
+The framework builds, sends, and handles messages in three different "layers":
+1. At the outermost layer, the framework builds the AWS-native request or response specific to that service. For example with SQS, it builds [`SendMessage`](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_SendMessage.html) requests and works with the [`Message`](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_Message.html) objects that are defined by the service.
+2. Inside the SQS request and response, it sets the `MessageBody` element (or `Message` for SNS or `Detail` for EventBridge) to a [JSON-formatted CloudEvent](https://github.com/cloudevents/spec/blob/v1.0.2/cloudevents/formats/json-format.md). This contains metadata set by the framework that is accessible on the `MessageEnvelope` object when handling a message.
+3. At the innermost layer, the `data` attribute inside the CloudEvent JSON contains a JSON serialization of the .NET object that was sent and/or received as the message.
+
+```json
+{
+    "id":"b02f156b-0f02-48cf-ae54-4fbbe05cffba",
+    "source":"/aws/messaging",
+    "specversion":"1.0",
+    "type":"Publisher.Models.ChatMessage",
+    "time":"2023-11-21T16:36:02.8957126+00:00",
+    "data":"<the ChatMessage object serialized as json>"
+}
+```
+
+You can customize how the message envelope is constructed and read:
+* `"type"` controls how the message is routed to handlers. By default this uses the full name of the .NET type that corresponds to the message. You can override this via the `messageTypeIdentifier` parameter when mapping the message type to the destination via `AddSQSPublisher`, `AddSNSPublisher`, or `AddEventBridgePublisher`.
+* `"source"` indicates which system or server sent the message. You can override this via `AddMessageSource` or `AddMessageSourceSuffix` on the `MessageBusBuilder`
+* `"data"` contains a JSON representation of .NET object that was sent or received as the message:
+    * `ConfigureSerializationOptions` on `MessageBusBuilder` allows you to configure the [`System.Text.Json.JsonSerializerOptions`](https://learn.microsoft.com/en-us/dotnet/api/system.text.json.jsonserializeroptions) that will be used when serializing and deserializing the message
+    * To inject additional attributes or transform the message envelope once the framework builds it, you can implement `ISerializationCallback` and register that via `AddSerializationCallback` on `MessageBusBuilder`.
+
+# Getting Help
+For feature requests or issues using this framework please open an [issue in this repository](https://github.com/aws/aws-dotnet-messaging/issues).
+
+# Security & Contributing
 
 See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
+
+# Additional Resources
+* [AWS Message Processing Framework for .NET Design Document](./docs/design/message-processing-framework-design.md)
+* [Sample Applications](https://github.com/awslabs/aws-dotnet-messaging/tree/main/sampleapps) in this repo contains samples of a publisher service, long-running subscriber service, and Lambda function handlers.
 
 # License
 
 This project is licensed under the Apache-2.0 License.
-
