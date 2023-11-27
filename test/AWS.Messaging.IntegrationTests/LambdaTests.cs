@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -13,6 +14,7 @@ using Amazon.IdentityManagement.Model;
 using Amazon.Lambda;
 using Amazon.S3;
 using Amazon.SQS;
+using AWS.Messaging.Publishers.SQS;
 using AWS.Messaging.Tests.Common;
 using AWS.Messaging.Tests.Common.Models;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,6 +22,19 @@ using Xunit;
 
 namespace AWS.Messaging.IntegrationTests;
 
+// LambdaIntegrationTestCollection and LambdaIntegrationTestFixture contain
+// shared setup that us used across ALL Lambda integration tests:
+//   1. Locally built Lambda deployment bundle (with all code under test)
+//   2. S3 bucket containing that deployment bundle
+//   3. Lambda execution role
+//
+// Then each class in this file deploys a specific scenerio
+// that we want to test:
+//   1. Lambda function (specfic handler within the shared bundle)
+//   2. SQS queue (and optional DLQ) configuration
+//
+// One or more tests within each class exercise that class's scenerio.
+//
 [CollectionDefinition("LambdaIntegrationTests")]
 public class LambdaIntegrationTestCollection : ICollectionFixture<LambdaIntegrationTestFixture>
 {
@@ -77,6 +92,12 @@ public class LambdaIntegrationTestFixture : IAsyncLifetime, IDisposable
         await toolsProcess.WaitForExitAsync(token);
         token.ThrowIfCancellationRequested();   // if this has thrown, setup took longer than expected
 
+        // It returns 1 when already installed https://github.com/dotnet/sdk/issues/9500
+        if (toolsProcess.ExitCode != 0 && toolsProcess.ExitCode != 1)
+        {
+            Assert.Fail($"Failed to install Amazon.Lambda.Tools");
+        }
+
         // Package the project containing the functions that are under test (individual tests will deploy functions as needed) 
         var path = Path.Combine(TestUtilities.FindParentDirectoryWithName(Environment.CurrentDirectory, "test"), FunctionPackageName);
         var buildProcess = new Process()
@@ -92,6 +113,11 @@ public class LambdaIntegrationTestFixture : IAsyncLifetime, IDisposable
         buildProcess.Start();
         await buildProcess.WaitForExitAsync(token);
         token.ThrowIfCancellationRequested();   // if this has thrown, setup took longer than expected
+
+        if (buildProcess.ExitCode != 0)
+        {
+            Assert.Fail($"Failed to package the Lambda functions under test at {path}");
+        }
 
         // Create the execution IAM role for the function
         ExecutionRoleArn = await AWSUtilities.CreateFunctionRoleIfNotExists(_iamClient, LambdaExecutionRoleName);
@@ -156,7 +182,7 @@ public class LambdaEventTests : IAsyncLifetime
         await AWSUtilities.CreateFunctionAsync(_lambdaClient, _fixture.ArtifactBucketName, LambdaIntegrationTestFixture.FunctionPackageName, "LambdaEventHandler", _fixture.ExecutionRoleArn, 3);
 
         // Create the queue and DLQ and map it to the function
-        (_queueUrl, _dlqUrl) = await AWSUtilities.CreateQueueWithDLQAsync(_sqsClient, 3);
+        (_queueUrl, _dlqUrl) = await AWSUtilities.CreateQueueWithDLQAsync(_sqsClient, messageVisibilityTimeout: 3);
         await AWSUtilities.CreateQueueLambdaMapping(_sqsClient, _lambdaClient, LambdaIntegrationTestFixture.FunctionPackageName, _queueUrl);
 
         // Create the publisher
@@ -262,7 +288,7 @@ public class LambdaBatchTests : IAsyncLifetime
         await AWSUtilities.CreateFunctionAsync(_lambdaClient, _fixture.ArtifactBucketName, LambdaIntegrationTestFixture.FunctionPackageName, "LambdaEventWithBatchResponseHandler", _fixture.ExecutionRoleArn, 3);
 
         // Create the queue and DLQ and map it to the function
-        (_queueUrl, _dlqUrl) = await AWSUtilities.CreateQueueWithDLQAsync(_sqsClient, 3);
+        (_queueUrl, _dlqUrl) = await AWSUtilities.CreateQueueWithDLQAsync(_sqsClient, messageVisibilityTimeout: 3);
         await AWSUtilities.CreateQueueLambdaMapping(_sqsClient, _lambdaClient, LambdaIntegrationTestFixture.FunctionPackageName, _queueUrl, true);
 
         // Create the publisher
@@ -337,3 +363,141 @@ public class LambdaBatchTests : IAsyncLifetime
         Assert.Contains(message.TransactionId, receiveResponse.Messages[0].Body);
     }
 }
+
+/// <summary>
+/// Tests for a Lambda function that uses our ProcessLambdaEventWithBatchResponseAsync handler
+/// </summary>
+[Collection("LambdaIntegrationTests")]
+public class LambdaFifoTests : IAsyncLifetime
+{
+    private readonly LambdaIntegrationTestFixture _fixture;
+    private readonly IAmazonLambda _lambdaClient;
+    private readonly IAmazonSQS _sqsClient;
+    private readonly IAmazonCloudWatchLogs _cloudWatchLogsClient;
+    private ISQSPublisher? _publisher;
+    private string _queueUrl = "";
+
+    public LambdaFifoTests(LambdaIntegrationTestFixture fixture)
+    {
+        _fixture = fixture;
+
+        _lambdaClient = new AmazonLambdaClient();
+        _sqsClient = new AmazonSQSClient();
+        _cloudWatchLogsClient = new AmazonCloudWatchLogsClient();
+    }
+
+    public async Task InitializeAsync()
+    {
+        // Create the function 
+        await AWSUtilities.CreateFunctionAsync(_lambdaClient, _fixture.ArtifactBucketName, LambdaIntegrationTestFixture.FunctionPackageName, "LambdaEventWithBatchResponseHandler", _fixture.ExecutionRoleArn, 3);
+
+        // Create the queue and DLQ and map it to the function
+        _queueUrl = await AWSUtilities.CreateQueueAsync(_sqsClient, isFifo: true);
+
+        await AWSUtilities.CreateQueueLambdaMapping(_sqsClient, _lambdaClient, LambdaIntegrationTestFixture.FunctionPackageName, _queueUrl, true);
+
+        // Create the publisher
+        var serviceProvider = new ServiceCollection()
+            .AddLogging()
+            .AddSingleton<TempStorage<TransactionInfo>>()
+            .AddAWSMessageBus(builder =>
+            {
+                builder.AddSQSPublisher<TransactionInfo>(_queueUrl, "TransactionInfo");
+            })
+            .BuildServiceProvider();
+
+        _publisher = serviceProvider.GetRequiredService<ISQSPublisher>();
+    }
+
+    public async Task DisposeAsync()
+    {
+        // Delete the function
+        await AWSUtilities.DeleteFunctionIfExistsAsync(_lambdaClient, LambdaIntegrationTestFixture.FunctionPackageName);
+
+        // Delete the queue
+        await _sqsClient.DeleteQueueAsync(_queueUrl);
+    }
+
+    /// <summary>
+    /// Asserts that when handling messages from a FIFO queue in Lambda that they are
+    /// handled in the correct order
+    /// </summary>
+    [Theory]
+    [InlineData(1, 10)]
+    [InlineData(3, 5)]
+    public async Task ProcessFifoLambdaEventsAsync_Success(int numberOfGroups, int numberOfMessagesPerGroup)
+    {
+        var publishTimestamp = DateTime.UtcNow;
+        var expectedMessagesPerGroup = new Dictionary<string, List<TransactionInfo>>();
+
+        for (var groupIndex = 0; groupIndex < numberOfGroups; groupIndex++)
+        {
+            var groupId = groupIndex.ToString();
+
+            expectedMessagesPerGroup[groupId] = new List<TransactionInfo>();
+        
+            for (var messageIndex = 0; messageIndex < numberOfMessagesPerGroup; messageIndex++)
+            {
+                var transactionInfo = new TransactionInfo
+                {
+                    UserId = groupId,
+                    TransactionId = Guid.NewGuid().ToString(),
+                    PublishTimeStamp = DateTime.UtcNow,
+                };
+
+                expectedMessagesPerGroup[groupId].Add(transactionInfo);
+
+                await _publisher!.PublishAsync(transactionInfo, new SQSOptions
+                {
+                    MessageGroupId = groupId
+                });            
+            }
+        }
+
+        await Task.Delay(TimeSpan.FromSeconds(15));
+
+        // Extract the CloudWatch Logs lines that are logged for each message, and sort by timestamp
+        var logs = await AWSUtilities.GetMostRecentLambdaLogs(_cloudWatchLogsClient, LambdaIntegrationTestFixture.FunctionPackageName, publishTimestamp);
+        var handlerLogLines = logs
+            .Where(logEvent => logEvent.Message.Contains("Processed message with Id: "))
+            .OrderBy(logEvent => logEvent.IngestionTime)
+            .ToList();
+
+        // Assert that the Lambda handled the number of messages that were published
+        Assert.Equal(numberOfGroups * numberOfMessagesPerGroup, handlerLogLines.Count);
+
+        // Sort the Lambda logs by message group
+        var actualMessagesPerGroup = new Dictionary<string, List<string>>();
+        foreach (var logLine in handlerLogLines)
+        {
+            // Extract IDs from expected format 
+            //  "Processed message with Id: {messageEnvelope.Message.TransactionId} as part of group {messageEnvelope.SQSMetadata?.MessageGroupId}"
+            var pieces = logLine.Message.Split(" ");
+            var messageId = pieces[4].Trim() ;
+            var groupId = pieces[9].Trim();
+
+            if (actualMessagesPerGroup.ContainsKey(groupId))
+            {
+                actualMessagesPerGroup[groupId].Add(messageId);
+            }
+            else
+            {
+                actualMessagesPerGroup[groupId] = new List<string> { messageId };
+            }
+        }
+
+        // Now compare the messages IDs in each group, in the order they were published
+        for (var groupIndex = 0; groupIndex < numberOfGroups; groupIndex++)
+        {
+            var groupId = groupIndex.ToString();
+
+            Assert.Equal(expectedMessagesPerGroup[groupId].Count, actualMessagesPerGroup[groupId].Count);
+
+            for (var messageIndex = 0; messageIndex < expectedMessagesPerGroup[groupId].Count; messageIndex++)
+            {
+                Assert.Equal(expectedMessagesPerGroup[groupId][messageIndex].TransactionId, actualMessagesPerGroup[groupId][messageIndex]);
+            }
+        }
+    }
+}
+

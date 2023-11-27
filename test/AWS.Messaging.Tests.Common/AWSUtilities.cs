@@ -93,6 +93,7 @@ public static class AWSUtilities
             try
             {
                 var response = await iamClient.GetRoleAsync(getRoleRequest);
+                return;
             }
             catch (NoSuchEntityException)
             {
@@ -312,19 +313,33 @@ public static class AWSUtilities
     /// <param name="queueName">Desired name of the queue</param>
     /// <param name="messageVisiblityTimeout">The queue's default message visibility timeout, in seconds</param>
     /// <returns>Queue URL</returns>
-    public static async Task<string> CreateQueueAsync(IAmazonSQS sqsClient, string? queueName, int messageVisiblityTimeout = 30)
+    public static async Task<string> CreateQueueAsync(IAmazonSQS sqsClient, string queueName = "", int messageVisiblityTimeout = 30, bool isFifo = false)
     {
         if (string.IsNullOrEmpty(queueName))
         {
             queueName = $"MPFTest-{Guid.NewGuid().ToString().Split('-').Last()}";
         }
-        var createQueueResponse = await sqsClient.CreateQueueAsync(new CreateQueueRequest {
+
+        if (isFifo && !queueName.EndsWith(".fifo"))
+        {
+            queueName += ".fifo";
+        }
+
+        var request = new CreateQueueRequest
+        {
             QueueName = queueName,
             Attributes = new Dictionary<string, string>()
             {
                 { QueueAttributeName.VisibilityTimeout, messageVisiblityTimeout.ToString() }
             }
-        });
+        };
+
+        if (isFifo)
+        {
+            request.Attributes[QueueAttributeName.FifoQueue] = "true";
+            request.Attributes[QueueAttributeName.ContentBasedDeduplication] = "true";
+        }
+        var createQueueResponse = await sqsClient.CreateQueueAsync(request);
 
         return createQueueResponse.QueueUrl;
     }
@@ -335,12 +350,12 @@ public static class AWSUtilities
     /// <param name="sqsClient">SQS Client</param>
     /// <param name="messageVisiblityTimeout">The queue's default message visibility timeout, in seconds</param>
     /// <returns>Tuple consisting of the queue URL followed by the DLQ URL</returns>
-    public static async Task<(string, string)> CreateQueueWithDLQAsync(IAmazonSQS sqsClient, int messageVisiblityTimeout = 30)
+    public static async Task<(string, string)> CreateQueueWithDLQAsync(IAmazonSQS sqsClient, bool isFifo = false, int messageVisibilityTimeout = 30)
     {
         // Create both queues
         var queueName = $"MPFTest-{Guid.NewGuid().ToString().Split('-').Last()}";
-        var sourceQueueUrl = await CreateQueueAsync(sqsClient, queueName, messageVisiblityTimeout);
-        var dlqUrl = await CreateQueueAsync(sqsClient, queueName + "-DLQ", messageVisiblityTimeout);
+        var sourceQueueUrl = await CreateQueueAsync(sqsClient, queueName, messageVisibilityTimeout, isFifo);
+        var dlqUrl = await CreateQueueAsync(sqsClient, queueName + "-DLQ", messageVisibilityTimeout, isFifo);
 
         // Get the DLQ's arn
         var dlqAttributes = await sqsClient.GetQueueAttributesAsync(dlqUrl, new List<string> { "QueueArn" });
@@ -386,30 +401,36 @@ public static class AWSUtilities
 
         var logs = new List<OutputLogEvent>();
 
-        var getLogsRequest = new GetLogEventsRequest()
+        foreach (var logStream in logStreamsResponse.LogStreams)
         {
-            LogGroupName = logGroupName,
-            LogStreamName = logStreamsResponse.LogStreams[0].LogStreamName,
-            StartTime = publishTimestamp
-        };
-
-        // Do the pagination manually since the generated paginator will keep looping
-        // indefinitely in case more logs become available.
-        do
-        {
-            var getLogsResponse = await cloudWatchLogsClient.GetLogEventsAsync(getLogsRequest);
-
-            logs.AddRange(getLogsResponse.Events);
-
-            // Stop looping once the NextToken repeats, which mean we've read all of the current logs
-            if (getLogsResponse.NextForwardToken == getLogsRequest.NextToken)
+            if (logStream.LastEventTimestamp > publishTimestamp)
             {
-                break;
+                var getLogsRequest = new GetLogEventsRequest()
+                {
+                    LogGroupName = logGroupName,
+                    LogStreamName = logStream.LogStreamName,
+                    StartTime = publishTimestamp
+                };
+
+                // Do the pagination manually since the generated paginator will keep looping
+                // indefinitely in case more logs become available.
+                do
+                {
+                    var getLogsResponse = await cloudWatchLogsClient.GetLogEventsAsync(getLogsRequest);
+
+                    logs.AddRange(getLogsResponse.Events);
+
+                    // Stop looping once the NextToken repeats, which mean we've read all of the current logs
+                    if (getLogsResponse.NextForwardToken == getLogsRequest.NextToken)
+                    {
+                        break;
+                    }
+
+                    getLogsRequest.NextToken = getLogsResponse.NextForwardToken;
+
+                } while (true);
             }
-
-            getLogsRequest.NextToken = getLogsResponse.NextForwardToken;
-
-        } while (true);
+        }
 
         return logs;
     }

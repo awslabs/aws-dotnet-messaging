@@ -83,8 +83,16 @@ public class TransactionInfoHandler : IMessageHandler<TransactionInfo>
         }
 
         // Log the received message's ID to the Lambda's logs, the test will assert via CloudWatchLogs
-        LambdaLogger.Log($"Processed message with Id: {messageEnvelope.Message.TransactionId}");
+        if (!string.IsNullOrEmpty(messageEnvelope.SQSMetadata?.MessageGroupId))
+        {
+            LambdaLogger.Log($"Processed message with Id: {messageEnvelope.Message.TransactionId} as part of group {messageEnvelope.SQSMetadata?.MessageGroupId}");
+        }
+        else
+        {
+            LambdaLogger.Log($"Processed message with Id: {messageEnvelope.Message.TransactionId}");
 
-        return MessageProcessStatus.Success();
+        }
+
+        return await Task.FromResult(MessageProcessStatus.Success());
     }
 }
