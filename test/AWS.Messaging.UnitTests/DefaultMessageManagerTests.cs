@@ -348,7 +348,7 @@ namespace AWS.Messaging.UnitTests
             return new MessageEnvelope<TransactionInfo>
             {
                 Id = id,
-                Message = new TransactionInfo { TransactionId = id, UserId = userId, shouldFail = shouldFail }
+                Message = new TransactionInfo { TransactionId = id, UserId = userId, ShouldFail = shouldFail }
             };
         }
 

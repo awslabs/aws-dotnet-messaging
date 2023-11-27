@@ -10,6 +10,7 @@ using Amazon.SQS;
 using Amazon.SQS.Model;
 using AWS.Messaging.Publishers.SQS;
 using AWS.Messaging.Services;
+using AWS.Messaging.Tests.Common;
 using AWS.Messaging.Tests.Common.Handlers;
 using AWS.Messaging.Tests.Common.Models;
 using AWS.Messaging.Tests.Common.Services;
@@ -36,17 +37,7 @@ public class FifoSubscriberTests : IAsyncLifetime
 
     public async Task InitializeAsync()
     {
-        var queueName = $"MPFTest-{Guid.NewGuid().ToString().Split('-').Last()}.fifo";
-        var createQueueResponse = await _sqsClient.CreateQueueAsync(new CreateQueueRequest
-        {
-            QueueName = queueName,
-            Attributes = new()
-            {
-                { "FifoQueue", "true" },
-                { "ContentBasedDeduplication", "true" }
-            }
-        });
-        _sqsQueueUrl = createQueueResponse.QueueUrl;
+        _sqsQueueUrl = await AWSUtilities.CreateQueueAsync(_sqsClient, isFifo: true);
     }
 
     [Theory]
@@ -240,7 +231,7 @@ public class FifoSubscriberTests : IAsyncLifetime
             if (shouldFail)
             {
                 // The handler invocation for this message will fail.
-                transactionInfo.shouldFail = true;
+                transactionInfo.ShouldFail = true;
             }
 
             await sqsPublisher.PublishAsync(transactionInfo, new SQSOptions

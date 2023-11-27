@@ -19,7 +19,7 @@ public class TransactionInfoHandler : IMessageHandler<TransactionInfo>
         var transactionInfo = messageEnvelope.Message;
         await Task.Delay(transactionInfo.WaitTime, token);
 
-        if (messageEnvelope.Message.shouldFail)
+        if (messageEnvelope.Message.ShouldFail)
         {
             return await Task.FromResult(MessageProcessStatus.Failed());
         }
