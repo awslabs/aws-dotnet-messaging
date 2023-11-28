@@ -13,7 +13,7 @@
     <WarningsAsErrors>CA1727</WarningsAsErrors>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\..\public.snk</AssemblyOriginatorKeyFile>
-    <Version>0.1.0</Version>
+    <Version>0.1.0-beta</Version>
   </PropertyGroup>
 
   <ItemGroup>
