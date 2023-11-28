@@ -305,9 +305,13 @@ You can customize how the message envelope is configured and read:
 # Getting Help
 For feature requests or issues using this framework please open an [issue in this repository](https://github.com/aws/aws-dotnet-messaging/issues).
 
-# Security & Contributing
+# Contributing
+We welcome community contributions and pull requests. See [CONTRIBUTING.md](./CONTRIBUTING.md) for information on how to submit code.
 
-See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
+# Security
+The AWS Message Processing Framework for .NET relies on the [AWS SDK for .NET](https://github.com/aws/aws-sdk-net) for communicating with AWS. Refer to the [security section](https://docs.aws.amazon.com/sdk-for-net/v3/developer-guide/security.html) in the [AWS SDK for .NET Developer Guide](https://docs.aws.amazon.com/sdk-for-net/v3/developer-guide/welcome.html) for more information.
+
+If you discover a potential security issue, refer to the [security policy](https://github.com/awslabs/aws-dotnet-messaging/security/policy) for reporting information.
 
 # Additional Resources
 * [AWS Message Processing Framework for .NET Design Document](./docs/design/message-processing-framework-design.md)
