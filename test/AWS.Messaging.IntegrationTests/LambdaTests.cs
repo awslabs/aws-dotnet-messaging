@@ -454,13 +454,14 @@ public class LambdaFifoTests : IAsyncLifetime
             }
         }
 
-        await Task.Delay(TimeSpan.FromSeconds(15));
+        // Wait for the Lambda to handle the messages and write the IDs to CloudWatch
+        await Task.Delay(TimeSpan.FromSeconds(20));
 
         // Extract the CloudWatch Logs lines that are logged for each message, and sort by timestamp
         var logs = await AWSUtilities.GetMostRecentLambdaLogs(_cloudWatchLogsClient, LambdaIntegrationTestFixture.FunctionPackageName, publishTimestamp);
         var handlerLogLines = logs
             .Where(logEvent => logEvent.Message.Contains("Processed message with Id: "))
-            .OrderBy(logEvent => logEvent.IngestionTime)
+            .OrderBy(logEvent => logEvent.Timestamp)
             .ToList();
 
         // Assert that the Lambda handled the number of messages that were published
