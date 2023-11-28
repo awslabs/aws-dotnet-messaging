@@ -3,8 +3,8 @@
 **Notice:** *This library is still in active development and is meant for early access and feedback purposes only. It should not be used in production environments, and future releases before 1.0.0 may include breaking changes.*
 
 The **AWS Message Processing Framework for .NET** is an AWS-native framework that simplifies the development of .NET message processing applications using AWS services. The framework reduces the amount of boiler-plate code developers need to write, allowing you to focus on your business logic when publishing and consuming messages.
-* For publishers, the framework serializes the the message from a .NET object to the appropriate AWS message, and publishes it to the configured SQS queue, SNS topic, or EventBridge event bus. 
-* For consumers, the framework deserializes the message to its .NET object and routes it to the appropriate business logic. It also keeps track of the message visibility while it is being processed (to avoid processing a message more than once), and deletes the message from the queue when completed.
+* For publishers, the framework serializes the message from a .NET object to a [CloudEvents](https://cloudevents.io/)-compatible message, and then wraps that in the service-specific AWS message. It then publishes the message to the configured SQS queue, SNS topic, or EventBridge event bus. 
+* For consumers, the framework deserializes the message to its .NET object and routes it to the appropriate business logic. It also keeps track of the message visibility while it is being processed (to avoid processing a message more than once), and deletes the message from the queue when completed. The framework supports consuming messages in both long-running polling processes and in AWS Lambda functions.
 
 ## Project Status
 
@@ -110,7 +110,7 @@ public class PublisherController : ControllerBase
 ```
 ## Service-specific publishers
 
-The above example uses the generic `IPublisher`, which can publish to any supported AWS service based on the configured message type. The framework also provides *service-specific publishers* for SQS, SNS and EventBridge. These expose options that only apply to that service, and can be injected using the types `ISQSPublisher`, `ISNSPublisher` and `IEventBridgePublisher`. 
+The above example uses the generic `IMessagePublisher`, which can publish to any supported AWS service based on the configured message type. The framework also provides *service-specific publishers* for SQS, SNS and EventBridge. These expose options that only apply to that service, and can be injected using the types `ISQSPublisher`, `ISNSPublisher` and `IEventBridgePublisher`. 
 
 For example, when publishing messages to an SQS FIFO queue, you must set the the appropriate [message group ID](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/FIFO-key-terms.html). Here is the `ChatMessage` example again, but now using an `ISQSPublisher` to set SQS-specific options:
 ```csharp
@@ -136,7 +136,7 @@ public class PublisherController : ControllerBase
             return BadRequest("The MessageDescription cannot be null or empty.");
         }
 
-        // Publish the message to SQS, using the injected IMessagePublisher, with SQS-specific options
+        // Publish the message to SQS using the injected ISQSPublisher, with SQS-specific options
         await _sqsPublisher.PublishAsync(message, new SQSOptions
         {
             DelaySeconds = <delay-in-seconds>,
@@ -295,7 +295,7 @@ The framework builds, sends, and handles messages in three different "layers":
 }
 ```
 
-You can customize how the message envelope is constructed and read:
+You can customize how the message envelope is configured and read:
 * `"type"` controls how the message is routed to handlers. By default this uses the full name of the .NET type that corresponds to the message. You can override this via the `messageTypeIdentifier` parameter when mapping the message type to the destination via `AddSQSPublisher`, `AddSNSPublisher`, or `AddEventBridgePublisher`.
 * `"source"` indicates which system or server sent the message. You can override this via `AddMessageSource` or `AddMessageSourceSuffix` on the `MessageBusBuilder`
 * `"data"` contains a JSON representation of .NET object that was sent or received as the message:
