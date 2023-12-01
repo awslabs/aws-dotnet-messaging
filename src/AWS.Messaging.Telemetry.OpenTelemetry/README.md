@@ -9,14 +9,15 @@ messages that are sent and received.
 ## Configuration
 
 ### 1. Install Packages
-Add a reference to [`AWS.Messaging.Telemetry.OpenTelemetry`](https://www.nuget.org/packages/AWS.Messaging.Telemetry.OpenTelemetry) and [`OpenTelemetry.Extensions.Hosting`](https://www.nuget.org/packages/OpenTelemetry.Extensions.Hosting).
 
-In this example, we're going to configure OpenTelemetry on our `IServiceCollection`, so also add a reference to [`OpenTelemetry.Extensions.Hosting`](https://www.nuget.org/packages/OpenTelemetry.Extensions.Hosting). This is not required if starting and stopping tracing via `CreateTracerProviderBuilder`. 
+**Notice:** *This library is still in active development and has not been published to NuGet.org yet.*
+
+Add a reference to [`AWS.Messaging.Telemetry.OpenTelemetry`](https://www.nuget.org/packages/AWS.Messaging.Telemetry.OpenTelemetry). In this example, we're going to configure OpenTelemetry on our `IServiceCollection`, so also add a reference to [`OpenTelemetry.Extensions.Hosting`](https://www.nuget.org/packages/OpenTelemetry.Extensions.Hosting). This is not required if starting and stopping tracing via `CreateTracerProviderBuilder`. 
 
 You may also add a reference to one or more [exporters](https://opentelemetry.io/docs/instrumentation/net/exporters/) to visualize your telemetry data.
 
 ```shell
-dotnet add package --prerelease AWS.Messaging.Telemetry.OpenTelemetry
+dotnet add package AWS.Messaging.Telemetry.OpenTelemetry --prerelease
 dotnet add package OpenTelemetry.Extensions.Hosting
 ```
 
