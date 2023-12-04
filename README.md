@@ -254,13 +254,18 @@ await Host.CreateDefaultBuilder(args)
     .RunAsync();
 ```
 
-### Message Visibility Timeout Handling
+### Configuring the SQS Message Poller
+The SQS message poller can be configured by the `SQSMessagePollerOptions` when calling `AddSQSPoller`.
+* `MaxNumberOfConcurrentMessages` - The maximum number of messages from the queue to process concurrently. The default value is `10`.
+* `WaitTimeSeconds` - The duration (in seconds) for which the `ReceiveMessage` SQS call waits for a message to arrive in the queue before returning. If a message is available, the call returns sooner than `WaitTimeSeconds`. The default value is `20`.
+
+#### Message Visibility Timeout Handling
 SQS messages have a [visibility timeout](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-visibility-timeout.html) period. When one consumer begins handling a given message, it remains in the queue but is hidden from other consumers to avoid processing it more than once. If the message is not handled and deleted before becoming visible again, another consumer may attempt to handle the same message.
 
 The framework will track and attempt to extend the visibility timeout for messages that it is currently handling. You can configure this behavior on the `SQSMessagePollerOptions` when calling `AddSQSPoller`.
-* `VisibilityTimeout` - The duration in seconds that received messages are hidden from subsequent retrieve requests.
-* `VisibilityTimeoutExtensionThreshold` - When a message's visibility timeout is within this many seconds of expiring, the framework will extend the visibility timeout (by another `VisibilityTimeout` seconds).
-* `VisibilityTimeoutExtensionHeartbeatInterval`- How often in seconds that the framework will check for messages that are within `VisibilityTimeoutExtensionThreshold` seconds of expiring, and then extend their visibility timeout.
+* `VisibilityTimeout` - The duration in seconds that received messages are hidden from subsequent retrieve requests. The default value is `30`.
+* `VisibilityTimeoutExtensionThreshold` - When a message's visibility timeout is within this many seconds of expiring, the framework will extend the visibility timeout (by another `VisibilityTimeout` seconds). The default value is `5`.
+* `VisibilityTimeoutExtensionHeartbeatInterval`- How often in seconds that the framework will check for messages that are within `VisibilityTimeoutExtensionThreshold` seconds of expiring, and then extend their visibility timeout. The default value is `1`.
 
 In the following example the framework will check every 1 second for messages that are still being handled. For those messages within 5 seconds of becoming visible again, the framework will automatically extend the visibility timeout of each message by another 30 seconds.
 ```csharp
@@ -301,6 +306,7 @@ You can customize how the message envelope is configured and read:
 * `"source"` indicates which system or server sent the message. 
      * This will be the function name if publishing from AWS Lambda, the cluster name and task ARN if on Amazon ECS, the instance ID if on Amazon EC2, otherwise a fallback value of `/aws/messaging`.
      * You can override this via `AddMessageSource` or `AddMessageSourceSuffix` on the `MessageBusBuilder`.
+* `"time"` set to the current DateTime in UTC. This can be overridden by implementing your own `IDateTimeHandler` and injecting that into the DI container.
 * `"data"` contains a JSON representation of the .NET object that was sent or received as the message:
     * `ConfigureSerializationOptions` on `MessageBusBuilder` allows you to configure the [`System.Text.Json.JsonSerializerOptions`](https://learn.microsoft.com/en-us/dotnet/api/system.text.json.jsonserializeroptions) that will be used when serializing and deserializing the message.
     * To inject additional attributes or transform the message envelope once the framework builds it, you can implement `ISerializationCallback` and register that via `AddSerializationCallback` on `MessageBusBuilder`.
