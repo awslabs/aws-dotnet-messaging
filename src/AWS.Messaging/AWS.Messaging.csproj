@@ -16,10 +16,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="AWSSDK.EventBridge" Version="3.7.101.7" />
-    <PackageReference Include="AWSSDK.Extensions.NETCore.Setup" Version="3.7.2" />
-    <PackageReference Include="AWSSDK.SimpleNotificationService" Version="3.7.101.5" />
-    <PackageReference Include="AWSSDK.SQS" Version="3.7.100.69" />
+    <PackageReference Include="AWSSDK.EventBridge" Version="3.7.301.8" />
+    <PackageReference Include="AWSSDK.Extensions.NETCore.Setup" Version="3.7.300" />
+    <PackageReference Include="AWSSDK.SimpleNotificationService" Version="3.7.300.13" />
+    <PackageReference Include="AWSSDK.SQS" Version="3.7.300.13" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.1" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="6.0.0" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="6.0.0" />

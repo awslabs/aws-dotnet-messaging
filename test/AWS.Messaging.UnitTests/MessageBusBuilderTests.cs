@@ -348,7 +348,7 @@ public class MessageBusBuilderTests
         var messageConfiguration = serviceProvider.GetService<IMessageConfiguration>();
 
         Assert.NotNull(messageConfiguration);
-        Assert.Equal(1, messageConfiguration.SerializationCallbacks.Count);
+        Assert.Single(messageConfiguration.SerializationCallbacks);
     }
 
     /// <summary>
@@ -434,6 +434,23 @@ public class MessageBusBuilderTests
             _serviceCollection.AddAWSMessageBus(builder =>
             {
                 builder.AddSQSPoller("queueUrl", options);
+            }));
+    }
+
+    /// <summary>
+    /// Tests that an exception is thrown when configuring Lambda message processor with invalid options.
+    /// </summary>
+    [Fact]
+    public void lambdaMessageProcessorConfiguration_LambdaMessagingOptions_Invalid()
+    {
+        Assert.Throws<InvalidLambdaMessagingOptionsException>(() =>
+            _serviceCollection.AddAWSMessageBus(builder =>
+            {
+                builder.AddLambdaMessageProcessor(options =>
+                {
+                    // Any value <= 0 is invalid
+                    options.MaxNumberOfConcurrentMessages = -1;
+                });
             }));
     }
 

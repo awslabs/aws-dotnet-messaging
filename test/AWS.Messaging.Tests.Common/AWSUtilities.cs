@@ -244,7 +244,7 @@ public static class AWSUtilities
             do
             {
                 response = await lambdaClient.GetFunctionConfigurationAsync(request);
-                if (response.LastUpdateStatus != LastUpdateStatus.InProgress && response.State != State.Pending)
+                if (response.LastUpdateStatus != LastUpdateStatus.InProgress && response.State != Amazon.Lambda.State.Pending)
                 {
                     if (response.LastUpdateStatus == LastUpdateStatus.Failed)
                     {
