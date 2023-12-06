@@ -478,3 +478,7 @@ $RECYCLE.BIN/
 
 # JetBrains Rider cache/options directory
 .idea/
+
+# DocFx
+docs/_site/
+docs/api/
