@@ -1,16 +1,4 @@
-- name: Introduction
 - name: Overview
   href: overview.md
 - name: Getting Started
   href: getting-started.md
-- name: Advanced
-- name: Design
-  items:
-  - name: AWS Message Processing Framework for .NET
-    href: ./design/message-processing-framework-design.md
-  - name: Message Source Computation
-    href: ./design/message-source-computation-design.md
-  - name: SQS Message Visibility Timeout Handling
-    href: ./design/message-visibility-timeout-handling.md
-  - name: Telemetry
-    href: ./design/telemetry-design.md
