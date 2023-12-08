@@ -314,7 +314,7 @@ The AWS Message Processing Framework for .NET relies on the [AWS SDK for .NET](h
 If you discover a potential security issue, refer to the [security policy](https://github.com/awslabs/aws-dotnet-messaging/security/policy) for reporting information.
 
 # Additional Resources
-* [AWS Message Processing Framework for .NET Design Document](./docs/design/message-processing-framework-design.md)
+* [AWS Message Processing Framework for .NET Design Document](./docs/docs/design/message-processing-framework-design.md)
 * [Sample Applications](https://github.com/awslabs/aws-dotnet-messaging/tree/main/sampleapps) in this repo contains samples of a publisher service, long-running subscriber service, and Lambda function handlers.
 
 # License
