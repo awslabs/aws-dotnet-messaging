@@ -1,0 +1,52 @@
+{
+  "metadata": [
+    {
+      "src": [
+        {
+          "src": "../src",
+          "files": [
+            "**/*.csproj"
+          ]
+        }
+      ],
+      "dest": "api",
+      "filter": "filter.yml"
+    }
+  ],
+  "build": {
+    "content": [
+      {
+        "files": [
+          "**/*.{md,yml}"
+        ],
+        "exclude": [
+          "_site/**",
+          "filter.yml"
+        ]
+      }
+    ],
+    "resource": [
+      {
+        "files": [
+          "docs/assets/images/**"
+        ]
+      }
+    ],
+    "output": "_site",
+    "template": [
+      "default",
+      "modern",
+      "template"
+    ],
+    "globalMetadata": {
+      "_appName": "",
+      "_appTitle": "AWS Message Processing Framework for .NET",
+      "_appLogoPath": "docs/assets/images/aws-logo.svg",
+      "_appFaviconPath": "docs/assets/images/favicon.ico",
+      "_enableSearch": true,
+      "pdf": false,
+      "_disableContribution": true,
+      "_appFooter": "<div class='text-center'>© 2023, Amazon Web Services, Inc. or its affiliates. All rights reserved.</div>"
+    }
+  }
+}

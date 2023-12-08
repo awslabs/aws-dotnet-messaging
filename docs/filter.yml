@@ -1,0 +1,7 @@
+apiRules:
+- exclude:
+    uidRegex: ^*.Internal
+    type: Namespace
+- exclude:
+    uidRegex: ^Microsoft.Extensions.DependencyInjection
+    type: Namespace
