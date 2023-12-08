@@ -5,8 +5,13 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <IsPackable>true</IsPackable>
+    <Authors>Amazon Web Services</Authors>
+    <Company>Amazon Web Services</Company>
+    <Description>This package is an instrumentation library which instruments the AWS Message Processing Framework for .NET to collect traces about messages that are sent and received.</Description>
     <Product>AWS Message Processing Framework Instrumention for OpenTelemetry</Product>
     <PackageProjectUrl>https://github.com/awslabs/aws-dotnet-messaging</PackageProjectUrl>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageIcon>icon.png</PackageIcon>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <RollForward>Major</RollForward>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -26,6 +31,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="..\..\icon.png" Pack="true" PackagePath="" />
     <None Include="..\..\LICENSE" Pack="true" PackagePath="" />
     <None Include="..\..\NOTICE" Pack="true" PackagePath="" />
     <None Include="..\..\THIRD_PARTY_LICENSES" Pack="true" PackagePath="" />

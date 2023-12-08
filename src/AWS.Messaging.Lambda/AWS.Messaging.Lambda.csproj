@@ -3,8 +3,13 @@
   <PropertyGroup>
     <TargetFramework>net6.0</TargetFramework>
     <IsPackable>true</IsPackable>
+    <Authors>Amazon Web Services</Authors>
+    <Company>Amazon Web Services</Company>
+    <Description>This package is a plugin for the AWS Message Processing Framework for .NET that allows a .NET Lambda function to handle messages that were published by the framework.</Description>
     <Product>AWS Message Processing Framework plugin for AWS Lambda</Product>
     <PackageProjectUrl>https://github.com/awslabs/aws-dotnet-messaging</PackageProjectUrl>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageIcon>icon.png</PackageIcon>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <RollForward>Major</RollForward>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -24,6 +29,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Include="..\..\icon.png" Pack="true" PackagePath="" />
     <None Include="..\..\LICENSE" Pack="true" PackagePath="" />
     <None Include="..\..\NOTICE" Pack="true" PackagePath="" />
     <None Include="..\..\THIRD_PARTY_LICENSES" Pack="true" PackagePath="" />
