@@ -24,8 +24,6 @@ Features to be added:
 
 # Getting started
 
-**Notice:** *This library is still in active development and has not been published to NuGet.org yet.*
-
 Add the `AWS.Messaging` NuGet package to your project:
 ```
 dotnet add package AWS.Messaging --prerelease

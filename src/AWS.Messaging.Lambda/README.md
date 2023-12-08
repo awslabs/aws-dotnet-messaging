@@ -1,4 +1,5 @@
 # AWS Lambda plugin for AWS Message Processing Framework for .NET
+[![nuget](https://img.shields.io/nuget/v/AWS.Messaging.Lambda.svg) ![downloads](https://img.shields.io/nuget/dt/AWS.Messaging.Lambda.svg)](https://www.nuget.org/packages/AWS.Messaging.Lambda/)
 
 **Notice:** *This library is still in early active development and is not ready for use beyond experimentation.*
 
@@ -7,8 +8,6 @@ This package is a plugin for the [AWS Message Processing Framework for .NET](htt
 In AWS Lambda, the service takes care of reading the messages from the SQS queue and invoking your Lambda functions with the message events. This plugin allows you to feed the incoming Lambda event to message processing framework so it can dispatch the messages to the `IMessageHandler`.
 
 ## Example
-
-**Notice:** *This library is still in active development and has not been published to NuGet.org yet.*
 
 To get started, add the `AWS.Messaging.Lambda` NuGet package to your project:
 ```

@@ -1,4 +1,5 @@
 # OpenTelemetry plugin for AWS Message Processing Framework for .NET
+[![nuget](https://img.shields.io/nuget/v/AWS.Messaging.Telemetry.OpenTelemetry.svg) ![downloads](https://img.shields.io/nuget/dt/AWS.Messaging.Telemetry.OpenTelemetry.svg)](https://www.nuget.org/packages/AWS.Messaging.Telemetry.OpenTelemetry/)
 
 **Notice:** *This library is still in early active development and is not ready for use beyond experimentation.*
 
@@ -9,8 +10,6 @@ messages that are sent and received.
 ## Configuration
 
 ### 1. Install Packages
-
-**Notice:** *This library is still in active development and has not been published to NuGet.org yet.*
 
 Add a reference to [`AWS.Messaging.Telemetry.OpenTelemetry`](https://www.nuget.org/packages/AWS.Messaging.Telemetry.OpenTelemetry). In this example, we're going to configure OpenTelemetry on our `IServiceCollection`, so also add a reference to [`OpenTelemetry.Extensions.Hosting`](https://www.nuget.org/packages/OpenTelemetry.Extensions.Hosting). This is not required if starting and stopping tracing via `CreateTracerProviderBuilder`. 
 
