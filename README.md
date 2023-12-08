@@ -1,4 +1,6 @@
 # AWS Message Processing Framework for .NET
+[![nuget](https://img.shields.io/nuget/v/AWS.Messaging.svg) ![downloads](https://img.shields.io/nuget/dt/AWS.Messaging.svg)](https://www.nuget.org/packages/AWS.Messaging/)
+[![build status](https://img.shields.io/github/actions/workflow/status/awslabs/aws-dotnet-messaging/aws-ci.yml?branch=dev)](https://github.com/awslabs/aws-dotnet-messaging/actions/workflows/aws-ci.yml)
 
 **Notice:** *This library is still in active development and is meant for early access and feedback purposes only. It should not be used in production environments, and any releases before 1.0.0 might include breaking changes.*
 
@@ -21,8 +23,6 @@ Features to be added:
 * Performance and error hardening
 
 # Getting started
-
-**Notice:** *This library is still in active development and has not been published to NuGet.org yet.*
 
 Add the `AWS.Messaging` NuGet package to your project:
 ```
@@ -62,15 +62,6 @@ builder.Services.AddAWSMessageBus(builder =>
 
     // Register that you'll publish messages of type FoodItem to an existing EventBridge bus
     builder.AddEventBridgePublisher<FoodItem>("arn:aws:events:us-west-2:012345678910:event-bus/default");
-
-    // Configure serialization options for how the message types are serialized and deserialized to JSON
-    builder.ConfigureSerializationOptions(options =>
-    {
-        options.SystemTextJsonOptions = new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        };
-    });
 });
 ```
 
