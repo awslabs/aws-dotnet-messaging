@@ -62,15 +62,6 @@ builder.Services.AddAWSMessageBus(builder =>
 
     // Register that you'll publish messages of type FoodItem to an existing EventBridge bus
     builder.AddEventBridgePublisher<FoodItem>("arn:aws:events:us-west-2:012345678910:event-bus/default");
-
-    // Configure serialization options for how the message types are serialized and deserialized to JSON
-    builder.ConfigureSerializationOptions(options =>
-    {
-        options.SystemTextJsonOptions = new JsonSerializerOptions
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-        };
-    });
 });
 ```
 
