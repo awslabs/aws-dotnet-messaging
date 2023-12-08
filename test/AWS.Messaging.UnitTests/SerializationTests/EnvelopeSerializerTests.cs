@@ -69,6 +69,24 @@ public class EnvelopeSerializerTests
     }
 
     [Fact]
+    public async Task CreateEnvelope_MissingPublisherMapping_ThrowsException()
+    {
+        // ARRANGE
+        var serviceProvider = _serviceCollection.BuildServiceProvider();
+        var envelopeSerializer = serviceProvider.GetRequiredService<IEnvelopeSerializer>();
+
+        var message = new ChatMessage
+        {
+            MessageDescription = "This is a test message"
+        };
+
+        // ACT and ASSERT
+        // This throws an exception since no publisher is configured against the ChatMessage type.
+        await Assert.ThrowsAsync<FailedToCreateMessageEnvelopeException>(async () => await envelopeSerializer.CreateEnvelopeAsync(message));
+    }
+
+
+    [Fact]
     public async Task SerializeEnvelope()
     {
         // ARRANGE
@@ -311,6 +329,36 @@ public class EnvelopeSerializerTests
         Assert.Equal("123456789123", eventBridgeMetadata.AWSAccount);
         Assert.Equal("us-west-2", eventBridgeMetadata.AWSRegion);
         Assert.Equal(new List<string> { "arn1", "arn2" }, eventBridgeMetadata.Resources);
+    }
+
+    [Fact]
+    public async Task ConvertToEnvelope_MissingSubscriberMapping_ThrowsException()
+    {
+        // ARRANGE
+        var serviceProvider = _serviceCollection.BuildServiceProvider();
+        var envelopeSerializer = serviceProvider.GetRequiredService<IEnvelopeSerializer>();
+        var messageEnvelope = new MessageEnvelope<ChatMessage>
+        {
+            Id = "66659d05-e4ff-462f-81c4-09e560e66a5c",
+            Source = new Uri("/aws/messaging", UriKind.Relative),
+            Version = "1.0",
+            MessageTypeIdentifier = "chatmessage",
+            TimeStamp = _testdate,
+            Message = new ChatMessage
+            {
+                MessageDescription = "This is a test message"
+            }
+
+        };
+        var sqsMessage = new Message
+        {
+            Body = await envelopeSerializer.SerializeAsync(messageEnvelope),
+            ReceiptHandle = "receipt-handle"
+        };
+
+        // ACT and ASSERT
+        // This throws an exception because no subscriber is configured against the ChatMessage type.
+        await Assert.ThrowsAsync<FailedToCreateMessageEnvelopeException>(async () => await envelopeSerializer.ConvertToEnvelopeAsync(sqsMessage));
     }
 
     [Fact]

@@ -33,6 +33,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "LambdaMessaging", "sampleap
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AWS.Messaging.Telemetry.OpenTelemetry", "src\AWS.Messaging.Telemetry.OpenTelemetry\AWS.Messaging.Telemetry.OpenTelemetry.csproj", "{C529DC6E-72DA-49ED-908A-21DBC40F26C0}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "AWS.Messaging.Tests.LambdaFunctions", "test\AWS.Messaging.Tests.LambdaFunctions\AWS.Messaging.Tests.LambdaFunctions.csproj", "{F7A1B9DE-86DE-4F70-A2CD-628E56FE5BAD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -75,6 +77,10 @@ Global
 		{C529DC6E-72DA-49ED-908A-21DBC40F26C0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C529DC6E-72DA-49ED-908A-21DBC40F26C0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C529DC6E-72DA-49ED-908A-21DBC40F26C0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F7A1B9DE-86DE-4F70-A2CD-628E56FE5BAD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F7A1B9DE-86DE-4F70-A2CD-628E56FE5BAD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F7A1B9DE-86DE-4F70-A2CD-628E56FE5BAD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F7A1B9DE-86DE-4F70-A2CD-628E56FE5BAD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -89,6 +95,7 @@ Global
 		{24FA3671-8C2B-4B64-865C-68FB6237E34D} = {2D0A561B-0B97-4259-8603-3AF5437BB652}
 		{F74A4CF0-D814-426E-8149-46758E86AFE3} = {1AA8985B-897C-4BD5-9735-FD8B33FEBFFB}
 		{C529DC6E-72DA-49ED-908A-21DBC40F26C0} = {2D0A561B-0B97-4259-8603-3AF5437BB652}
+		{F7A1B9DE-86DE-4F70-A2CD-628E56FE5BAD} = {80DB2C77-6ADD-4A60-B27D-763BDF9659D3}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {7B2B759D-6455-4089-8173-3F1619567B36}

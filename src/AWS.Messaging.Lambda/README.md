@@ -1,21 +1,23 @@
 # AWS Lambda plugin for AWS Message Processing Framework for .NET
+[![nuget](https://img.shields.io/nuget/v/AWS.Messaging.Lambda.svg) ![downloads](https://img.shields.io/nuget/dt/AWS.Messaging.Lambda.svg)](https://www.nuget.org/packages/AWS.Messaging.Lambda/)
 
 **Notice:** *This library is still in early active development and is not ready for use beyond experimentation.*
 
-This package is a plugin for the [AWS Message Processing Framework for .NET](https://github.com/awslabs/aws-dotnet-messaging) that allows a .NET Lambda function
-to be the the subscriber of messages for the AWS Message Processing Framework for .NET.
+This package is a plugin for the [AWS Message Processing Framework for .NET](https://github.com/awslabs/aws-dotnet-messaging) that allows a .NET Lambda function to handle messages that were published by the framework.
 
-In AWS Lambda the Lambda service takes care of reading the messages from the SQS queue. This plugin allows the messages in the incoming Lambda event to be fed
-into the AWS Message Processing Framework so it can dispatch the messages to the `IMessageHandler`.
+In AWS Lambda, the service takes care of reading the messages from the SQS queue and invoking your Lambda functions with the message events. This plugin allows you to feed the incoming Lambda event to message processing framework so it can dispatch the messages to the `IMessageHandler`.
 
 ## Example
 
-The example below uses the [.NET Amazon Lambda Annotations](https://github.com/aws/aws-lambda-dotnet/tree/master/Libraries/src/Amazon.Lambda.Annotations) framework
-which makes it easy to setup .NET's dependency injection.
+To get started, add the `AWS.Messaging.Lambda` NuGet package to your project:
+```
+dotnet add package AWS.Messaging.Lambda --prerelease
+```
 
-In the `Startup` class add a call to `AddAWSMessageBus` to configure the AWS Message Processing Framework with the `IMessageHandler` for each message type you
-expect the Lambda function to process. To inject the required services for using Lambda with the framework add a call to `AddLambdaMessageProcessor`.
-Publishers can also be configured in if you expect the Lambda function to publish messages.
+The example shown below uses the [.NET Amazon Lambda Annotations](https://github.com/aws/aws-lambda-dotnet/tree/master/Libraries/src/Amazon.Lambda.Annotations) framework, which makes it easy to set up .NET's dependency injection.
+
+In the `Startup` class, add a call to `AddAWSMessageBus` to configure the AWS Message Processing Framework with the `IMessageHandler` for each message type you expect the Lambda function to process. To inject the required services for using Lambda with the framework, add a call to `AddLambdaMessageProcessor`.
+Publishers can also be configured if you expect the Lambda function to publish messages.
 ```
 [LambdaStartup]
 public class Startup

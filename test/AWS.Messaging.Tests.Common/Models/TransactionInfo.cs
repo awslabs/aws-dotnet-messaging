@@ -1,8 +1,6 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-using System;
-
 namespace AWS.Messaging.Tests.Common.Models;
 
 public class TransactionInfo
@@ -13,7 +11,13 @@ public class TransactionInfo
 
     public DateTime PublishTimeStamp { get; set; }
 
+    /// <summary>
+    /// How long the handler should simulate work before returning
+    /// </summary>
     public TimeSpan WaitTime { get; set; }
 
-    public bool shouldFail { get; set; } = false;
+    /// <summary>
+    /// Whether the handler should fail or succeed
+    /// </summary>
+    public bool ShouldFail { get; set; } = false;
 }

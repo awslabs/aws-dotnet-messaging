@@ -4,7 +4,12 @@
     <TargetFramework>net6.0</TargetFramework>
     <IsPackable>true</IsPackable>
     <Product>AWS Message Processing Framework</Product>
+    <Authors>Amazon Web Services</Authors>
+    <Company>Amazon Web Services</Company>
+    <Description>The AWS Message Processing Framework for .NET is an AWS native framework that simplifies development of .NET message processing applications using AWS services.</Description>
     <PackageProjectUrl>https://github.com/awslabs/aws-dotnet-messaging</PackageProjectUrl>
+    <PackageLicenseExpression>Apache-2.0</PackageLicenseExpression>
+    <PackageIcon>icon.png</PackageIcon>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <RollForward>Major</RollForward>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -12,22 +17,23 @@
     <WarningsAsErrors>CA1727</WarningsAsErrors>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\..\public.snk</AssemblyOriginatorKeyFile>
-    <Version>0.1.0</Version>
+    <Version>0.1.0-beta</Version>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="AWSSDK.EventBridge" Version="3.7.101.7" />
-    <PackageReference Include="AWSSDK.Extensions.NETCore.Setup" Version="3.7.2" />
-    <PackageReference Include="AWSSDK.SimpleNotificationService" Version="3.7.101.5" />
-    <PackageReference Include="AWSSDK.SQS" Version="3.7.100.69" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.1" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="6.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Http" Version="6.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.1" />
-    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="6.0.0" />
+    <PackageReference Include="AWSSDK.EventBridge" Version="3.7.301.8" />
+    <PackageReference Include="AWSSDK.Extensions.NETCore.Setup" Version="3.7.300" />
+    <PackageReference Include="AWSSDK.SimpleNotificationService" Version="3.7.300.13" />
+    <PackageReference Include="AWSSDK.SQS" Version="3.7.300.13" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="6.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="6.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="6.0.*" />
   </ItemGroup>
   
   <ItemGroup>
+    <None Include="..\..\icon.png" Pack="true" PackagePath="" />
     <None Include="..\..\LICENSE" Pack="true" PackagePath="" />
     <None Include="..\..\NOTICE" Pack="true" PackagePath="" />
     <None Include="..\..\THIRD_PARTY_LICENSES" Pack="true" PackagePath="" />

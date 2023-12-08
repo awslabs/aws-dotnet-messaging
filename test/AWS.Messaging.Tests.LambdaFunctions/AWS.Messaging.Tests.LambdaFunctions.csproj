@@ -14,12 +14,13 @@
     <PackageReference Include="Amazon.Lambda.Core" Version="2.2.0" />
     <PackageReference Include="Amazon.Lambda.Serialization.SystemTextJson" Version="2.4.0" />
     <PackageReference Include="Amazon.Lambda.SQSEvents" Version="2.2.0" />
-    <PackageReference Include="Amazon.Lambda.Annotations" Version="1.1.0" />
-    <PackageReference Include="Amazon.Lambda.Logging.AspNetCore" Version="3.1.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.*" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.*" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="6.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="6.0.*" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\AWS.Messaging.Lambda\AWS.Messaging.Lambda.csproj" />
     <ProjectReference Include="..\..\src\AWS.Messaging\AWS.Messaging.csproj" />
+    <ProjectReference Include="..\AWS.Messaging.Tests.Common\AWS.Messaging.Tests.Common.csproj" />
   </ItemGroup>
 </Project>
