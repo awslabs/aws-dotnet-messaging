@@ -1,0 +1,35 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Transform": "AWS::Serverless-2016-10-31",
+  "Description": "An AWS Serverless Application. This template is partially managed by Amazon.Lambda.Annotations (v1.0.0.0).",
+  "Resources": {
+    "LambdaMessagingFunctionFunctionHandlerGenerated": {
+      "Type": "AWS::Serverless::Function",
+      "Metadata": {
+        "Tool": "Amazon.Lambda.Annotations"
+      },
+      "Properties": {
+        "FunctionName": "lambda-sqs-subscriber",
+        "Runtime": "dotnet6",
+        "CodeUri": ".",
+        "MemorySize": 256,
+        "Timeout": 30,
+        "Policies": [
+          "AWSLambdaSQSQueueExecutionRole"
+        ],
+        "PackageType": "Zip",
+        "Handler": "LambdaSubscriberApp::LambdaMessaging.Function_FunctionHandler_Generated::FunctionHandler",
+        "Events": {
+          "Messages": {
+            "Type": "SQS",
+            "Properties": {
+              "Enabled": true,
+              "Queue": "QUEUE_ARN",
+              "BatchSize": 5
+            }
+          }
+        }
+      }
+    }
+  }
+}

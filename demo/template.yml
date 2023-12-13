@@ -1,0 +1,21 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Resources:
+  DemoQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: DemoQueue
+  LambdaSQSDemoQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: LambdaSQSDemoQueue
+
+Outputs:
+  DemoQueueUrl:
+    Description: URL of the DemoQueue
+    Value: !Ref DemoQueue
+  LambdaSQSDemoQueueUrl:
+    Description: URL of the LambdaSQSDemoQueue
+    Value: !Ref LambdaSQSDemoQueue
+  LambdaSQSDemoQueueArn:
+    Description: ARN of the LambdaSQSDemoQueue
+    Value: !GetAtt LambdaSQSDemoQueue.Arn
