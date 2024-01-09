@@ -43,14 +43,21 @@ public interface IBenchmarkCollector
     List<double> ReceptionTimes { get; }
 }
 
+/// <summary>
+/// Default implementation of an <see cref="IBenchmarkCollector"/>
+/// </summary>
 public class BenchmarkCollector : IBenchmarkCollector
 {
     private readonly ConcurrentBag<TimeSpan> _publishDurations = new();
     private readonly ConcurrentBag<TimeSpan> _receiveDurations = new();
     private readonly int _expectedNumberOfMessages;
-    readonly TaskCompletionSource<TimeSpan> _receivingCompleted;
-    readonly Stopwatch _stopwatch;
+    private readonly TaskCompletionSource<TimeSpan> _receivingCompleted;
+    private readonly Stopwatch _stopwatch;
 
+    /// <summary>
+    /// Initializes the collector a new run of the benchmarks
+    /// </summary>
+    /// <param name="expectedNumberOfMessages">The number of messages that will be sent and received for this benchmark run</param>
     public BenchmarkCollector(int expectedNumberOfMessages)
     {
         _expectedNumberOfMessages = expectedNumberOfMessages;

@@ -3,6 +3,9 @@
 
 namespace AWS.Messaging.Benchmarks;
 
+/// <summary>
+/// Handler for benchmarking messages
+/// </summary>
 public class BenchmarkMessageHandler : IMessageHandler<BenchmarkMessage>
 {
     private readonly IBenchmarkCollector _benchmarkCollector;
@@ -12,6 +15,7 @@ public class BenchmarkMessageHandler : IMessageHandler<BenchmarkMessage>
         _benchmarkCollector = benchmarkCollector;
     }
 
+    /// <inheritdoc/>
     public Task<MessageProcessStatus> HandleAsync(MessageEnvelope<BenchmarkMessage> messageEnvelope, CancellationToken token = default)
     {
         _benchmarkCollector.RecordMessageReception(messageEnvelope.Message);

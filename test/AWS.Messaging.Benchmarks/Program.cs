@@ -39,9 +39,9 @@ internal class Program
         var publishBeforePollingOption = new Option<bool>(
             name: "--publishBeforePolling",
             description: "Whether all messages should be published prior to starting the poller.",
-            getDefaultValue: () => false);
+            getDefaultValue: () => true);
 
-        var rootCommand = new RootCommand("Sample app for System.CommandLine");
+        var rootCommand = new RootCommand("AWS Message Processing Framework for .NET performance benchmarks");
         rootCommand.AddOption(queueOption);
         rootCommand.AddOption(numMessagesOption);
         rootCommand.AddOption(publishConcurrencyOption);
@@ -170,7 +170,7 @@ internal class Program
         var quartiles = Quartiles.Create(messageTimes);
 
         Console.WriteLine($"{header}: ");
-        Console.WriteLine($"    Total  time: {totalElapsedTime.ToString("mm':'ss':'fff")}");
+        Console.WriteLine($"    Total  time: {totalElapsedTime:mm':'ss':'fff}");
         Console.WriteLine($"    Rate: {Math.Round(numberOfMessages / totalElapsedTime.TotalSeconds, 2)} msgs/second");
         Console.WriteLine($"    Min: {Math.Round(quartiles.Min, 2)} ms");
         Console.WriteLine($"    P25: {Math.Round(quartiles.Q1, 2)} ms");
