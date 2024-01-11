@@ -55,6 +55,12 @@ public class BenchmarkCollector : IBenchmarkCollector
     private readonly Stopwatch _stopwatch;
 
     /// <summary>
+    /// The time elapsed between when this collector was initialized until the
+    /// expected number of messages have been handled.
+    /// </summary>
+    public TimeSpan HandlingElapsedTime { get; private set; }
+
+    /// <summary>
     /// Initializes the collector a new run of the benchmarks
     /// </summary>
     /// <param name="expectedNumberOfMessages">The number of messages that will be sent and received for this benchmark run</param>
@@ -79,6 +85,8 @@ public class BenchmarkCollector : IBenchmarkCollector
 
         if (_receiveDurations.Count == _expectedNumberOfMessages)
         {
+            _stopwatch.Stop();
+            HandlingElapsedTime = _stopwatch.Elapsed;
             _receivingCompleted.TrySetResult(_stopwatch.Elapsed);
         }
     }

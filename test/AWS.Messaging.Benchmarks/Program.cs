@@ -50,8 +50,29 @@ internal class Program
 
         rootCommand.SetHandler(async (queueUrl, numberOfMessages, publishConcurrency, handlerConcurrency, publishBeforePolling) =>
         {
-            await RunBenchmark(queueUrl, numberOfMessages, publishConcurrency, handlerConcurrency, publishBeforePolling);
+            await RunBenchmarkAsync(queueUrl, numberOfMessages, publishConcurrency, handlerConcurrency, publishBeforePolling);
+
         }, queueOption, numMessagesOption, publishConcurrencyOption, handlerConcurrencyOption, publishBeforePollingOption);
+
+        var iterationsOption = new Option<int>(
+            name: "--iterations",
+            description: "The number of iterations of the benchmark suite to run.",
+            getDefaultValue: () => 5);
+
+        var multiCommand = new Command("multi", "Run multiple benchmark iterations");
+        rootCommand.AddCommand(multiCommand);
+        multiCommand.AddOption(queueOption);
+        multiCommand.AddOption(numMessagesOption);
+        multiCommand.AddOption(publishConcurrencyOption);
+        multiCommand.AddOption(handlerConcurrencyOption);
+        multiCommand.AddOption(publishBeforePollingOption);
+        multiCommand.AddOption(iterationsOption);
+
+        multiCommand.SetHandler(async (queueUrl, numberOfMessages, publishConcurrency, handlerConcurrency, publishBeforePolling, iterations) =>
+        {
+            await RunMultipleBenchmarksAsync(queueUrl, numberOfMessages, publishConcurrency, handlerConcurrency, publishBeforePolling, iterations);
+
+        }, queueOption, numMessagesOption, publishConcurrencyOption, handlerConcurrencyOption, publishBeforePollingOption, iterationsOption);
 
         return await rootCommand.InvokeAsync(args);
     }
@@ -63,7 +84,11 @@ internal class Program
     /// <param name="numberOfMessages">Number of messages to send</param>
     /// <param name="publishConcurrency">Maximum number of concurrent publishing tasks to run</param>
     /// <param name="handlerConcurrency">Maximum number of messages to handle concurrently</param>
-    public static async Task RunBenchmark(string queueUrl, int numberOfMessages, int publishConcurrency, int handlerConcurrency, bool publishBeforePolling)
+    /// <param name="publishBeforePolling">Whether all messages should be published prior to starting the poller</param>
+    /// <param name="shouldPrint">Whether the test run should print it results to console</param>
+    /// <returns>Collector holding data for this benchmark run</returns>
+    public static async Task<BenchmarkCollector> RunBenchmarkAsync(string queueUrl,
+        int numberOfMessages, int publishConcurrency, int handlerConcurrency, bool publishBeforePolling, bool shouldPrint = true)
     {
         ArgumentNullException.ThrowIfNull(queueUrl);
 
@@ -93,14 +118,17 @@ internal class Program
                 });
             }).Build();
 
-        Console.WriteLine("Running single poller test with: ");
-        Console.WriteLine($"    Queue URL: {queueUrl}");
-        Console.WriteLine($"    Number of messages: {numberOfMessages}");
-        Console.WriteLine($"    Publish concurrency: {publishConcurrency}");
-        Console.WriteLine($"    Handler concurrency: {handlerConcurrency}");
-        Console.WriteLine(publishBeforePolling ?
-                          $"    All messages will be published before starting the poller." :
-                          $"    The poller will be started before publishing, so messages are handled as they are published.");
+        if (shouldPrint)
+        {
+            Console.WriteLine("Running single poller test with: ");
+            Console.WriteLine($"    Queue URL: {queueUrl}");
+            Console.WriteLine($"    Number of messages: {numberOfMessages}");
+            Console.WriteLine($"    Publish concurrency: {publishConcurrency}");
+            Console.WriteLine($"    Handler concurrency: {handlerConcurrency}");
+            Console.WriteLine(publishBeforePolling ?
+                              $"    All messages will be published before starting the poller." :
+                              $"    The poller will be started before publishing, so messages are handled as they are published.");
+        }
 
         var publisher = host.Services.GetRequiredService<ISQSPublisher>();
         var cts = new CancellationTokenSource();
@@ -118,13 +146,55 @@ internal class Program
             publishElapsedTime = await PublishMessages(publisher, benchmarkCollector, numberOfMessages, publishConcurrency);
         }
 
-        // This will complete once the the exected number of messages have been handled
+        // This will complete once the the expected number of messages have been handled
         handlingElapsedTime = await benchmarkCollector.HandlingCompleted;
-        cts.Cancel(); // then stop the poller        
+        await host.StopAsync();
 
         // Print the results
-        DisplayData(benchmarkCollector.PublishTimes, publishElapsedTime, numberOfMessages, "Publishing");
-        DisplayData(benchmarkCollector.ReceptionTimes, handlingElapsedTime, numberOfMessages, "Receiving");
+        if (shouldPrint)
+        {
+            DisplayData(benchmarkCollector.PublishTimes, publishElapsedTime, numberOfMessages, "Publishing");
+            DisplayData(benchmarkCollector.ReceptionTimes, handlingElapsedTime, numberOfMessages, "Receiving");
+        }     
+
+        host.Dispose();
+        return benchmarkCollector;
+    }
+
+    /// <summary>
+    /// Executes a multiple benchmark runs and prints the messages handled per second for each
+    /// </summary>
+    /// <param name="queueUrl">SQS queue URL</param>
+    /// <param name="numberOfMessages">Number of messages to send</param>
+    /// <param name="publishConcurrency">Maximum number of concurrent publishing tasks to run</param>
+    /// <param name="handlerConcurrency">Maximum number of messages to handle concurrently</param>
+    /// <param name="publishBeforePolling">Whether all messages should be published prior to starting the poller</param>
+    /// <param name="numIterations">The number of iterations of the single benchmark to run</param>
+    public static async Task RunMultipleBenchmarksAsync(string queueUrl,
+        int numberOfMessages, int publishConcurrency, int handlerConcurrency, bool publishBeforePolling, int numIterations)
+    {
+        Console.WriteLine($"Running {numIterations} iterations of the poller test with: ");
+        Console.WriteLine($"    Queue URL: {queueUrl}");
+        Console.WriteLine($"    Number of messages: {numberOfMessages}");
+        Console.WriteLine($"    Publish concurrency: {publishConcurrency}");
+        Console.WriteLine($"    Handler concurrency: {handlerConcurrency}");
+        Console.WriteLine(publishBeforePolling ?
+                          $"    All messages will be published before starting the poller." :
+                          $"    The poller will be started before publishing, so messages are handled as they are published.");
+
+        for (var benchmarkIteration = 1; benchmarkIteration <= numIterations; benchmarkIteration++)
+        {
+            var start = DateTime.UtcNow;
+            var result = await RunBenchmarkAsync(queueUrl, numberOfMessages, publishConcurrency, handlerConcurrency, publishBeforePolling, false);
+            Console.WriteLine($"Run #{benchmarkIteration}: {Math.Round(numberOfMessages / result.HandlingElapsedTime.TotalSeconds, 2)} msgs/second");
+
+            // Need to ensure a ~minute has elapsed before we can purge the queue again
+            var timeToWait = start + TimeSpan.FromSeconds(70) - DateTime.UtcNow;
+            if (timeToWait > TimeSpan.Zero)
+            {
+                await Task.Delay(timeToWait);
+            }
+        }
     }
 
     /// <summary>
