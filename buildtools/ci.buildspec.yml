@@ -3,7 +3,7 @@ version: 0.2
 phases:
   install:
     runtime-versions:
-      dotnet: 6.x
+      dotnet: 8.x
 
   build:
     commands:
