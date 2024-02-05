@@ -3,6 +3,7 @@
 
 using Amazon.EventBridge;
 using Amazon.EventBridge.Model;
+using Amazon.Runtime;
 using AWS.Messaging.Configuration;
 using AWS.Messaging.Serialization;
 using AWS.Messaging.Telemetry;
@@ -73,8 +74,15 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
                 }
 
                 var publisherMapping = GetPublisherMapping(trace, typeof(T));
-                var publisherEndpoint = publisherMapping.PublisherConfiguration.PublisherEndpoint;
-                trace.AddMetadata(TelemetryKeys.EventBusName, publisherEndpoint);
+                var eventBusName = eventBridgeOptions?.EventBusName ?? publisherMapping.PublisherConfiguration.PublisherEndpoint;
+
+                if (string.IsNullOrEmpty(eventBusName))
+                {
+                    _logger.LogError("Unable to determine a destination event bus for message of type '{MessageType}'.", typeof(T));
+                    throw new InvalidPublisherEndpointException($"Unable to determine a destination queue for message of type '{typeof(T)}'.");
+                }
+
+                trace.AddMetadata(TelemetryKeys.EventBusName, eventBusName);
 
                 _logger.LogDebug("Creating the message envelope for the message of type '{MessageType}'.", typeof(T));
                 var messageEnvelope = await _envelopeSerializer.CreateEnvelopeAsync(message);
@@ -84,9 +92,22 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
 
                 var messageBody = await _envelopeSerializer.SerializeAsync(messageEnvelope);
 
-                _logger.LogDebug("Sending the message of type '{MessageType}' to EventBridge. Publisher Endpoint: {Endpoint}", typeof(T), publisherEndpoint);
-                var request = CreatePutEventsRequest(publisherMapping, messageEnvelope.Source?.ToString(), messageBody, eventBridgeOptions);
-                await _eventBridgeClient.PutEventsAsync(request, token);
+                var client = _eventBridgeClient;
+                if (eventBridgeOptions?.OverrideClient != null)
+                {
+                    // Use the user-provided client
+                    client = eventBridgeOptions.OverrideClient;
+
+                    // But still update the user agent to match the built-in client
+                    if (client is AmazonServiceClient)
+                    {
+                        ((AmazonServiceClient)client).BeforeRequestEvent += AWSClientProvider.AWSServiceClient_BeforeServiceRequest;
+                    }
+                }
+
+                _logger.LogDebug("Sending the message of type '{MessageType}' to EventBridge. Publisher Endpoint: {Endpoint}", typeof(T), eventBusName);
+                var request = CreatePutEventsRequest(publisherMapping, messageEnvelope.Source?.ToString(), messageBody, eventBridgeOptions, eventBusName);
+                await client.PutEventsAsync(request, token);
                 _logger.LogDebug("The message of type '{MessageType}' has been pushed to EventBridge.", typeof(T));
             }
             catch (Exception ex)
@@ -97,21 +118,22 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
         }
     }
 
-    private PutEventsRequest CreatePutEventsRequest(PublisherMapping publisherMapping, string? source, string messageBody, EventBridgeOptions? eventBridgeOptions)
+    private PutEventsRequest CreatePutEventsRequest(PublisherMapping publisherMapping, string? source, string messageBody, EventBridgeOptions? eventBridgeOptions, string eventBusName)
     {
-        var publisherEndpoint = publisherMapping.PublisherConfiguration.PublisherEndpoint;
         var publisherConfiguration = (EventBridgePublisherConfiguration)publisherMapping.PublisherConfiguration;
 
         var requestEntry = new PutEventsRequestEntry
         {
-            EventBusName = publisherEndpoint,
+            EventBusName = eventBusName,
             DetailType = publisherMapping.MessageTypeIdentifier,
             Detail = messageBody
         };
 
         var putEventsRequest = new PutEventsRequest
         {
-            EndpointId = publisherConfiguration.EndpointID,
+            // Give precendence to the endpoint ID if specified on the message-specific eventBridgeOptions,
+            // otherwise fallback to the publisher level
+            EndpointId = eventBridgeOptions?.EndpointID ?? publisherConfiguration.EndpointID,
             Entries = new() { requestEntry }
         };
 

@@ -11,7 +11,7 @@ public class EventBridgePublisherConfiguration : IMessagePublisherConfiguration
     /// <summary>
     /// Retrieves the EventBridge Event Bus name or ARN which the publisher will use to route the message.
     /// </summary>
-    public string PublisherEndpoint { get; set; }
+    public string? PublisherEndpoint { get; set; }
 
     /// <summary>
     /// The ID of the global EventBridge endpoint.
@@ -22,11 +22,8 @@ public class EventBridgePublisherConfiguration : IMessagePublisherConfiguration
     /// Creates an instance of <see cref="EventBridgePublisherConfiguration"/>.
     /// </summary>
     /// <param name="eventBusName">The name or the ARN of the event bus where the message is published</param>
-    public EventBridgePublisherConfiguration(string eventBusName)
+    public EventBridgePublisherConfiguration(string? eventBusName)
     {
-        if (string.IsNullOrEmpty(eventBusName))
-            throw new InvalidPublisherEndpointException("The event bus name cannot be empty.");
-
         PublisherEndpoint = eventBusName;
     }
 }

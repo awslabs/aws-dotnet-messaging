@@ -18,7 +18,7 @@ public interface IMessageBusBuilder
     /// </summary>
     /// <param name="queueUrl">The SQS queue URL to publish the message to.</param>
     /// <param name="messageTypeIdentifier">The language-agnostic message type identifier. If not specified, the .NET type will be used.</param>
-    IMessageBusBuilder AddSQSPublisher<TMessage>(string queueUrl, string? messageTypeIdentifier = null);
+    IMessageBusBuilder AddSQSPublisher<TMessage>(string? queueUrl, string? messageTypeIdentifier = null);
 
     /// <summary>
     /// Adds an SNS Publisher to the framework which will handle publishing
@@ -26,7 +26,7 @@ public interface IMessageBusBuilder
     /// </summary>
     /// <param name="topicUrl">The SNS topic URL to publish the message to.</param>
     /// <param name="messageTypeIdentifier">The language-agnostic message type identifier. If not specified, the .NET type will be used.</param>
-    IMessageBusBuilder AddSNSPublisher<TMessage>(string topicUrl, string? messageTypeIdentifier = null);
+    IMessageBusBuilder AddSNSPublisher<TMessage>(string? topicUrl, string? messageTypeIdentifier = null);
 
     /// <summary>
     /// Adds an EventBridge Publisher to the framework which will handle publishing the defined message type to the specified EventBridge event bus name.
@@ -35,7 +35,7 @@ public interface IMessageBusBuilder
     /// <param name="eventBusName">The EventBridge event bus name or ARN where the message will be published.</param>
     /// <param name="messageTypeIdentifier">The language-agnostic message type identifier. If not specified, the .NET type will be used.</param>
     /// <param name="options">Contains additional properties that can be set while configuring an EventBridge publisher</param>
-    IMessageBusBuilder AddEventBridgePublisher<TMessage>(string eventBusName, string? messageTypeIdentifier = null, EventBridgePublishOptions? options = null);
+    IMessageBusBuilder AddEventBridgePublisher<TMessage>(string? eventBusName, string? messageTypeIdentifier = null, EventBridgePublishOptions? options = null);
 
     /// <summary>
     /// Add a message handler for a given message type.

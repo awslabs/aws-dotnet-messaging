@@ -11,5 +11,5 @@ public interface IMessagePublisherConfiguration
     /// <summary>
     /// Retrieves the AWS service-specific endpoint URL which the publisher will use to route the message.
     /// </summary>
-    string PublisherEndpoint { get; set; }
+    string? PublisherEndpoint { get; set; }
 }

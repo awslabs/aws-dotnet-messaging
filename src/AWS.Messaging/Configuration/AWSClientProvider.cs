@@ -36,7 +36,7 @@ internal class AWSClientProvider : IAWSClientProvider
         return (T)serviceClient;
     }
 
-    private static void AWSServiceClient_BeforeServiceRequest(object sender, RequestEventArgs e)
+    internal static void AWSServiceClient_BeforeServiceRequest(object sender, RequestEventArgs e)
     {
         if (e is not WebServiceRequestEventArgs args || !args.Headers.ContainsKey(_userAgentHeader) || args.Headers[_userAgentHeader].Contains(_userAgentString))
             return;
