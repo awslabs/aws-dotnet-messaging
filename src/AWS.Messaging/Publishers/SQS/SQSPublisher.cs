@@ -93,12 +93,6 @@ internal class SQSPublisher : IMessagePublisher, ISQSPublisher
                 {
                     // Use the user-provided client
                     client = sqsOptions.OverrideClient;
-
-                    // But still update the user agent to match the built-in client
-                    if (client is AmazonServiceClient)
-                    {
-                        ((AmazonServiceClient)client).BeforeRequestEvent += AWSClientProvider.AWSServiceClient_BeforeServiceRequest;
-                    }
                 }
 
                 _logger.LogDebug("Sending the message of type '{MessageType}' to SQS. Publisher Endpoint: {Endpoint}", typeof(T), queueUrl);

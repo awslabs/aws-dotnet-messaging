@@ -97,12 +97,6 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
                 {
                     // Use the user-provided client
                     client = eventBridgeOptions.OverrideClient;
-
-                    // But still update the user agent to match the built-in client
-                    if (client is AmazonServiceClient)
-                    {
-                        ((AmazonServiceClient)client).BeforeRequestEvent += AWSClientProvider.AWSServiceClient_BeforeServiceRequest;
-                    }
                 }
 
                 _logger.LogDebug("Sending the message of type '{MessageType}' to EventBridge. Publisher Endpoint: {Endpoint}", typeof(T), eventBusName);

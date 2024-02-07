@@ -1,6 +1,9 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using AWS.Messaging.Publishers.EventBridge;
+using AWS.Messaging.Publishers.SNS;
+using AWS.Messaging.Publishers.SQS;
 using AWS.Messaging.Serialization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,7 +19,8 @@ public interface IMessageBusBuilder
     /// Adds an SQS Publisher to the framework which will handle publishing
     /// the defined message type to the specified SQS queues URL.
     /// </summary>
-    /// <param name="queueUrl">The SQS queue URL to publish the message to.</param>
+    /// <param name="queueUrl">The SQS queue URL to publish the message to. If the queue URL is null, a message-specific queue
+    /// URL must be specified on the <see cref="SQSOptions"/> when sending a message.</param>
     /// <param name="messageTypeIdentifier">The language-agnostic message type identifier. If not specified, the .NET type will be used.</param>
     IMessageBusBuilder AddSQSPublisher<TMessage>(string? queueUrl, string? messageTypeIdentifier = null);
 
@@ -24,7 +28,8 @@ public interface IMessageBusBuilder
     /// Adds an SNS Publisher to the framework which will handle publishing
     /// the defined message type to the specified SNS topic URL.
     /// </summary>
-    /// <param name="topicUrl">The SNS topic URL to publish the message to.</param>
+    /// <param name="topicUrl">The SNS topic URL to publish the message to. If the topic URL is null, a message-specific
+    /// topic URL must be set on the <see cref="SNSOptions"/> when publishing a message.</param>
     /// <param name="messageTypeIdentifier">The language-agnostic message type identifier. If not specified, the .NET type will be used.</param>
     IMessageBusBuilder AddSNSPublisher<TMessage>(string? topicUrl, string? messageTypeIdentifier = null);
 
@@ -32,7 +37,8 @@ public interface IMessageBusBuilder
     /// Adds an EventBridge Publisher to the framework which will handle publishing the defined message type to the specified EventBridge event bus name.
     /// If you are specifying a global endpoint ID via <see cref="EventBridgePublishOptions"/>, then you must also include the <see href="https://www.nuget.org/packages/AWSSDK.Extensions.CrtIntegration">AWSSDK.Extensions.CrtIntegration</see> package in your application.
     /// </summary>
-    /// <param name="eventBusName">The EventBridge event bus name or ARN where the message will be published.</param>
+    /// <param name="eventBusName">The EventBridge event bus name or ARN where the message will be published. If the event bus name is null,
+    /// a message-specific event bus must be set on the <see cref="EventBridgeOptions"/> when sending an event.</param>
     /// <param name="messageTypeIdentifier">The language-agnostic message type identifier. If not specified, the .NET type will be used.</param>
     /// <param name="options">Contains additional properties that can be set while configuring an EventBridge publisher</param>
     IMessageBusBuilder AddEventBridgePublisher<TMessage>(string? eventBusName, string? messageTypeIdentifier = null, EventBridgePublishOptions? options = null);
