@@ -1,7 +1,6 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-using Amazon.Runtime;
 using Amazon.SimpleNotificationService;
 using Amazon.SimpleNotificationService.Model;
 using AWS.Messaging.Configuration;
@@ -16,11 +15,12 @@ namespace AWS.Messaging.Publishers.SNS;
 /// </summary>
 internal class SNSPublisher : IMessagePublisher, ISNSPublisher
 {
-    private readonly IAmazonSimpleNotificationService _snsClient;
+    private readonly IAWSClientProvider _awsClientProvider;
     private readonly ILogger<IMessagePublisher> _logger;
     private readonly IMessageConfiguration _messageConfiguration;
     private readonly IEnvelopeSerializer _envelopeSerializer;
     private readonly ITelemetryFactory _telemetryFactory;
+    private IAmazonSimpleNotificationService? _snsClient;
 
     private const string FIFO_SUFFIX = ".fifo";
 
@@ -34,7 +34,7 @@ internal class SNSPublisher : IMessagePublisher, ISNSPublisher
         IEnvelopeSerializer envelopeSerializer,
         ITelemetryFactory telemetryFactory)
     {
-        _snsClient = awsClientProvider.GetServiceClient<IAmazonSimpleNotificationService>();
+        _awsClientProvider = awsClientProvider;
         _logger = logger;
         _messageConfiguration = messageConfiguration;
         _envelopeSerializer = envelopeSerializer;
@@ -87,11 +87,20 @@ internal class SNSPublisher : IMessagePublisher, ISNSPublisher
 
                 var messageBody = await _envelopeSerializer.SerializeAsync(messageEnvelope);
 
-                var client = _snsClient;
+                IAmazonSimpleNotificationService client;
                 if (snsOptions?.OverrideClient != null)
                 {
-                    // Use the user-provided client
+                    // Use the client that the user specified for this event
                     client = snsOptions.OverrideClient;
+                }
+                else // use the publisher-level client
+                {
+                    if (_snsClient == null)
+                    {
+                        // If we haven't resolved the client yet for this publisher, do so now
+                        _snsClient = _awsClientProvider.GetServiceClient<IAmazonSimpleNotificationService>();
+                    }
+                    client = _snsClient;
                 }
 
                 _logger.LogDebug("Sending the message of type '{MessageType}' to SNS. Publisher Endpoint: {Endpoint}", typeof(T), topicArn);

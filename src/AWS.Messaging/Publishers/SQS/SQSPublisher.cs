@@ -1,11 +1,9 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-using Amazon.Runtime;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using AWS.Messaging.Configuration;
-using AWS.Messaging.Publishers.SNS;
 using AWS.Messaging.Serialization;
 using AWS.Messaging.Telemetry;
 using Microsoft.Extensions.Logging;
@@ -17,11 +15,12 @@ namespace AWS.Messaging.Publishers.SQS;
 /// </summary>
 internal class SQSPublisher : IMessagePublisher, ISQSPublisher
 {
-    private readonly IAmazonSQS _sqsClient;
+    private readonly IAWSClientProvider _awsClientProvider;
     private readonly ILogger<IMessagePublisher> _logger;
     private readonly IMessageConfiguration _messageConfiguration;
     private readonly IEnvelopeSerializer _envelopeSerializer;
     private readonly ITelemetryFactory _telemetryFactory;
+    private IAmazonSQS? _sqsClient;
 
     private const string FIFO_SUFFIX = ".fifo";
 
@@ -35,7 +34,7 @@ internal class SQSPublisher : IMessagePublisher, ISQSPublisher
         IEnvelopeSerializer envelopeSerializer,
         ITelemetryFactory telemetryFactory)
     {
-        _sqsClient = awsClientProvider.GetServiceClient<IAmazonSQS>();
+        _awsClientProvider = awsClientProvider;
         _logger = logger;
         _messageConfiguration = messageConfiguration;
         _envelopeSerializer = envelopeSerializer;
@@ -88,11 +87,20 @@ internal class SQSPublisher : IMessagePublisher, ISQSPublisher
 
                 var messageBody = await _envelopeSerializer.SerializeAsync(messageEnvelope);
 
-                var client = _sqsClient;
-                if (sqsOptions?.OverrideClient !=  null)
+                IAmazonSQS client;
+                if (sqsOptions?.OverrideClient != null)
                 {
-                    // Use the user-provided client
+                    // Use the client that the user specified for this message
                     client = sqsOptions.OverrideClient;
+                }
+                else // use the publisher-level client
+                {
+                    if (_sqsClient == null)
+                    {
+                        // If we haven't resolved the client yet for this publisher, do so now
+                        _sqsClient = _awsClientProvider.GetServiceClient<IAmazonSQS>();
+                    }
+                    client = _sqsClient;
                 }
 
                 _logger.LogDebug("Sending the message of type '{MessageType}' to SQS. Publisher Endpoint: {Endpoint}", typeof(T), queueUrl);

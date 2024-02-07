@@ -3,7 +3,6 @@
 
 using Amazon.EventBridge;
 using Amazon.EventBridge.Model;
-using Amazon.Runtime;
 using AWS.Messaging.Configuration;
 using AWS.Messaging.Serialization;
 using AWS.Messaging.Telemetry;
@@ -16,11 +15,12 @@ namespace AWS.Messaging.Publishers.EventBridge;
 /// </summary>
 internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
 {
-    private readonly IAmazonEventBridge _eventBridgeClient;
+    private readonly IAWSClientProvider _awsClientProvider;
     private readonly ILogger<IMessagePublisher> _logger;
     private readonly IMessageConfiguration _messageConfiguration;
     private readonly IEnvelopeSerializer _envelopeSerializer;
     private readonly ITelemetryFactory _telemetryFactory;
+    private IAmazonEventBridge? _eventBridgeClient;
 
     /// <summary>
     /// Creates an instance of <see cref="EventBridgePublisher"/>.
@@ -32,7 +32,7 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
         IEnvelopeSerializer envelopeSerializer,
         ITelemetryFactory telemetryFactory)
     {
-        _eventBridgeClient = awsClientProvider.GetServiceClient<IAmazonEventBridge>();
+        _awsClientProvider = awsClientProvider;
         _logger = logger;
         _messageConfiguration = messageConfiguration;
         _envelopeSerializer = envelopeSerializer;
@@ -92,11 +92,20 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
 
                 var messageBody = await _envelopeSerializer.SerializeAsync(messageEnvelope);
 
-                var client = _eventBridgeClient;
+                IAmazonEventBridge client;
                 if (eventBridgeOptions?.OverrideClient != null)
                 {
-                    // Use the user-provided client
+                    // Use the client that the user specified for this event
                     client = eventBridgeOptions.OverrideClient;
+                }
+                else // use the publisher-level client
+                {
+                    if (_eventBridgeClient == null)
+                    {
+                        // If we haven't resolved the client yet for this publisher, do so now
+                        _eventBridgeClient = _awsClientProvider.GetServiceClient<IAmazonEventBridge>();
+                    }
+                    client = _eventBridgeClient;
                 }
 
                 _logger.LogDebug("Sending the message of type '{MessageType}' to EventBridge. Publisher Endpoint: {Endpoint}", typeof(T), eventBusName);
