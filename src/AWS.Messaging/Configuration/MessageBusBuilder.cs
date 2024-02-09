@@ -125,7 +125,7 @@ public class MessageBusBuilder : IMessageBusBuilder
             VisibilityTimeoutExtensionHeartbeatInterval = sqsMessagePollerOptions.VisibilityTimeoutExtensionHeartbeatInterval,
             WaitTimeSeconds = sqsMessagePollerOptions.WaitTimeSeconds,
             IsSQSExceptionFatal = sqsMessagePollerOptions.IsSQSExceptionFatal
-            
+
         };
 
         _messageConfiguration.MessagePollerConfigurations.Add(sqsMessagePollerConfiguration);
@@ -159,7 +159,7 @@ public class MessageBusBuilder : IMessageBusBuilder
         _messageConfiguration.SourceSuffix = suffix;
         return this;
     }
-    
+
     /// <inheritdoc/>
     public IMessageBusBuilder LoadConfigurationFromSettings(IConfiguration configuration)
     {
@@ -258,6 +258,13 @@ public class MessageBusBuilder : IMessageBusBuilder
     public IMessageBusBuilder AddAdditionalService(ServiceDescriptor serviceDescriptor)
     {
         _additionalServices.Add(serviceDescriptor);
+        return this;
+    }
+
+    /// <inheritdoc/>
+    public IMessageBusBuilder EnableDataMessageLogging()
+    {
+        _messageConfiguration.DataMessageLogging = true;
         return this;
     }
 

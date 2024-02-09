@@ -311,6 +311,14 @@ We welcome community contributions and pull requests. See [CONTRIBUTING.md](./CO
 # Security
 The AWS Message Processing Framework for .NET relies on the [AWS SDK for .NET](https://github.com/aws/aws-sdk-net) for communicating with AWS. Refer to the [security section](https://docs.aws.amazon.com/sdk-for-net/v3/developer-guide/security.html) in the [AWS SDK for .NET Developer Guide](https://docs.aws.amazon.com/sdk-for-net/v3/developer-guide/welcome.html) for more information.
 
+The framework does not log data messages sent by the user for security purposes. If users want to enabled this functionality for debugging purposes, you need to call `EnableDataMessageLogging()` in the AWS Message Bus as follows:
+```csharp
+builder.Services.AddAWSMessageBus(bus =>
+{
+    builder.EnableDataMessageLogging();
+});
+```
+
 If you discover a potential security issue, refer to the [security policy](https://github.com/awslabs/aws-dotnet-messaging/security/policy) for reporting information.
 
 # Additional Resources
