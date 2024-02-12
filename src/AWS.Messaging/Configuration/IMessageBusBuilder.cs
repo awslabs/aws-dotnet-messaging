@@ -96,5 +96,5 @@ public interface IMessageBusBuilder
     /// If this is enabled, messages sent by this framework will be visible in plain text across the framework's components.
     /// This means any sensitive user data sent by this framework will be visible in logs, any exceptions thrown and others.
     /// </summary>
-    IMessageBusBuilder EnableDataMessageLogging();
+    IMessageBusBuilder EnableMessageContentLogging();
 }

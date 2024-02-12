@@ -29,7 +29,7 @@ internal class MessageSerializer : IMessageSerializer
         try
         {
             var jsonSerializerOptions = _messageConfiguration.SerializationOptions.SystemTextJsonOptions;
-            if (_messageConfiguration.DataMessageLogging)
+            if (_messageConfiguration.LogMessageContent)
             {
                 _logger.LogTrace("Deserializing the following message into type '{DeserializedType}':\n{Message}", deserializedType, message);
             }
@@ -40,7 +40,7 @@ internal class MessageSerializer : IMessageSerializer
 
             return JsonSerializer.Deserialize(message, deserializedType, jsonSerializerOptions) ?? throw new JsonException("The deserialized application message is null.");
         }
-        catch (JsonException) when (!_messageConfiguration.DataMessageLogging)
+        catch (JsonException) when (!_messageConfiguration.LogMessageContent)
         {
             _logger.LogError("Failed to deserialize application message into an instance of {DeserializedType}.", deserializedType);
             throw new FailedToDeserializeApplicationMessageException($"Failed to deserialize application message into an instance of {deserializedType}.");
@@ -60,18 +60,18 @@ internal class MessageSerializer : IMessageSerializer
         {
             var jsonSerializerOptions = _messageConfiguration.SerializationOptions.SystemTextJsonOptions;
             var jsonString = JsonSerializer.Serialize(message, jsonSerializerOptions);
-            if (_messageConfiguration.DataMessageLogging)
+            if (_messageConfiguration.LogMessageContent)
             {
                 _logger.LogTrace("Serialized the message object as the following raw string:\n{JsonString}", jsonString);
             }
             else
             {
-                _logger.LogTrace("Serialized the message object to a raw string");
+                _logger.LogTrace("Serialized the message object to a raw string with a content length of {ContentLength}.", jsonString.Length);
             }
 
             return jsonString;
         }
-        catch (JsonException) when (!_messageConfiguration.DataMessageLogging)
+        catch (JsonException) when (!_messageConfiguration.LogMessageContent)
         {
             _logger.LogError("Failed to serialize application message into a string");
             throw new FailedToSerializeApplicationMessageException("Failed to serialize application message into a string");

@@ -427,7 +427,7 @@ public class EnvelopeSerializerTests
     public async Task SerializeAsync_DataMessageLogging_NoError(bool dataMessageLogging)
     {
         var logger = new Mock<ILogger<EnvelopeSerializer>>();
-        var messageConfiguration = new MessageConfiguration { DataMessageLogging = dataMessageLogging };
+        var messageConfiguration = new MessageConfiguration { LogMessageContent = dataMessageLogging };
         var messageSerializer = new Mock<IMessageSerializer>();
         var dateTimeHandler = new Mock<IDateTimeHandler>();
         var messageIdGenerator = new Mock<IMessageIdGenerator>();
@@ -478,7 +478,7 @@ public class EnvelopeSerializerTests
     public async Task SerializeAsync_DataMessageLogging_WithError(bool dataMessageLogging)
     {
         var logger = new Mock<ILogger<EnvelopeSerializer>>();
-        var messageConfiguration = new MessageConfiguration { DataMessageLogging = dataMessageLogging };
+        var messageConfiguration = new MessageConfiguration { LogMessageContent = dataMessageLogging };
         var messageSerializer = new Mock<IMessageSerializer>();
         var dateTimeHandler = new Mock<IDateTimeHandler>();
         var messageIdGenerator = new Mock<IMessageIdGenerator>();
@@ -521,7 +521,7 @@ public class EnvelopeSerializerTests
     public async Task ConvertToEnvelopeAsync_DataMessageLogging_WithError(bool dataMessageLogging)
     {
         var logger = new Mock<ILogger<EnvelopeSerializer>>();
-        var messageConfiguration = new MessageConfiguration { DataMessageLogging = dataMessageLogging };
+        var messageConfiguration = new MessageConfiguration { LogMessageContent = dataMessageLogging };
         var messageSerializer = new Mock<IMessageSerializer>();
         var dateTimeHandler = new Mock<IDateTimeHandler>();
         var messageIdGenerator = new Mock<IMessageIdGenerator>();

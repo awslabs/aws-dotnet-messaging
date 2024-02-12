@@ -239,6 +239,9 @@ public class MessageBusBuilder : IMessageBusBuilder
             }
         }
 
+        if (settings.LogMessageContent != null)
+            _messageConfiguration.LogMessageContent = settings.LogMessageContent ?? false;
+
         return this;
     }
 
@@ -262,9 +265,9 @@ public class MessageBusBuilder : IMessageBusBuilder
     }
 
     /// <inheritdoc/>
-    public IMessageBusBuilder EnableDataMessageLogging()
+    public IMessageBusBuilder EnableMessageContentLogging()
     {
-        _messageConfiguration.DataMessageLogging = true;
+        _messageConfiguration.LogMessageContent = true;
         return this;
     }
 

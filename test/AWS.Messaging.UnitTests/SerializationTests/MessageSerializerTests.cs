@@ -70,12 +70,12 @@ public class MessageSerializerTests
             }
         };
 
-        serializer.Serialize(person);
+        var jsonString = serializer.Serialize(person);
 
         _logger.Verify(logger => logger.Log(
                 It.Is<LogLevel>(logLevel => logLevel == LogLevel.Trace),
                 It.Is<EventId>(eventId => eventId.Id == 0),
-                It.Is<It.IsAnyType>((@object, @type) => @object.ToString() == "Serialized the message object to a raw string"),
+                It.Is<It.IsAnyType>((@object, @type) => @object.ToString() == $"Serialized the message object to a raw string with a content length of {jsonString.Length}."),
                 null,
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
@@ -84,7 +84,7 @@ public class MessageSerializerTests
     [Fact]
     public void Serialize_DataMessageLogging_NoError()
     {
-        var messageConfiguration = new MessageConfiguration{ DataMessageLogging = true };
+        var messageConfiguration = new MessageConfiguration{ LogMessageContent = true };
         IMessageSerializer serializer = new MessageSerializer(_logger.Object, messageConfiguration);
 
         var person = new PersonInfo
@@ -141,7 +141,7 @@ public class MessageSerializerTests
     [Fact]
     public void Serialize_DataMessageLogging_WithError()
     {
-        var messageConfiguration = new MessageConfiguration{ DataMessageLogging = true };
+        var messageConfiguration = new MessageConfiguration{ LogMessageContent = true };
         IMessageSerializer serializer = new MessageSerializer(_logger.Object, messageConfiguration);
 
         // Creating an object with circular dependency to force an exception in the JsonSerializer.Serialize method.
@@ -220,7 +220,7 @@ public class MessageSerializerTests
     [Fact]
     public void Deserialize_DataMessageLogging_NoError()
     {
-        var messageConfiguration = new MessageConfiguration{ DataMessageLogging = true };
+        var messageConfiguration = new MessageConfiguration{ LogMessageContent = true };
         IMessageSerializer serializer = new MessageSerializer(_logger.Object, messageConfiguration);
 
         var jsonString =
@@ -255,7 +255,7 @@ public class MessageSerializerTests
     [Fact]
     public void Deserialize_DataMessageLogging_WithError()
     {
-        var messageConfiguration = new MessageConfiguration{ DataMessageLogging = true };
+        var messageConfiguration = new MessageConfiguration{ LogMessageContent = true };
         IMessageSerializer serializer = new MessageSerializer(_logger.Object, messageConfiguration);
 
         var jsonString = "{'FirstName':'Bob'}";

@@ -109,7 +109,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             var jsonString = blob.ToJsonString();
             var serializedMessage = await InvokePostSerializationCallback(jsonString);
 
-            if (_messageConfiguration.DataMessageLogging)
+            if (_messageConfiguration.LogMessageContent)
             {
                 _logger.LogTrace("Serialized the MessageEnvelope object as the following raw string:\n{SerializedMessage}", serializedMessage);
             }
@@ -119,7 +119,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             }
             return serializedMessage;
         }
-        catch (JsonException) when (!_messageConfiguration.DataMessageLogging)
+        catch (JsonException) when (!_messageConfiguration.LogMessageContent)
         {
             _logger.LogError("Failed to serialize the MessageEnvelope into a raw string");
             throw new FailedToSerializeMessageEnvelopeException("Failed to serialize the MessageEnvelope into a raw string");
@@ -175,7 +175,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             _logger.LogTrace("Created a generic {MessageEnvelopeName} of type '{MessageEnvelopeType}'", nameof(MessageEnvelope), result.Envelope.GetType());
             return result;
         }
-        catch (JsonException) when (!_messageConfiguration.DataMessageLogging)
+        catch (JsonException) when (!_messageConfiguration.LogMessageContent)
         {
             _logger.LogError("Failed to create a {MessageEnvelopeName}", nameof(MessageEnvelope));
             throw new FailedToCreateMessageEnvelopeException($"Failed to create {nameof(MessageEnvelope)}");
