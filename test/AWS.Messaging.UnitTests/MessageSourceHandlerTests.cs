@@ -1,10 +1,9 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using AWS.Messaging.Configuration;
+using AWS.Messaging.Configuration.Internal;
 using AWS.Messaging.Services;
 using Microsoft.Extensions.Logging;
 using Moq;
@@ -96,7 +95,7 @@ public class MessageSourceHandlerTests
     [Fact]
     public async Task MessageSourceNotSet_RunningLocally()
     {
-        _ecsContainerMetadataManager.Setup(x => x.GetContainerTaskMetadata()).ReturnsAsync(new Dictionary<string, object>());
+        _ecsContainerMetadataManager.Setup(x => x.GetContainerTaskMetadata()).ReturnsAsync((TaskMetadataResponse?) null);
 
         var messageSourceHandler = GetMessageSourceHandler();
 
@@ -109,7 +108,7 @@ public class MessageSourceHandlerTests
     public async Task MessageSourceNotSet_SuffixSet_RunningLocally()
     {
         _messageConfiguration.SourceSuffix = "/suffix";
-        _ecsContainerMetadataManager.Setup(x => x.GetContainerTaskMetadata()).ReturnsAsync(new Dictionary<string, object>());
+        _ecsContainerMetadataManager.Setup(x => x.GetContainerTaskMetadata()).ReturnsAsync((TaskMetadataResponse?) null);
 
         var messageSourceHandler = GetMessageSourceHandler();
 
@@ -133,11 +132,12 @@ public class MessageSourceHandlerTests
     [Fact]
     public async Task MessageSourceNotSet_RunningInECS()
     {
-        _ecsContainerMetadataManager.Setup(x => x.GetContainerTaskMetadata()).ReturnsAsync(new Dictionary<string, object>
+        var taskMetadata = new TaskMetadataResponse
         {
-            { "Cluster", "cluster" },
-            { "TaskARN", "taskArn" }
-        });
+            Cluster = "cluster",
+            TaskARN = "taskArn"
+        };
+        _ecsContainerMetadataManager.Setup(x => x.GetContainerTaskMetadata()).ReturnsAsync(taskMetadata);
 
         var messageSourceHandler = GetMessageSourceHandler();
 
@@ -149,7 +149,7 @@ public class MessageSourceHandlerTests
     [Fact]
     public async Task MessageSourceNotSet_RunningInEC2()
     {
-        _ecsContainerMetadataManager.Setup(x => x.GetContainerTaskMetadata()).ReturnsAsync(new Dictionary<string, object>());
+        _ecsContainerMetadataManager.Setup(x => x.GetContainerTaskMetadata()).ReturnsAsync((TaskMetadataResponse?) null);
         _ec2InstanceMetadataManager.Setup(x => x.InstanceId).Returns("instanceId");
 
         var messageSourceHandler = GetMessageSourceHandler();
