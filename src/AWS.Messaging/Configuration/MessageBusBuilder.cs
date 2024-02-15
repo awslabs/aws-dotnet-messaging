@@ -125,7 +125,7 @@ public class MessageBusBuilder : IMessageBusBuilder
             VisibilityTimeoutExtensionHeartbeatInterval = sqsMessagePollerOptions.VisibilityTimeoutExtensionHeartbeatInterval,
             WaitTimeSeconds = sqsMessagePollerOptions.WaitTimeSeconds,
             IsSQSExceptionFatal = sqsMessagePollerOptions.IsSQSExceptionFatal
-            
+
         };
 
         _messageConfiguration.MessagePollerConfigurations.Add(sqsMessagePollerConfiguration);
@@ -159,7 +159,7 @@ public class MessageBusBuilder : IMessageBusBuilder
         _messageConfiguration.SourceSuffix = suffix;
         return this;
     }
-    
+
     /// <inheritdoc/>
     public IMessageBusBuilder LoadConfigurationFromSettings(IConfiguration configuration)
     {
@@ -239,6 +239,9 @@ public class MessageBusBuilder : IMessageBusBuilder
             }
         }
 
+        if (settings.LogMessageContent != null)
+            _messageConfiguration.LogMessageContent = settings.LogMessageContent ?? false;
+
         return this;
     }
 
@@ -261,8 +264,17 @@ public class MessageBusBuilder : IMessageBusBuilder
         return this;
     }
 
+    /// <inheritdoc/>
+    public IMessageBusBuilder EnableMessageContentLogging()
+    {
+        _messageConfiguration.LogMessageContent = true;
+        return this;
+    }
+
     internal void Build(IServiceCollection services)
     {
+        LoadConfigurationFromEnvironment();
+
         // Make sure there is at least the default null implementation of the logger to injected so that
         // the DI constructors can be satisfied.
         services.TryAdd(ServiceDescriptor.Singleton<ILoggerFactory, NullLoggerFactory>());
@@ -329,5 +341,15 @@ public class MessageBusBuilder : IMessageBusBuilder
         {
             services.Add(service);
         }
+    }
+
+    /// <summary>
+    /// Retrieve Message Processing Framework configuration from environment variables.
+    /// </summary>
+    private void LoadConfigurationFromEnvironment()
+    {
+        var logMessageContentEnvVar = Environment.GetEnvironmentVariable("AWSMESSAGING_LOGMESSAGECONTENT");
+        if (!string.IsNullOrEmpty(logMessageContentEnvVar) && bool.TryParse(logMessageContentEnvVar, out var logMessageContent))
+            _messageConfiguration.LogMessageContent = logMessageContent;
     }
 }

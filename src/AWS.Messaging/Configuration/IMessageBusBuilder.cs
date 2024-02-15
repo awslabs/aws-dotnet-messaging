@@ -76,7 +76,7 @@ public interface IMessageBusBuilder
     /// </summary>
     /// <param name="suffix">The suffix to append to the message source.</param>
     IMessageBusBuilder AddMessageSourceSuffix(string suffix);
-    
+
     /// <summary>
     /// Retrieve the Message Processing Framework section from <see cref="IConfiguration"/>
     /// and apply the Message bus configuration based on that section.
@@ -90,4 +90,11 @@ public interface IMessageBusBuilder
     /// <param name="serviceDescriptor">The service descriptor for the added service.</param>
     /// <returns></returns>
     IMessageBusBuilder AddAdditionalService(ServiceDescriptor serviceDescriptor);
+
+    /// <summary>
+    /// Enables the visibility of data messages in the logging framework, exception handling and other areas.
+    /// If this is enabled, messages sent by this framework will be visible in plain text across the framework's components.
+    /// This means any sensitive user data sent by this framework will be visible in logs, any exceptions thrown and others.
+    /// </summary>
+    IMessageBusBuilder EnableMessageContentLogging();
 }

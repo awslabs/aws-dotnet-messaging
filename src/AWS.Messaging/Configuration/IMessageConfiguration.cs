@@ -67,4 +67,11 @@ public interface IMessageConfiguration
     /// computed by the framework in the absence of a user-defined one.
     /// </summary>
     string? SourceSuffix { get; set; }
+
+    /// <summary>
+    /// Controls the visibility of data messages in the logging framework, exception handling and other areas.
+    /// If this is enabled, messages sent by this framework will be visible in plain text across the framework's components.
+    /// This means any sensitive user data sent by this framework will be visible in logs, any exceptions thrown and others.
+    /// </summary>
+    bool LogMessageContent { get; set; }
 }

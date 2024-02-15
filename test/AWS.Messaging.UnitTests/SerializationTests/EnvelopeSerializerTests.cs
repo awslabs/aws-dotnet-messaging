@@ -7,12 +7,14 @@ using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Amazon.SQS.Model;
+using AWS.Messaging.Configuration;
 using AWS.Messaging.Serialization;
 using AWS.Messaging.Services;
 using AWS.Messaging.UnitTests.MessageHandlers;
 using AWS.Messaging.UnitTests.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
@@ -417,6 +419,150 @@ public class EnvelopeSerializerTests
         Assert.Equal("addressInfo", subscribeMapping.MessageTypeIdentifier);
         Assert.Equal(typeof(AddressInfo), subscribeMapping.MessageType);
         Assert.Equal(typeof(AddressInfoHandler), subscribeMapping.HandlerType);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SerializeAsync_DataMessageLogging_NoError(bool dataMessageLogging)
+    {
+        var logger = new Mock<ILogger<EnvelopeSerializer>>();
+        var messageConfiguration = new MessageConfiguration { LogMessageContent = dataMessageLogging };
+        var messageSerializer = new Mock<IMessageSerializer>();
+        var dateTimeHandler = new Mock<IDateTimeHandler>();
+        var messageIdGenerator = new Mock<IMessageIdGenerator>();
+        var messageSourceHandler = new Mock<IMessageSourceHandler>();
+        var envelopeSerializer = new EnvelopeSerializer(logger.Object, messageConfiguration, messageSerializer.Object, dateTimeHandler.Object, messageIdGenerator.Object, messageSourceHandler.Object);
+        var messageEnvelope = new MessageEnvelope<AddressInfo>
+        {
+            Id = "123",
+            Source = new Uri("/aws/messaging", UriKind.Relative),
+            Version = "1.0",
+            MessageTypeIdentifier = "addressInfo",
+            TimeStamp = _testdate,
+            Message = new AddressInfo
+            {
+                Street = "Prince St",
+                Unit = 123,
+                ZipCode = "00001"
+            }
+        };
+
+        await envelopeSerializer.SerializeAsync(messageEnvelope);
+
+        if (dataMessageLogging)
+        {
+            logger.Verify(log => log.Log(
+                    It.Is<LogLevel>(logLevel => logLevel == LogLevel.Trace),
+                    It.Is<EventId>(eventId => eventId.Id == 0),
+                    It.Is<It.IsAnyType>((@object, @type) => @object.ToString() == "Serialized the MessageEnvelope object as the following raw string:\n{\"id\":\"123\",\"source\":\"/aws/messaging\",\"specversion\":\"1.0\",\"type\":\"addressInfo\",\"time\":\"2000-12-05T10:30:55+00:00\",\"data\":null}"),
+                    null,
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once);
+        }
+        else
+        {
+            logger.Verify(log => log.Log(
+                    It.Is<LogLevel>(logLevel => logLevel == LogLevel.Trace),
+                    It.Is<EventId>(eventId => eventId.Id == 0),
+                    It.Is<It.IsAnyType>((@object, @type) => @object.ToString() == "Serialized the MessageEnvelope object to a raw string"),
+                    null,
+                    It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+                Times.Once);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SerializeAsync_DataMessageLogging_WithError(bool dataMessageLogging)
+    {
+        var logger = new Mock<ILogger<EnvelopeSerializer>>();
+        var messageConfiguration = new MessageConfiguration { LogMessageContent = dataMessageLogging };
+        var messageSerializer = new Mock<IMessageSerializer>();
+        var dateTimeHandler = new Mock<IDateTimeHandler>();
+        var messageIdGenerator = new Mock<IMessageIdGenerator>();
+        var messageSourceHandler = new Mock<IMessageSourceHandler>();
+        var envelopeSerializer = new EnvelopeSerializer(logger.Object, messageConfiguration, messageSerializer.Object, dateTimeHandler.Object, messageIdGenerator.Object, messageSourceHandler.Object);
+        var messageEnvelope = new MessageEnvelope<MessageEnvelope>
+        {
+            Id = "123",
+            Source = new Uri("/aws/messaging", UriKind.Relative),
+            Version = "1.0",
+            MessageTypeIdentifier = "addressInfo",
+            TimeStamp = _testdate,
+            Message = new MessageEnvelope<MessageEnvelope>
+            {
+                Id = "123",
+                Source = new Uri("/aws/messaging", UriKind.Relative),
+                Version = "1.0",
+                MessageTypeIdentifier = "addressInfo",
+                TimeStamp = _testdate
+            }
+        };
+        messageSerializer.Setup(x => x.Serialize(It.IsAny<object>())).Throws(new JsonException("Test exception"));
+
+        var exception = await Assert.ThrowsAsync<FailedToSerializeMessageEnvelopeException>(async () => await envelopeSerializer.SerializeAsync(messageEnvelope));
+
+        Assert.Equal("Failed to serialize the MessageEnvelope into a raw string", exception.Message);
+        if (dataMessageLogging)
+        {
+            Assert.NotNull(exception.InnerException);
+        }
+        else
+        {
+            Assert.Null(exception.InnerException);
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ConvertToEnvelopeAsync_DataMessageLogging_WithError(bool dataMessageLogging)
+    {
+        var logger = new Mock<ILogger<EnvelopeSerializer>>();
+        var messageConfiguration = new MessageConfiguration { LogMessageContent = dataMessageLogging };
+        var messageSerializer = new Mock<IMessageSerializer>();
+        var dateTimeHandler = new Mock<IDateTimeHandler>();
+        var messageIdGenerator = new Mock<IMessageIdGenerator>();
+        var messageSourceHandler = new Mock<IMessageSourceHandler>();
+        var envelopeSerializer = new EnvelopeSerializer(logger.Object, messageConfiguration, messageSerializer.Object, dateTimeHandler.Object, messageIdGenerator.Object, messageSourceHandler.Object);
+        var messageEnvelope = new MessageEnvelope<MessageEnvelope>
+        {
+            Id = "123",
+            Source = new Uri("/aws/messaging", UriKind.Relative),
+            Version = "1.0",
+            MessageTypeIdentifier = "addressInfo",
+            TimeStamp = _testdate,
+            Message = new MessageEnvelope<string>
+            {
+                Id = "123",
+                Source = new Uri("/aws/messaging", UriKind.Relative),
+                Version = "1.0",
+                MessageTypeIdentifier = "addressInfo",
+                TimeStamp = _testdate,
+                Message = "Test"
+            }
+        };
+        var sqsMessage = new Message
+        {
+            Body = JsonSerializer.Serialize(messageEnvelope),
+            ReceiptHandle = "receipt-handle"
+        };
+        messageSerializer.Setup(x => x.Serialize(It.IsAny<object>())).Returns(@"{}");
+        messageSerializer.Setup(x => x.Deserialize(It.IsAny<string>(), It.IsAny<Type>())).Throws(new JsonException("Test exception"));
+
+        var exception = await Assert.ThrowsAsync<FailedToCreateMessageEnvelopeException>(async () => await envelopeSerializer.ConvertToEnvelopeAsync(sqsMessage));
+
+        Assert.Equal("Failed to create MessageEnvelope", exception.Message);
+        if (dataMessageLogging)
+        {
+            Assert.NotNull(exception.InnerException);
+        }
+        else
+        {
+            Assert.Null(exception.InnerException);
+        }
     }
 }
 
