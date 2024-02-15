@@ -273,6 +273,8 @@ public class MessageBusBuilder : IMessageBusBuilder
 
     internal void Build(IServiceCollection services)
     {
+        LoadConfigurationFromEnvironment();
+
         // Make sure there is at least the default null implementation of the logger to injected so that
         // the DI constructors can be satisfied.
         services.TryAdd(ServiceDescriptor.Singleton<ILoggerFactory, NullLoggerFactory>());
@@ -339,5 +341,15 @@ public class MessageBusBuilder : IMessageBusBuilder
         {
             services.Add(service);
         }
+    }
+
+    /// <summary>
+    /// Retrieve Message Processing Framework configuration from environment variables.
+    /// </summary>
+    private void LoadConfigurationFromEnvironment()
+    {
+        var logMessageContentEnvVar = Environment.GetEnvironmentVariable("AWSMESSAGING_LOGMESSAGECONTENT");
+        if (!string.IsNullOrEmpty(logMessageContentEnvVar) && bool.TryParse(logMessageContentEnvVar, out var logMessageContent))
+            _messageConfiguration.LogMessageContent = logMessageContent;
     }
 }
