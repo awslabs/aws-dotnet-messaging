@@ -47,18 +47,26 @@ internal class ECSContainerMetadataManager : IECSContainerMetadataManager
 
             var response = await client.GetAsync(new Uri($"{ecsMetadataUri}/task"));
             if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogError("Unable to retrieve task metadata from the ECS container.");
                 return null;
+            }
 
             var taskMetadataJson = await response.Content.ReadAsStringAsync();
             var taskMetadata = JsonSerializer.Deserialize<TaskMetadataResponse>(taskMetadataJson);
-            return
-                ValidateContainerTaskMetadata(taskMetadata) ?
-                    taskMetadata :
-                    null;
+            if (ValidateContainerTaskMetadata(taskMetadata))
+            {
+                return taskMetadata;
+            }
+            else
+            {
+                _logger.LogError("The retrieved task metadata from the ECS container is invalid.");
+                return null;
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Unable to retrieve Task Arn from ECS container metadata.");
+            _logger.LogError(ex, "Unable to retrieve task metadata from the ECS container.");
             return null;
         }
     }
