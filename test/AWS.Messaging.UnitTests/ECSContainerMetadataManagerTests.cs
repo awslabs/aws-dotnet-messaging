@@ -113,7 +113,7 @@ public class ECSContainerMetadataManagerTests
         _logger.Verify(logger => logger.Log(
                 It.Is<LogLevel>(logLevel => logLevel == LogLevel.Error),
                 It.Is<EventId>(eventId => eventId.Id == 0),
-                It.Is<It.IsAnyType>((@object, @type) => @object.ToString() == "Unable to retrieve Task Arn from ECS container metadata."),
+                It.Is<It.IsAnyType>((@object, @type) => @object.ToString() == "Unable to retrieve task metadata from the ECS container."),
                 It.IsAny<Exception>(),
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
