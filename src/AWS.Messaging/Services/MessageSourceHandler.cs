@@ -138,15 +138,13 @@ internal class MessageSourceHandler : IMessageSourceHandler
         _logger.LogTrace("Checking if process if running in Amazon ECS...");
 
         var taskMetadata = await _ecsContainerMetadataManager.GetContainerTaskMetadata();
-
-        if (!taskMetadata.TryGetValue("Cluster", out var clusterName) ||
-            string.IsNullOrEmpty(clusterName?.ToString()))
-            return null;
-        if (!taskMetadata.TryGetValue("TaskARN", out var taskArn) ||
-            string.IsNullOrEmpty(taskArn?.ToString()))
+        if (taskMetadata == null)
             return null;
 
-        return $"/AmazonECS/{clusterName}/{taskArn}";
+        var clusterName = taskMetadata.Cluster.Split('/').Last();
+        var taskId = taskMetadata.TaskARN.Split('/').Last();
+
+        return $"/AmazonECS/{clusterName}/{taskId}";
     }
 
     /// <summary>
