@@ -15,11 +15,12 @@ namespace AWS.Messaging.Publishers.SNS;
 /// </summary>
 internal class SNSPublisher : IMessagePublisher, ISNSPublisher
 {
-    private readonly IAmazonSimpleNotificationService _snsClient;
+    private readonly IAWSClientProvider _awsClientProvider;
     private readonly ILogger<IMessagePublisher> _logger;
     private readonly IMessageConfiguration _messageConfiguration;
     private readonly IEnvelopeSerializer _envelopeSerializer;
     private readonly ITelemetryFactory _telemetryFactory;
+    private IAmazonSimpleNotificationService? _snsClient;
 
     private const string FIFO_SUFFIX = ".fifo";
 
@@ -33,7 +34,7 @@ internal class SNSPublisher : IMessagePublisher, ISNSPublisher
         IEnvelopeSerializer envelopeSerializer,
         ITelemetryFactory telemetryFactory)
     {
-        _snsClient = awsClientProvider.GetServiceClient<IAmazonSimpleNotificationService>();
+        _awsClientProvider = awsClientProvider;
         _logger = logger;
         _messageConfiguration = messageConfiguration;
         _envelopeSerializer = envelopeSerializer;
@@ -76,7 +77,7 @@ internal class SNSPublisher : IMessagePublisher, ISNSPublisher
                     throw new InvalidMessageException("The message cannot be null.");
                 }
 
-                var publisherEndpoint = GetPublisherEndpoint(trace, typeof(T));
+                var topicArn = GetPublisherEndpoint(trace, typeof(T), snsOptions);
 
                 _logger.LogDebug("Creating the message envelope for the message of type '{MessageType}'.", typeof(T));
                 var messageEnvelope = await _envelopeSerializer.CreateEnvelopeAsync(message);
@@ -86,9 +87,25 @@ internal class SNSPublisher : IMessagePublisher, ISNSPublisher
 
                 var messageBody = await _envelopeSerializer.SerializeAsync(messageEnvelope);
 
-                _logger.LogDebug("Sending the message of type '{MessageType}' to SNS. Publisher Endpoint: {Endpoint}", typeof(T), publisherEndpoint);
-                var request = CreatePublishRequest(publisherEndpoint, messageBody, snsOptions);
-                await _snsClient.PublishAsync(request, token);
+                IAmazonSimpleNotificationService client;
+                if (snsOptions?.OverrideClient != null)
+                {
+                    // Use the client that the user specified for this event
+                    client = snsOptions.OverrideClient;
+                }
+                else // use the publisher-level client
+                {
+                    if (_snsClient == null)
+                    {
+                        // If we haven't resolved the client yet for this publisher, do so now
+                        _snsClient = _awsClientProvider.GetServiceClient<IAmazonSimpleNotificationService>();
+                    }
+                    client = _snsClient;
+                }
+
+                _logger.LogDebug("Sending the message of type '{MessageType}' to SNS. Publisher Endpoint: {Endpoint}", typeof(T), topicArn);
+                var request = CreatePublishRequest(topicArn, messageBody, snsOptions);
+                await client.PublishAsync(request, token);
                 _logger.LogDebug("The message of type '{MessageType}' has been pushed to SNS.", typeof(T));
             }
             catch (Exception ex)
@@ -135,7 +152,7 @@ internal class SNSPublisher : IMessagePublisher, ISNSPublisher
         return request;
     }
 
-    private string GetPublisherEndpoint(ITelemetryTrace trace, Type messageType)
+    private string GetPublisherEndpoint(ITelemetryTrace trace, Type messageType, SNSOptions? snsOptions)
     {
         var mapping = _messageConfiguration.GetPublisherMapping(messageType);
         if (mapping is null)
@@ -149,9 +166,23 @@ internal class SNSPublisher : IMessagePublisher, ISNSPublisher
             throw new MissingMessageTypeConfigurationException($"Messages of type '{messageType.FullName}' are not configured for publishing to SNS.");
         }
 
-        trace.AddMetadata(TelemetryKeys.MessageType, mapping.MessageTypeIdentifier);
-        trace.AddMetadata(TelemetryKeys.TopicUrl, mapping.PublisherConfiguration.PublisherEndpoint);
+        var topicArn = mapping.PublisherConfiguration.PublisherEndpoint;
 
-        return mapping.PublisherConfiguration.PublisherEndpoint;
+        // Check if the topic was overriden on this message-specific publishing options
+        if (!string.IsNullOrEmpty(snsOptions?.TopicArn))
+        {
+            topicArn = snsOptions.TopicArn;
+        }
+
+        if (string.IsNullOrEmpty(topicArn))
+        {
+            _logger.LogError("Unable to determine a destination topic for message of type '{MessageType}'.", messageType.FullName);
+            throw new InvalidPublisherEndpointException($"Unable to determine a destination topic for message of type '{messageType.FullName}'.");
+        }
+
+        trace.AddMetadata(TelemetryKeys.MessageType, mapping.MessageTypeIdentifier);
+        trace.AddMetadata(TelemetryKeys.TopicUrl, topicArn);
+
+        return topicArn;
     }
 }

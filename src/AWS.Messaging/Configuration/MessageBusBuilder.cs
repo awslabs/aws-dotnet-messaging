@@ -35,36 +35,36 @@ public class MessageBusBuilder : IMessageBusBuilder
     }
 
     /// <inheritdoc/>
-    public IMessageBusBuilder AddSQSPublisher<TMessage>(string queueUrl, string? messageTypeIdentifier = null)
+    public IMessageBusBuilder AddSQSPublisher<TMessage>(string? queueUrl, string? messageTypeIdentifier = null)
     {
         return AddSQSPublisher(typeof(TMessage), queueUrl, messageTypeIdentifier);
     }
 
-    private IMessageBusBuilder AddSQSPublisher(Type messageType, string queueUrl, string? messageTypeIdentifier = null)
+    private IMessageBusBuilder AddSQSPublisher(Type messageType, string? queueUrl, string? messageTypeIdentifier = null)
     {
         var sqsPublisherConfiguration = new SQSPublisherConfiguration(queueUrl);
         return AddPublisher(messageType, sqsPublisherConfiguration, PublisherTargetType.SQS_PUBLISHER, messageTypeIdentifier);
     }
 
     /// <inheritdoc/>
-    public IMessageBusBuilder AddSNSPublisher<TMessage>(string topicUrl, string? messageTypeIdentifier = null)
+    public IMessageBusBuilder AddSNSPublisher<TMessage>(string? topicUrl, string? messageTypeIdentifier = null)
     {
         return AddSNSPublisher(typeof(TMessage), topicUrl, messageTypeIdentifier);
     }
 
-    private IMessageBusBuilder AddSNSPublisher(Type messageType, string topicUrl, string? messageTypeIdentifier = null)
+    private IMessageBusBuilder AddSNSPublisher(Type messageType, string? topicUrl, string? messageTypeIdentifier = null)
     {
         var snsPublisherConfiguration = new SNSPublisherConfiguration(topicUrl);
         return AddPublisher(messageType, snsPublisherConfiguration, PublisherTargetType.SNS_PUBLISHER, messageTypeIdentifier);
     }
 
     /// <inheritdoc/>
-    public IMessageBusBuilder AddEventBridgePublisher<TMessage>(string eventBusName, string? messageTypeIdentifier = null, EventBridgePublishOptions? options = null)
+    public IMessageBusBuilder AddEventBridgePublisher<TMessage>(string? eventBusName, string? messageTypeIdentifier = null, EventBridgePublishOptions? options = null)
     {
         return AddEventBridgePublisher(typeof(TMessage), eventBusName, messageTypeIdentifier, options);
     }
 
-    private IMessageBusBuilder AddEventBridgePublisher(Type messageType, string eventBusName, string? messageTypeIdentifier = null, EventBridgePublishOptions? options = null)
+    private IMessageBusBuilder AddEventBridgePublisher(Type messageType, string? eventBusName, string? messageTypeIdentifier = null, EventBridgePublishOptions? options = null)
     {
         var eventBridgePublisherConfiguration = new EventBridgePublisherConfiguration(eventBusName)
         {

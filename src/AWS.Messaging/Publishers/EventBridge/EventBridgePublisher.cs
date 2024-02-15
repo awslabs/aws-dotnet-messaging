@@ -15,11 +15,12 @@ namespace AWS.Messaging.Publishers.EventBridge;
 /// </summary>
 internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
 {
-    private readonly IAmazonEventBridge _eventBridgeClient;
+    private readonly IAWSClientProvider _awsClientProvider;
     private readonly ILogger<IMessagePublisher> _logger;
     private readonly IMessageConfiguration _messageConfiguration;
     private readonly IEnvelopeSerializer _envelopeSerializer;
     private readonly ITelemetryFactory _telemetryFactory;
+    private IAmazonEventBridge? _eventBridgeClient;
 
     /// <summary>
     /// Creates an instance of <see cref="EventBridgePublisher"/>.
@@ -31,7 +32,7 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
         IEnvelopeSerializer envelopeSerializer,
         ITelemetryFactory telemetryFactory)
     {
-        _eventBridgeClient = awsClientProvider.GetServiceClient<IAmazonEventBridge>();
+        _awsClientProvider = awsClientProvider;
         _logger = logger;
         _messageConfiguration = messageConfiguration;
         _envelopeSerializer = envelopeSerializer;
@@ -73,8 +74,15 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
                 }
 
                 var publisherMapping = GetPublisherMapping(trace, typeof(T));
-                var publisherEndpoint = publisherMapping.PublisherConfiguration.PublisherEndpoint;
-                trace.AddMetadata(TelemetryKeys.EventBusName, publisherEndpoint);
+                var eventBusName = eventBridgeOptions?.EventBusName ?? publisherMapping.PublisherConfiguration.PublisherEndpoint;
+
+                if (string.IsNullOrEmpty(eventBusName))
+                {
+                    _logger.LogError("Unable to determine a destination event bus for message of type '{MessageType}'.", typeof(T));
+                    throw new InvalidPublisherEndpointException($"Unable to determine a destination queue for message of type '{typeof(T)}'.");
+                }
+
+                trace.AddMetadata(TelemetryKeys.EventBusName, eventBusName);
 
                 _logger.LogDebug("Creating the message envelope for the message of type '{MessageType}'.", typeof(T));
                 var messageEnvelope = await _envelopeSerializer.CreateEnvelopeAsync(message);
@@ -84,9 +92,25 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
 
                 var messageBody = await _envelopeSerializer.SerializeAsync(messageEnvelope);
 
-                _logger.LogDebug("Sending the message of type '{MessageType}' to EventBridge. Publisher Endpoint: {Endpoint}", typeof(T), publisherEndpoint);
-                var request = CreatePutEventsRequest(publisherMapping, messageEnvelope.Source?.ToString(), messageBody, eventBridgeOptions);
-                await _eventBridgeClient.PutEventsAsync(request, token);
+                IAmazonEventBridge client;
+                if (eventBridgeOptions?.OverrideClient != null)
+                {
+                    // Use the client that the user specified for this event
+                    client = eventBridgeOptions.OverrideClient;
+                }
+                else // use the publisher-level client
+                {
+                    if (_eventBridgeClient == null)
+                    {
+                        // If we haven't resolved the client yet for this publisher, do so now
+                        _eventBridgeClient = _awsClientProvider.GetServiceClient<IAmazonEventBridge>();
+                    }
+                    client = _eventBridgeClient;
+                }
+
+                _logger.LogDebug("Sending the message of type '{MessageType}' to EventBridge. Publisher Endpoint: {Endpoint}", typeof(T), eventBusName);
+                var request = CreatePutEventsRequest(publisherMapping, messageEnvelope.Source?.ToString(), messageBody, eventBridgeOptions, eventBusName);
+                await client.PutEventsAsync(request, token);
                 _logger.LogDebug("The message of type '{MessageType}' has been pushed to EventBridge.", typeof(T));
             }
             catch (Exception ex)
@@ -97,21 +121,22 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
         }
     }
 
-    private PutEventsRequest CreatePutEventsRequest(PublisherMapping publisherMapping, string? source, string messageBody, EventBridgeOptions? eventBridgeOptions)
+    private PutEventsRequest CreatePutEventsRequest(PublisherMapping publisherMapping, string? source, string messageBody, EventBridgeOptions? eventBridgeOptions, string eventBusName)
     {
-        var publisherEndpoint = publisherMapping.PublisherConfiguration.PublisherEndpoint;
         var publisherConfiguration = (EventBridgePublisherConfiguration)publisherMapping.PublisherConfiguration;
 
         var requestEntry = new PutEventsRequestEntry
         {
-            EventBusName = publisherEndpoint,
+            EventBusName = eventBusName,
             DetailType = publisherMapping.MessageTypeIdentifier,
             Detail = messageBody
         };
 
         var putEventsRequest = new PutEventsRequest
         {
-            EndpointId = publisherConfiguration.EndpointID,
+            // Give precedence to the endpoint ID if specified on the message-specific eventBridgeOptions,
+            // otherwise fallback to the publisher level
+            EndpointId = eventBridgeOptions?.EndpointID ?? publisherConfiguration.EndpointID,
             Entries = new() { requestEntry }
         };
 
