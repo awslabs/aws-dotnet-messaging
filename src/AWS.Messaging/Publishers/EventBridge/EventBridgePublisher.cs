@@ -134,7 +134,7 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
 
         var putEventsRequest = new PutEventsRequest
         {
-            // Give precendence to the endpoint ID if specified on the message-specific eventBridgeOptions,
+            // Give precedence to the endpoint ID if specified on the message-specific eventBridgeOptions,
             // otherwise fallback to the publisher level
             EndpointId = eventBridgeOptions?.EndpointID ?? publisherConfiguration.EndpointID,
             Entries = new() { requestEntry }
