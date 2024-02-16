@@ -250,7 +250,12 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
                 && root.TryGetProperty("region", out var _))
             {
                 // Retrieve the inner message envelope.
-                envelopeConfiguration.MessageEnvelopeBody = innerEnvelope.GetString();
+                envelopeConfiguration.MessageEnvelopeBody = innerEnvelope.ValueKind switch
+                {
+                    JsonValueKind.String => innerEnvelope.GetString(),
+                    JsonValueKind.Object => innerEnvelope.ToString(),
+                    _ => throw new InvalidDataException($"detail has unexpected json kind: {innerEnvelope.ValueKind}")
+                };
                 if (string.IsNullOrEmpty(envelopeConfiguration.MessageEnvelopeBody))
                 {
                     _logger.LogError("Failed to create a message envelope configuration because the EventBridge message envelope does not contain a valid 'detail' property.");
