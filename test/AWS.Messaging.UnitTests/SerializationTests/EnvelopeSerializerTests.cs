@@ -564,6 +564,24 @@ public class EnvelopeSerializerTests
             Assert.Null(exception.InnerException);
         }
     }
+
+    [Fact]
+    public async Task Deserialize_Eventbridge_Sqs_Envelope()
+    {
+        const string eventbridgeSqsEnvelope = "{\"Attributes\":{\"SenderId\":\"AIDAIP3MER2HFHNCCMVD4\",\"ApproximateFirstReceiveTimestamp\":\"1708335393527\",\"ApproximateReceiveCount\":\"1\",\"SentTimestamp\":\"1708335388527\"},\"Body\":\"{\\u0022version\\u0022:\\u00220\\u0022,\\u0022id\\u0022:\\u0022de3d19d6-755a-b9b1-c625-1708a2c36b50\\u0022,\\u0022detail-type\\u0022:\\u0022ChatMessage\\u0022,\\u0022source\\u0022:\\u0022ServiceNow/Integration\\u0022,\\u0022account\\u0022:\\u0022041717511598\\u0022,\\u0022time\\u0022:\\u00222024-02-19T09:36:28Z\\u0022,\\u0022region\\u0022:\\u0022eu-central-1\\u0022,\\u0022resources\\u0022:[],\\u0022detail\\u0022:{\\u0022id\\u0022:\\u00226ef9516a-6565-4e81-8177-be89d207fab0\\u0022,\\u0022source\\u0022:\\u0022ServiceNow/Integration\\u0022,\\u0022specversion\\u0022:\\u00221.0\\u0022,\\u0022type\\u0022:\\u0022ChatMessage\\u0022,\\u0022time\\u0022:\\u00222024-02-19T09:36:28.6090473\\u002B00:00\\u0022,\\u0022data\\u0022:\\u0022{\\\\\\u0022MessageDescription\\\\\\u0022:\\\\\\u0022Hello\\\\\\u0022}\\u0022}}\",\"MD5OfBody\":\"fa0ed402839bcce842343be5a5b0e758\",\"MD5OfMessageAttributes\":null,\"MessageAttributes\":{},\"MessageId\":\"83b53c15-8838-4ea1-89ae-97990548f8e4\",\"ReceiptHandle\":\"AQEBrLb6AkV/lUdrvNnEQjxK24LJLPU9\\u002BJko30VRmXIXljTrbfzHGZP3wuGCFSnaBUvUPTHGWU6rxRXCDnifFswSzuCyYjtJV95N3UajyEjkau\\u002BsBZdpYvWE4SKJSrh69HzKCS1QZ8Izula1jDA4dSYDl578kYY67uCKCvyRPtCKq7r5mveThv\\u002BRik1K9zmMrX9urwg8OgCsWcPEOu7duKJEsCSchorNoXjCVRycK7/mqyP1ndeiWc6SBefR9Coiynp2tsA6qFmkCwZNx4hqLINclkV4KyidX5cpdORMY74eoZ/puE6xrwQTJCJL2QKmnegxf645RL0i1tS2nSCeDUVwuQeebaSHbI0dKTyhtFvK/O2V8S39/siAHKz\\u002BCCaUo0YhtJ6FG1tm0xytwo5la2ysi5BKRrlf9thZ16pNaiNmKyI=\"}";
+        var logger = new Mock<ILogger<EnvelopeSerializer>>();
+        var messageConfiguration = new MessageConfiguration { LogMessageContent = false };
+        var messageSerializer = new Mock<IMessageSerializer>();
+        var dateTimeHandler = new Mock<IDateTimeHandler>();
+        var messageIdGenerator = new Mock<IMessageIdGenerator>();
+        var messageSourceHandler = new Mock<IMessageSourceHandler>();
+        var envelopeSerializer = new EnvelopeSerializer(logger.Object, messageConfiguration, messageSerializer.Object, dateTimeHandler.Object, messageIdGenerator.Object, messageSourceHandler.Object);
+        var message = JsonSerializer.Deserialize<Message>(eventbridgeSqsEnvelope);
+        Assert.NotNull(message);
+        messageConfiguration.SubscriberMappings.Add(new(typeof(ChatMessageHandler), typeof(ChatMessage), nameof(ChatMessage)));
+        var result = await envelopeSerializer.ConvertToEnvelopeAsync(message);
+        Assert.NotNull(result.Envelope.EventBridgeMetadata);
+    }
 }
 
 public class MockSerializationCallback : ISerializationCallback
