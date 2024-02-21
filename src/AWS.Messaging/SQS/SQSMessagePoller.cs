@@ -126,7 +126,7 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
 
                 // Rethrow the exception to fail fast for invalid configuration, permissioning, etc.
                 // TODO: explore a "cool down mode" for repeated exceptions
-                if (_configuration.IsSQSExceptionFatal(ex))
+                if (_configuration.IsExceptionFatal(ex))
                 {
                     throw;
                 }
@@ -135,6 +135,13 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
             {
                 // TODO: explore a "cool down mode" for repeated exceptions
                 _logger.LogError(ex, "An unknown exception occurred while polling {SubscriberEndpoint}", _configuration.SubscriberEndpoint);
+
+                // Rethrow the exception to fail fast for invalid configuration, permissioning, etc.
+                // TODO: explore a "cool down mode" for repeated exceptions
+                if (_configuration.IsExceptionFatal(ex))
+                {
+                    throw;
+                }
             }
 
             if (receivedMessages is null)
@@ -267,7 +274,7 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
                 string.Join(", ", messages.Select(x => x.Id)), _configuration.SubscriberEndpoint);
 
             // Rethrow the exception to fail fast for invalid configuration, permissioning, etc.
-            if (_configuration.IsSQSExceptionFatal(ex))
+            if (_configuration.IsExceptionFatal(ex))
             {
                 throw;
             }
@@ -275,6 +282,12 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
         catch (Exception ex)
         {
             _logger.LogError(ex, "An unexpected exception occurred while deleting messages from queue {SubscriberEndpoint}", _configuration.SubscriberEndpoint);
+
+            // Rethrow the exception to fail fast for invalid configuration, permissioning, etc.
+            if (_configuration.IsExceptionFatal(ex))
+            {
+                throw;
+            }
         }
     }
 
@@ -373,7 +386,7 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
                         string.Join(", ", messages.Select(x => x.Id)), _configuration.SubscriberEndpoint);
 
                     // Rethrow the exception to fail fast for invalid configuration, permissioning, etc.
-                    if (_configuration.IsSQSExceptionFatal(amazonEx))
+                    if (_configuration.IsExceptionFatal(amazonEx))
                     {
                         throw amazonEx;
                     }
@@ -381,6 +394,12 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
                 else if (changeMessageVisibilityBatchTask.Exception?.InnerException is Exception ex)
                 {
                     _logger.LogError(ex, "An unexpected exception occurred while extending message visibility on queue {SubscriberEndpoint}", _configuration.SubscriberEndpoint);
+
+                    // Rethrow the exception to fail fast for invalid configuration, permissioning, etc.
+                    if (_configuration.IsExceptionFatal(ex))
+                    {
+                        throw ex;
+                    }
                 }
             }
         }
@@ -392,5 +411,4 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
     {
         return ValueTask.CompletedTask;
     }
-      
 }

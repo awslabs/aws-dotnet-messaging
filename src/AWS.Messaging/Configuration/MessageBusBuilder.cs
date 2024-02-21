@@ -124,7 +124,7 @@ public class MessageBusBuilder : IMessageBusBuilder
             VisibilityTimeoutExtensionThreshold = sqsMessagePollerOptions.VisibilityTimeoutExtensionThreshold,
             VisibilityTimeoutExtensionHeartbeatInterval = sqsMessagePollerOptions.VisibilityTimeoutExtensionHeartbeatInterval,
             WaitTimeSeconds = sqsMessagePollerOptions.WaitTimeSeconds,
-            IsSQSExceptionFatal = sqsMessagePollerOptions.IsSQSExceptionFatal
+            IsExceptionFatal = sqsMessagePollerOptions.IsExceptionFatal
 
         };
 

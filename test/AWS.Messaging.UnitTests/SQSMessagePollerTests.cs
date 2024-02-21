@@ -218,6 +218,34 @@ public class SQSMessagePollerTests
     }
 
     /// <summary>
+    /// Tests that the SQS poller rethrows a fatal exception
+    /// </summary>
+    [Fact]
+    public async Task SQSMessagePoller_RethrowsFatalException()
+    {
+        var client = new Mock<IAmazonSQS>();
+        client.Setup(x => x.ReceiveMessageAsync(It.IsAny<ReceiveMessageRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new QueueDoesNotExistException(""));
+
+        await Assert.ThrowsAsync<QueueDoesNotExistException>(() => RunSQSMessagePollerTest(client));
+    }
+
+    /// <summary>
+    /// Tests that the SQS poller does not throw and continues for a non-fatal exception
+    /// </summary>
+    [Fact]
+    public async Task SQSMessagePoller_ContinuesForNonFatalException()
+    {
+        var client = new Mock<IAmazonSQS>();
+        client.Setup(x => x.ReceiveMessageAsync(It.IsAny<ReceiveMessageRequest>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new OverLimitException(""));
+
+        await RunSQSMessagePollerTest(client);
+
+        client.Verify(x => x.ReceiveMessageAsync(It.IsAny<ReceiveMessageRequest>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce());
+    }
+
+    /// <summary>
     /// Helper function that initializes and starts a <see cref="MessagePumpService"/> with
     /// a mocked SQS client, then cancels after 500ms
     /// </summary>
