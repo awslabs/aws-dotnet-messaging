@@ -13,8 +13,22 @@ namespace PublisherAPI.Controllers;
 [Route("[controller]")]
 public class PublisherController : ControllerBase
 {
+    /// <summary>
+    /// Generic publisher, which you can use to publish any of the configured
+    /// message types when you don't need to specify any service-specific options.
+    /// </summary>
     private readonly IMessagePublisher _messagePublisher;
+
+    /// <summary>
+    /// SQS-specific publisher to use when publishing to a 
+    /// FIFO queue below so that you can set the message group ID.
+    /// </summary>
     private readonly ISQSPublisher _sqsPublisher;
+
+    /// <summary>
+    /// SNS-specific publisher to use when publishing to a 
+    /// FIFO topic below so that you can set the message group ID.
+    /// </summary>
     private readonly ISNSPublisher _snsPublisher;
 
     public PublisherController(IMessagePublisher messagePublisher, ISQSPublisher sqsPubliser, ISNSPublisher snsPublisher)
@@ -36,6 +50,7 @@ public class PublisherController : ControllerBase
             return BadRequest("The MessageDescription cannot be null or empty.");
         }
 
+        // Publish using the generic publisher
         await _messagePublisher.PublishAsync(message);
 
         return Ok();
@@ -53,6 +68,7 @@ public class PublisherController : ControllerBase
             return BadRequest("The MessageDescription cannot be null or empty.");
         }
 
+        // Publish using the generic publisher
         await _messagePublisher.PublishAsync(message);
 
         return Ok();
@@ -70,6 +86,7 @@ public class PublisherController : ControllerBase
             return BadRequest("The MessageDescription cannot be null or empty.");
         }
 
+        // Publish using the generic publisher
         await _messagePublisher.PublishAsync(message);
 
         return Ok();
@@ -87,6 +104,8 @@ public class PublisherController : ControllerBase
             return BadRequest("The TransactionId cannot be null or empty.");
         }
 
+        // TransactionInfo messages are mapped to a FIFO queue, so use the
+        // SQS-specific publisher which allows setting the message group ID.
         await _sqsPublisher.SendAsync(transactionInfo, new SQSOptions
         {
             MessageGroupId = "group-123"
@@ -107,6 +126,8 @@ public class PublisherController : ControllerBase
             return BadRequest("The BidId cannot be null or empty.");
         }
 
+        // BidInfo messages are mapped to a FIFO SNS topic, so use the
+        // SNS-specific publisher which allows setting the message group ID.
         await _snsPublisher.PublishAsync(bidInfo, new SNSOptions
         {
             MessageGroupId = "group-123"
