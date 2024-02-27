@@ -128,7 +128,7 @@ public class PublisherController : ControllerBase
         }
 
         // Publish the message to SQS using the injected ISQSPublisher, with SQS-specific options
-        await _sqsPublisher.PublishAsync(message, new SQSOptions
+        await _sqsPublisher.SendAsync(message, new SQSOptions
         {
             DelaySeconds = <delay-in-seconds>,
             MessageAttributes = <message-attributes>,

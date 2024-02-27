@@ -11,12 +11,12 @@ using Microsoft.Extensions.Logging;
 namespace AWS.Messaging.Publishers.SQS;
 
 /// <summary>
-/// The SQS message publisher allows publishing messages to AWS SQS.
+/// The SQS message publisher allows sending messages to AWS SQS.
 /// </summary>
-internal class SQSPublisher : IMessagePublisher, ISQSPublisher
+internal class SQSPublisher : ISQSPublisher
 {
     private readonly IAWSClientProvider _awsClientProvider;
-    private readonly ILogger<IMessagePublisher> _logger;
+    private readonly ILogger<ISQSPublisher> _logger;
     private readonly IMessageConfiguration _messageConfiguration;
     private readonly IEnvelopeSerializer _envelopeSerializer;
     private readonly ITelemetryFactory _telemetryFactory;
@@ -29,7 +29,7 @@ internal class SQSPublisher : IMessagePublisher, ISQSPublisher
     /// </summary>
     public SQSPublisher(
         IAWSClientProvider awsClientProvider,
-        ILogger<IMessagePublisher> logger,
+        ILogger<ISQSPublisher> logger,
         IMessageConfiguration messageConfiguration,
         IEnvelopeSerializer envelopeSerializer,
         ITelemetryFactory telemetryFactory)
@@ -48,9 +48,9 @@ internal class SQSPublisher : IMessagePublisher, ISQSPublisher
     /// <param name="token">The cancellation token used to cancel the request.</param>
     /// <exception cref="InvalidMessageException">If the message is null or invalid.</exception>
     /// <exception cref="MissingMessageTypeConfigurationException">If cannot find the publisher configuration for the message type.</exception>
-    public async Task PublishAsync<T>(T message, CancellationToken token = default)
+    public async Task SendAsync<T>(T message, CancellationToken token = default)
     {
-        await PublishAsync(message, null, token);
+        await SendAsync(message, null, token);
     }
 
     /// <summary>
@@ -61,7 +61,7 @@ internal class SQSPublisher : IMessagePublisher, ISQSPublisher
     /// <param name="token">The cancellation token used to cancel the request.</param>
     /// <exception cref="InvalidMessageException">If the message is null or invalid.</exception>
     /// <exception cref="MissingMessageTypeConfigurationException">If cannot find the publisher configuration for the message type.</exception>
-    public async Task PublishAsync<T>(T message, SQSOptions? sqsOptions, CancellationToken token = default)
+    public async Task SendAsync<T>(T message, SQSOptions? sqsOptions, CancellationToken token = default)
     {
         using (var trace = _telemetryFactory.Trace("Publish to AWS SQS"))
         {
@@ -127,9 +127,9 @@ internal class SQSPublisher : IMessagePublisher, ISQSPublisher
         if (queueUrl.EndsWith(FIFO_SUFFIX) && string.IsNullOrEmpty(sqsOptions?.MessageGroupId))
         {
             var errorMessage =
-                $"You are attempting to publish to a FIFO SQS queue but the request does not include a message group ID. " +
-                $"Please use {nameof(ISQSPublisher)} from the service collection to publish to FIFO queues. " +
-                $"It exposes a {nameof(PublishAsync)} method that accepts {nameof(SQSOptions)} as a parameter. " +
+                $"You are attempting to send to a FIFO SQS queue but the request does not include a message group ID. " +
+                $"Please use {nameof(ISQSPublisher)} from the service collection to send to FIFO queues. " +
+                $"It exposes a {nameof(SendAsync)} method that accepts {nameof(SQSOptions)} as a parameter. " +
                 $"A message group ID must be specified via {nameof(SQSOptions.MessageGroupId)}. " +
                 $"Additionally, {nameof(SQSOptions.MessageDeduplicationId)} must also be specified if content based de-duplication is not enabled on the queue.";
 

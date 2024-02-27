@@ -439,7 +439,7 @@ public class LambdaFifoTests : IAsyncLifetime
 
                 expectedMessagesPerGroup[groupId].Add(transactionInfo);
 
-                await _publisher!.PublishAsync(transactionInfo, new SQSOptions
+                await _publisher!.SendAsync(transactionInfo, new SQSOptions
                 {
                     MessageGroupId = groupId
                 });

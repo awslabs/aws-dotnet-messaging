@@ -155,7 +155,7 @@ internal class Program
         {
             DisplayData(benchmarkCollector.PublishTimes, publishElapsedTime, numberOfMessages, "Publishing");
             DisplayData(benchmarkCollector.ReceptionTimes, handlingElapsedTime, numberOfMessages, "Receiving");
-        }     
+        }
 
         host.Dispose();
         return benchmarkCollector;
@@ -218,7 +218,7 @@ internal class Program
         await Parallel.ForEachAsync(Enumerable.Range(0, messageCount), options, async (messageNumber, token) =>
         {
             var start = stopwatch.Elapsed;
-            await publisher.PublishAsync(new BenchmarkMessage { SentTime = DateTime.UtcNow }, null, token);
+            await publisher.SendAsync(new BenchmarkMessage { SentTime = DateTime.UtcNow }, null, token);
             var publishDuration = stopwatch.Elapsed - start;
 
             benchmarkCollector.RecordMessagePublish(publishDuration);

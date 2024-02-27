@@ -28,7 +28,8 @@ namespace AWS.Messaging.UnitTests;
 public class MessagePublisherTests
 {
     private readonly Mock<IMessageConfiguration> _messageConfiguration;
-    private readonly Mock<ILogger<IMessagePublisher>> _logger;
+    private readonly Mock<ILogger<IMessagePublisher>> _messagePublisherLogger;
+    private readonly Mock<ILogger<ISQSPublisher>> _sqsPublisherLogger;
     private readonly Mock<IAmazonSQS> _sqsClient;
     private readonly Mock<IAmazonSimpleNotificationService> _snsClient;
     private readonly Mock<IAmazonEventBridge> _eventBridgeClient;
@@ -38,7 +39,8 @@ public class MessagePublisherTests
     public MessagePublisherTests()
     {
         _messageConfiguration = new Mock<IMessageConfiguration>();
-        _logger = new Mock<ILogger<IMessagePublisher>>();
+        _messagePublisherLogger = new Mock<ILogger<IMessagePublisher>>();
+        _sqsPublisherLogger = new Mock<ILogger<ISQSPublisher>>();
 
         _sqsClient = new Mock<IAmazonSQS>();
         _sqsClient.Setup(x => x.SendMessageAsync(It.IsAny<SendMessageRequest>(), It.IsAny<CancellationToken>()));
@@ -68,7 +70,7 @@ public class MessagePublisherTests
         var messagePublisher = new MessageRoutingPublisher(
             serviceProvider,
             _messageConfiguration.Object,
-            _logger.Object,
+            _messagePublisherLogger.Object,
             new DefaultTelemetryFactory(serviceProvider)
             );
 
@@ -95,7 +97,7 @@ public class MessagePublisherTests
         var messagePublisher = new MessageRoutingPublisher(
             serviceProvider,
             _messageConfiguration.Object,
-            _logger.Object,
+            _messagePublisherLogger.Object,
             telemetryFactory.Object
             );
 
@@ -128,7 +130,7 @@ public class MessagePublisherTests
         var messagePublisher = new MessageRoutingPublisher(
             serviceProvider,
             _messageConfiguration.Object,
-            _logger.Object,
+            _messagePublisherLogger.Object,
             telemetryFactory.Object
             );
 
@@ -153,13 +155,13 @@ public class MessagePublisherTests
 
         var messagePublisher = new SQSPublisher(
             (IAWSClientProvider)serviceProvider.GetService(typeof(IAWSClientProvider))!,
-            _logger.Object,
+            _sqsPublisherLogger.Object,
             _messageConfiguration.Object,
             _envelopeSerializer.Object,
             telemetryFactory.Object
             );
 
-        await messagePublisher.PublishAsync(_chatMessage);
+        await messagePublisher.SendAsync(_chatMessage);
 
         telemetryFactory.Verify(x =>
             x.Trace(
@@ -212,13 +214,13 @@ public class MessagePublisherTests
 
         var messagePublisher = new SQSPublisher(
             (IAWSClientProvider)serviceProvider.GetService(typeof(IAWSClientProvider))!,
-            _logger.Object,
+            _sqsPublisherLogger.Object,
             _messageConfiguration.Object,
             _envelopeSerializer.Object,
             telemetryFactory.Object
             );
 
-        await Assert.ThrowsAsync<Exception>(() => messagePublisher.PublishAsync(_chatMessage));
+        await Assert.ThrowsAsync<Exception>(() => messagePublisher.SendAsync(_chatMessage));
 
         telemetryTrace.Verify(x =>
             x.AddException(
@@ -235,7 +237,7 @@ public class MessagePublisherTests
         var messagePublisher = new MessageRoutingPublisher(
             serviceProvider,
             _messageConfiguration.Object,
-            _logger.Object,
+            _messagePublisherLogger.Object,
             new DefaultTelemetryFactory(serviceProvider)
             );
 
@@ -250,7 +252,7 @@ public class MessagePublisherTests
         var messagePublisher = new MessageRoutingPublisher(
             serviceProvider,
             _messageConfiguration.Object,
-            _logger.Object,
+            _messagePublisherLogger.Object,
             new DefaultTelemetryFactory(serviceProvider)
             );
 
@@ -266,7 +268,7 @@ public class MessagePublisherTests
 
         var services = new ServiceCollection();
         services.AddSingleton<IAmazonSQS>(_sqsClient.Object);
-        services.AddSingleton<ILogger<IMessagePublisher>>(_logger.Object);
+        services.AddSingleton<ILogger<ISQSPublisher>>(_sqsPublisherLogger.Object);
         services.AddSingleton<IMessageConfiguration>(_messageConfiguration.Object);
         services.AddSingleton<IEnvelopeSerializer>(_envelopeSerializer.Object);
         services.AddSingleton<IAWSClientProvider, AWSClientProvider>();
@@ -279,7 +281,7 @@ public class MessagePublisherTests
     {
         return new SQSPublisher(
           (IAWSClientProvider)serviceProvider.GetService(typeof(IAWSClientProvider))!,
-          _logger.Object,
+          _sqsPublisherLogger.Object,
           _messageConfiguration.Object,
           _envelopeSerializer.Object,
           (ITelemetryFactory)serviceProvider.GetService(typeof(ITelemetryFactory))!
@@ -297,7 +299,7 @@ public class MessagePublisherTests
         var messagePublisher = new MessageRoutingPublisher(
             serviceProvider,
             _messageConfiguration.Object,
-            _logger.Object,
+            _messagePublisherLogger.Object,
             new DefaultTelemetryFactory(serviceProvider)
             );
 
@@ -313,7 +315,7 @@ public class MessagePublisherTests
         var serviceProvider = SetupSQSPublisherDIServices();
         var messagePublisher = SetupSQSPublisher(serviceProvider);
 
-        await messagePublisher.PublishAsync(_chatMessage, new SQSOptions { QueueUrl = "overrideEndpoint" });
+        await messagePublisher.SendAsync(_chatMessage, new SQSOptions { QueueUrl = "overrideEndpoint" });
 
         // Assert we used the override endpoint specified above
         _sqsClient.Verify(x =>
@@ -338,7 +340,7 @@ public class MessagePublisherTests
         var overrideSQSClient = new Mock<IAmazonSQS>();
         overrideSQSClient.Setup(x => x.SendMessageAsync(It.IsAny<SendMessageRequest>(), It.IsAny<CancellationToken>()));
 
-        await messagePublisher.PublishAsync(_chatMessage, new SQSOptions
+        await messagePublisher.SendAsync(_chatMessage, new SQSOptions
         {
             OverrideClient = overrideSQSClient.Object
         });
@@ -363,7 +365,7 @@ public class MessagePublisherTests
         var serviceProvider = SetupSQSPublisherDIServices("");
         var messagePublisher = SetupSQSPublisher(serviceProvider);
 
-        await Assert.ThrowsAsync<InvalidPublisherEndpointException>(() => messagePublisher.PublishAsync(_chatMessage, new SQSOptions()));
+        await Assert.ThrowsAsync<InvalidPublisherEndpointException>(() => messagePublisher.SendAsync(_chatMessage, new SQSOptions()));
     }
 
     private IServiceProvider SetupSNSPublisherDIServices(string topicArn = "endpoint")
@@ -375,7 +377,7 @@ public class MessagePublisherTests
 
         var services = new ServiceCollection();
         services.AddSingleton<IAmazonSimpleNotificationService>(_snsClient.Object);
-        services.AddSingleton<ILogger<IMessagePublisher>>(_logger.Object);
+        services.AddSingleton<ILogger<IMessagePublisher>>(_messagePublisherLogger.Object);
         services.AddSingleton<IMessageConfiguration>(_messageConfiguration.Object);
         services.AddSingleton<IEnvelopeSerializer>(_envelopeSerializer.Object);
         services.AddSingleton<IAWSClientProvider, AWSClientProvider>();
@@ -388,7 +390,7 @@ public class MessagePublisherTests
     {
         return new SNSPublisher(
             (IAWSClientProvider)serviceProvider.GetService(typeof(IAWSClientProvider))!,
-            _logger.Object,
+            _messagePublisherLogger.Object,
             _messageConfiguration.Object,
             _envelopeSerializer.Object,
             (ITelemetryFactory)serviceProvider.GetService(typeof(ITelemetryFactory))!
@@ -403,7 +405,7 @@ public class MessagePublisherTests
         var messagePublisher = new MessageRoutingPublisher(
             serviceProvider,
             _messageConfiguration.Object,
-            _logger.Object,
+            _messagePublisherLogger.Object,
             new DefaultTelemetryFactory(serviceProvider)
             );
 
@@ -428,7 +430,7 @@ public class MessagePublisherTests
 
         var messagePublisher = new SNSPublisher(
             (IAWSClientProvider)serviceProvider.GetService(typeof(IAWSClientProvider))!,
-            _logger.Object,
+            _messagePublisherLogger.Object,
             _messageConfiguration.Object,
             _envelopeSerializer.Object,
             telemetryFactory.Object
@@ -487,7 +489,7 @@ public class MessagePublisherTests
 
         var messagePublisher = new SNSPublisher(
             (IAWSClientProvider)serviceProvider.GetService(typeof(IAWSClientProvider))!,
-            _logger.Object,
+            _messagePublisherLogger.Object,
             _messageConfiguration.Object,
             _envelopeSerializer.Object,
             telemetryFactory.Object
@@ -510,7 +512,7 @@ public class MessagePublisherTests
         var messagePublisher = new MessageRoutingPublisher(
             serviceProvider,
             _messageConfiguration.Object,
-            _logger.Object,
+            _messagePublisherLogger.Object,
             new DefaultTelemetryFactory(serviceProvider)
             );
 
@@ -589,7 +591,7 @@ public class MessagePublisherTests
 
         var services = new ServiceCollection();
         services.AddSingleton<IAmazonEventBridge>(_eventBridgeClient.Object);
-        services.AddSingleton<ILogger<IMessagePublisher>>(_logger.Object);
+        services.AddSingleton<ILogger<IMessagePublisher>>(_messagePublisherLogger.Object);
         services.AddSingleton<IMessageConfiguration>(_messageConfiguration.Object);
         services.AddSingleton<IEnvelopeSerializer>(_envelopeSerializer.Object);
         services.AddSingleton<IAWSClientProvider, AWSClientProvider>();
@@ -602,7 +604,7 @@ public class MessagePublisherTests
     {
         return new EventBridgePublisher(
            (IAWSClientProvider)serviceProvider.GetService(typeof(IAWSClientProvider))!,
-           _logger.Object,
+           _messagePublisherLogger.Object,
            _messageConfiguration.Object,
            _envelopeSerializer.Object,
            (ITelemetryFactory)serviceProvider.GetService(typeof(ITelemetryFactory))!
@@ -617,7 +619,7 @@ public class MessagePublisherTests
         var messagePublisher = new MessageRoutingPublisher(
             serviceProvider,
             _messageConfiguration.Object,
-            _logger.Object,
+            _messagePublisherLogger.Object,
             new DefaultTelemetryFactory(serviceProvider)
             );
 
@@ -643,7 +645,7 @@ public class MessagePublisherTests
 
         var messagePublisher = new EventBridgePublisher(
             (IAWSClientProvider)serviceProvider.GetService(typeof(IAWSClientProvider))!,
-            _logger.Object,
+            _messagePublisherLogger.Object,
             _messageConfiguration.Object,
             _envelopeSerializer.Object,
             telemetryFactory.Object
@@ -702,7 +704,7 @@ public class MessagePublisherTests
 
         var messagePublisher = new EventBridgePublisher(
             (IAWSClientProvider)serviceProvider.GetService(typeof(IAWSClientProvider))!,
-            _logger.Object,
+            _messagePublisherLogger.Object,
             _messageConfiguration.Object,
             _envelopeSerializer.Object,
             telemetryFactory.Object
@@ -725,7 +727,7 @@ public class MessagePublisherTests
         var messagePublisher = new MessageRoutingPublisher(
             serviceProvider,
             _messageConfiguration.Object,
-            _logger.Object,
+            _messagePublisherLogger.Object,
             new DefaultTelemetryFactory(serviceProvider)
             );
 
@@ -789,7 +791,7 @@ public class MessagePublisherTests
         var messagePublisher = new MessageRoutingPublisher(
             serviceProvider,
             _messageConfiguration.Object,
-            _logger.Object,
+            _messagePublisherLogger.Object,
             new DefaultTelemetryFactory(serviceProvider)
             );
 
@@ -868,20 +870,20 @@ public class MessagePublisherTests
         var messagePublisher = new MessageRoutingPublisher(
             serviceProvider,
             _messageConfiguration.Object,
-            _logger.Object,
+            _messagePublisherLogger.Object,
             new DefaultTelemetryFactory(serviceProvider)
             );
 
         var sqsMessagePublisher = new SQSPublisher(
             (IAWSClientProvider)serviceProvider.GetService(typeof(IAWSClientProvider))!,
-            _logger.Object,
+            _sqsPublisherLogger.Object,
             _messageConfiguration.Object,
             _envelopeSerializer.Object,
             new DefaultTelemetryFactory(serviceProvider)
             );
 
         await Assert.ThrowsAsync<InvalidFifoPublishingRequestException>(() => messagePublisher.PublishAsync<ChatMessage?>(new ChatMessage()));
-        await Assert.ThrowsAsync<InvalidFifoPublishingRequestException>(() => sqsMessagePublisher.PublishAsync<ChatMessage?>(new ChatMessage(), new SQSOptions()));
+        await Assert.ThrowsAsync<InvalidFifoPublishingRequestException>(() => sqsMessagePublisher.SendAsync<ChatMessage?>(new ChatMessage(), new SQSOptions()));
     }
 
     [Fact]
@@ -892,7 +894,7 @@ public class MessagePublisherTests
         var messagePublisher = new MessageRoutingPublisher(
             serviceProvider,
             _messageConfiguration.Object,
-            _logger.Object,
+            _messagePublisherLogger.Object,
             new DefaultTelemetryFactory(serviceProvider)
             );
 

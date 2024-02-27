@@ -234,7 +234,7 @@ public class FifoSubscriberTests : IAsyncLifetime
                 transactionInfo.ShouldFail = true;
             }
 
-            await sqsPublisher.PublishAsync(transactionInfo, new SQSOptions
+            await sqsPublisher.SendAsync(transactionInfo, new SQSOptions
             {
                 MessageGroupId = userId
             });

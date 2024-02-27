@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Amazon.SQS;
 using AWS.Messaging.Configuration;
 using AWS.Messaging.Publishers;
+using AWS.Messaging.Publishers.SQS;
 using AWS.Messaging.Serialization;
 using AWS.Messaging.Services;
 using AWS.Messaging.Telemetry;
@@ -39,10 +40,11 @@ public class OpenTelemetryTests
     /// messages without actually using SQS
     /// </summary>
     public OpenTelemetryTests()
-    {       
+    {
         var envelopeSerializer = new Mock<IEnvelopeSerializer>();
         var messageConfiguration = new Mock<IMessageConfiguration>();
-        var logger = new Mock<ILogger<IMessagePublisher>>();
+        var messagePublisherLogger = new Mock<ILogger<IMessagePublisher>>();
+        var sqsPublisherLogger = new Mock<ILogger<ISQSPublisher>>();
         var publisherMapping = new PublisherMapping(typeof(ChatMessage), new SQSPublisherConfiguration("endpoint"), PublisherTargetType.SQS_PUBLISHER);
         _subscriberMapping = new SubscriberMapping(typeof(ChatMessageHandler), typeof(ChatMessage));
 
@@ -50,14 +52,15 @@ public class OpenTelemetryTests
         {
             Id = "1234",
             Source = new Uri("/aws/messaging/unittest", UriKind.Relative)
-        }));     
+        }));
 
         messageConfiguration.Setup(x => x.GetPublisherMapping(typeof(ChatMessage))).Returns(publisherMapping);
         messageConfiguration.Setup(x => x.GetSubscriberMapping(typeof(ChatMessage))).Returns(_subscriberMapping);
 
         var services = new ServiceCollection();
         services.AddSingleton(new Mock<IAmazonSQS>().Object);
-        services.AddSingleton(logger.Object);
+        services.AddSingleton(messagePublisherLogger.Object);
+        services.AddSingleton(sqsPublisherLogger.Object);
         services.AddSingleton(messageConfiguration.Object);
         services.AddSingleton(envelopeSerializer.Object);
         services.AddSingleton<IAWSClientProvider, AWSClientProvider>();
@@ -70,7 +73,7 @@ public class OpenTelemetryTests
         _publisher = new MessageRoutingPublisher(
             _serviceProvider,
             messageConfiguration.Object,
-            logger.Object,
+            messagePublisherLogger.Object,
             new DefaultTelemetryFactory(_serviceProvider));
 
         _handler = new HandlerInvoker(

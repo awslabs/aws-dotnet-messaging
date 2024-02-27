@@ -1,6 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using AWS.Messaging.Services;
+
 namespace AWS.Messaging.Publishers.EventBridge
 {
     /// <summary>
@@ -8,7 +10,7 @@ namespace AWS.Messaging.Publishers.EventBridge
     /// It exposes the <see cref="PublishAsync{T}(T, EventBridgeOptions?, CancellationToken)"/> method which takes in a user-defined message, and <see cref="EventBridgeOptions"/> to set additonal parameters while publishing messages to EventBridge.
     /// Using dependency injection, this interface is available to inject anywhere in the code.
     /// </summary>
-    public interface IEventBridgePublisher
+    public interface IEventBridgePublisher : IEventPublisher
     {
         /// <summary>
         /// Publishes the application message to SNS.

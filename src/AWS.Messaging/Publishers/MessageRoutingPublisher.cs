@@ -6,6 +6,7 @@ using AWS.Messaging.Configuration;
 using AWS.Messaging.Publishers.EventBridge;
 using AWS.Messaging.Publishers.SNS;
 using AWS.Messaging.Publishers.SQS;
+using AWS.Messaging.Services;
 using AWS.Messaging.Telemetry;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -47,10 +48,16 @@ internal class MessageRoutingPublisher : IMessagePublisher
         };
 
     /// <summary>
-    /// This dictionary serves as a method to cache created instances of <see cref="IMessagePublisher"/>,
+    /// This dictionary serves as a method to cache created instances of <see cref="ICommandPublisher"/>,
+    /// to avoid having to create a new instance any time a message is sent.
+    /// </summary>
+    private readonly ConcurrentDictionary<Type, ICommandPublisher> _commandPublisherInstances = new();
+
+    /// <summary>
+    /// This dictionary serves as a method to cache created instances of <see cref="IEventPublisher"/>,
     /// to avoid having to create a new instance any time a message is published.
     /// </summary>
-    private readonly ConcurrentDictionary<Type, IMessagePublisher> _publisherInstances = new();
+    private readonly ConcurrentDictionary<Type, IEventPublisher> _eventPublisherInstances = new();
 
     /// <summary>
     /// Publishes a user-defined message to an AWS service based on the
@@ -80,16 +87,23 @@ internal class MessageRoutingPublisher : IMessagePublisher
 
                 if (_publisherTypeMapping.TryGetValue(mapping.PublishTargetType, out var publisherType))
                 {
-                    if (!typeof(IMessagePublisher).IsAssignableFrom(publisherType))
+                    if (typeof(ICommandPublisher).IsAssignableFrom(publisherType))
+                    {
+                        var publisher = _commandPublisherInstances.GetOrAdd(publisherType, _ => (ICommandPublisher) ActivatorUtilities.CreateInstance(_serviceProvider, publisherType));
+                        await publisher.SendAsync(message, token);
+                    }
+                    else if (typeof(IEventPublisher).IsAssignableFrom(publisherType))
+                    {
+                        var publisher = _eventPublisherInstances.GetOrAdd(publisherType, _ => (IEventPublisher) ActivatorUtilities.CreateInstance(_serviceProvider, publisherType));
+                        await publisher.PublishAsync(message, token);
+                    }
+                    else
                     {
                         _logger.LogError("The message publisher corresponding to the type '{PublishTargetType}' is invalid " +
-                            "and does not implement the interface '{InterfaceType}'.", mapping.PublishTargetType, typeof(IMessagePublisher));
+                                         "and does not implement the interface '{CommandInterfaceType}' or '{EventInterfaceType}'.", mapping.PublishTargetType, typeof(ICommandPublisher), typeof(IEventPublisher));
                         throw new InvalidPublisherTypeException($"The message publisher corresponding to the type '{mapping.PublishTargetType}' is invalid " +
-                            $"and does not implement the interface '{typeof(IMessagePublisher)}'.");
+                                                                $"and does not implement the interface '{typeof(ICommandPublisher)}' or '{typeof(IEventPublisher)}'.");
                     }
-
-                    var publisher = GetPublisherInstance(publisherType);
-                    await publisher.PublishAsync(message, token);
                 }
                 else
                 {
@@ -103,13 +117,5 @@ internal class MessageRoutingPublisher : IMessagePublisher
                 throw;
             }
         }
-    }
-
-    private IMessagePublisher GetPublisherInstance(Type publisherType)
-    {
-        return _publisherInstances.GetOrAdd(publisherType, x =>
-        {
-            return (IMessagePublisher) ActivatorUtilities.CreateInstance(_serviceProvider, publisherType);
-        });
     }
 }
