@@ -57,7 +57,7 @@ public class PublisherController : ControllerBase
 
         return Ok();
     }
-    
+
     [HttpPost("fooditem", Name = "Food Item")]
     public async Task<IActionResult> PublishFoodItem([FromBody] FoodItem message)
     {
@@ -87,7 +87,7 @@ public class PublisherController : ControllerBase
             return BadRequest("The TransactionId cannot be null or empty.");
         }
 
-        await _sqsPublisher.PublishAsync(transactionInfo, new SQSOptions
+        await _sqsPublisher.SendAsync(transactionInfo, new SQSOptions
         {
             MessageGroupId = "group-123"
         });

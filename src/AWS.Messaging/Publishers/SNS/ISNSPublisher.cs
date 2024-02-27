@@ -1,6 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using AWS.Messaging.Services;
+
 namespace AWS.Messaging.Publishers.SNS
 {
     /// <summary>
@@ -8,7 +10,7 @@ namespace AWS.Messaging.Publishers.SNS
     /// It exposes the <see cref="PublishAsync{T}(T, SNSOptions?, CancellationToken)"/> method which takes in a user-defined message, and <see cref="SNSOptions"/> to set additonal parameters while publishing messages to SNS.
     /// Using dependency injection, this interface is available to inject anywhere in the code.
     /// </summary>
-    public interface ISNSPublisher
+    public interface ISNSPublisher : IEventPublisher
     {
         /// <summary>
         /// Publishes the application message to SNS.
