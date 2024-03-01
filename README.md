@@ -67,7 +67,7 @@ builder.Services.AddAWSMessageBus(builder =>
 
 Once you have registered the framework during startup, inject the generic `IMessagePublisher` into your code. Call its `PublishAsync` method to publish any of the message types that were configured above. The generic publisher will determine the destination to route the message to based on its type.
 
-In the following example, an ASP.NET MVC controller receives both `ChatMessage` messages and `OrderInfo` events from users, and then publishes them to SQS and SNS respectively.
+In the following example, an ASP.NET MVC controller receives both `ChatMessage` messages and `OrderInfo` events from users, and then publishes them to SQS and SNS respectively. Both message types can be published using the generic publisher that was configured above.
 
 ```csharp
 [ApiController]

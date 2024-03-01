@@ -20,14 +20,14 @@ public class PublisherController : ControllerBase
     private readonly IMessagePublisher _messagePublisher;
 
     /// <summary>
-    /// SQS-specific publisher to use when publishing to a 
-    /// FIFO queue below so that you can set the message group ID.
+    /// SQS-specific publisher to use when you need to set SQS-specific options,
+    /// such as when publishing to a FIFO queue so that you can set the message group ID.
     /// </summary>
     private readonly ISQSPublisher _sqsPublisher;
 
     /// <summary>
-    /// SNS-specific publisher to use when publishing to a 
-    /// FIFO topic below so that you can set the message group ID.
+    /// SNS-specific publisher to use when you need to set SNS-specific options,
+    /// such as when publishing to a FIFO topic so that you can set the message group ID.
     /// </summary>
     private readonly ISNSPublisher _snsPublisher;
 
