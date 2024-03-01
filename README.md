@@ -143,7 +143,7 @@ public class PublisherController : ControllerBase
             return BadRequest("The MessageDescription cannot be null or empty.");
         }
 
-        // Publish the ChatMessage to SQS using the injected ISQSPublisher, with SQS-specific options
+        // Send the ChatMessage to SQS using the injected ISQSPublisher, with SQS-specific options
         await _sqsPublisher.SendAsync(message, new SQSOptions
         {
             DelaySeconds = <delay-in-seconds>,

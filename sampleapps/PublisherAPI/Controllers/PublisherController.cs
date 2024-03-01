@@ -21,7 +21,7 @@ public class PublisherController : ControllerBase
 
     /// <summary>
     /// SQS-specific publisher to use when you need to set SQS-specific options,
-    /// such as when publishing to a FIFO queue so that you can set the message group ID.
+    /// such as when sending to a FIFO queue so that you can set the message group ID.
     /// </summary>
     private readonly ISQSPublisher _sqsPublisher;
 
