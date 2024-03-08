@@ -73,26 +73,6 @@ public class AppSettingsConfigurationTests
     }
 
     [Fact]
-    public void AddSQSPublisher_MissingRequiredField()
-    {
-        var json = @"
-            {
-                ""AWS.Messaging"": {
-                    ""SQSPublishers"": [
-                        {
-                            ""MessageType"": ""AWS.Messaging.UnitTests.Models.ChatMessage""
-                        }
-                    ]
-                }
-            }";
-
-        Assert.ThrowsAny<Exception>(() =>
-        {
-            SetupConfigurationAndServices(json);
-        });
-    }
-
-    [Fact]
     public void AddSNSPublisher_NoIdentifier()
     {
         var json = @"
@@ -145,26 +125,6 @@ public class AppSettingsConfigurationTests
     }
 
     [Fact]
-    public void AddSNSPublisher_MissingRequiredField()
-    {
-        var json = @"
-            {
-                ""AWS.Messaging"": {
-                    ""SNSPublishers"": [
-                        {
-                            ""MessageType"": ""AWS.Messaging.UnitTests.Models.ChatMessage""
-                        }
-                    ]
-                }
-            }";
-
-        Assert.ThrowsAny<Exception>(() =>
-        {
-            SetupConfigurationAndServices(json);
-        });
-    }
-
-    [Fact]
     public void AddEventBridgePublisher_NoIdentifier()
     {
         var json = @"
@@ -214,26 +174,6 @@ public class AppSettingsConfigurationTests
         Assert.Equal(PublisherTargetType.EVENTBRIDGE_PUBLISHER, publisherMapping.PublishTargetType);
         Assert.Equal("arn:aws:events:us-west-2:012345678910:event-bus/default", publisherMapping.PublisherConfiguration.PublisherEndpoint);
         Assert.Equal("chatmessage", publisherMapping.MessageTypeIdentifier);
-    }
-
-    [Fact]
-    public void AddEventBridgePublisher_MissingRequiredField()
-    {
-        var json = @"
-            {
-                ""AWS.Messaging"": {
-                    ""EventBridgePublishers"": [
-                        {
-                            ""MessageType"": ""AWS.Messaging.UnitTests.Models.ChatMessage""
-                        }
-                    ]
-                }
-            }";
-
-        Assert.ThrowsAny<Exception>(() =>
-        {
-            SetupConfigurationAndServices(json);
-        });
     }
 
     [Fact]

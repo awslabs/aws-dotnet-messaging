@@ -1,7 +1,9 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using Amazon.SimpleNotificationService;
 using Amazon.SimpleNotificationService.Model;
+using AWS.Messaging.Configuration;
 
 namespace AWS.Messaging.Publishers.SNS
 {
@@ -39,5 +41,16 @@ namespace AWS.Messaging.Publishers.SNS
         /// It must be less than 100 characters long.
         /// </summary>
         public string? Subject { get; set; }
+
+        /// <summary>
+        /// The SNS Topic Arn
+        /// </summary>
+        public string? TopicArn { get; set; }
+
+        /// <summary>
+        /// An alternative SNS client that can be used to publish a specific message,
+        /// instead of the client provided by the registered <see cref="IAWSClientProvider"/> implementation.
+        /// </summary>
+        public IAmazonSimpleNotificationService? OverrideClient { get; set; }
     }
 }

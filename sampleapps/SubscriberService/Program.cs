@@ -39,6 +39,9 @@ await Host.CreateDefaultBuilder(args)
                     PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
                 };
             });
+
+            // Logging data messages is disabled by default to protect sensitive user data. If you want this enabled, uncomment the line below.
+            // builder.EnableDataMessageLogging();
         })
         .AddOpenTelemetry()
             .ConfigureResource(resource => resource.AddService("SubscriberService"))

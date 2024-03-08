@@ -65,7 +65,9 @@ builder.Services.AddAWSMessageBus(builder =>
 });
 ```
 
-Once you have registered the framework during startup, inject the `IMessagePublisher` into your code and call its `PublishAsync` method to publish a message. In the following example, an ASP.NET MVC controller receives a `ChatMessage` from the user and then publishes that same object to SQS.
+Once you have registered the framework during startup, inject the generic `IMessagePublisher` into your code. Call its `PublishAsync` method to publish any of the message types that were configured above. The generic publisher will determine the destination to route the message to based on its type.
+
+In the following example, an ASP.NET MVC controller receives both `ChatMessage` messages and `OrderInfo` events from users, and then publishes them to SQS and SNS respectively. Both message types can be published using the generic publisher that was configured above.
 
 ```csharp
 [ApiController]
@@ -92,7 +94,21 @@ public class PublisherController : ControllerBase
             return BadRequest("The MessageDescription cannot be null or empty.");
         }
 
-        // Publish the message to SQS, using the injected IMessagePublisher
+        // Publish the ChatMessage to SQS, using the generic publisher
+        await _messagePublisher.PublishAsync(message);
+
+        return Ok();
+    }
+
+    [HttpPost("order", Name = "Order")]
+    public async Task<IActionResult> PublishOrder([FromBody] OrderInfo message)
+    {
+        if (message == null)
+        {
+            return BadRequest("An order was not submitted.");
+        }
+
+        // Publish the OrderInfo to SNS, using the generic publisher
         await _messagePublisher.PublishAsync(message);
 
         return Ok();
@@ -101,7 +117,7 @@ public class PublisherController : ControllerBase
 ```
 ## Service-specific publishers
 
-The  example shown above uses the generic `IMessagePublisher`, which can publish to any supported AWS service based on the configured message type. The framework also provides *service-specific publishers* for SQS, SNS and EventBridge. These specific publishers expose options that only apply to that service, and can be injected using the types `ISQSPublisher`, `ISNSPublisher` and `IEventBridgePublisher`. 
+The example shown above uses the generic `IMessagePublisher`, which can publish to any supported AWS service based on the configured message type. The framework also provides *service-specific publishers* for SQS, SNS and EventBridge. These specific publishers expose options that only apply to that service, and can be injected using the types `ISQSPublisher`, `ISNSPublisher` and `IEventBridgePublisher`. 
 
 For example, when publishing messages to an SQS FIFO queue, you must set the appropriate [message group ID](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/FIFO-key-terms.html). The following code shows the `ChatMessage` example again, but now using an `ISQSPublisher` to set SQS-specific options.
 ```csharp
@@ -127,8 +143,8 @@ public class PublisherController : ControllerBase
             return BadRequest("The MessageDescription cannot be null or empty.");
         }
 
-        // Publish the message to SQS using the injected ISQSPublisher, with SQS-specific options
-        await _sqsPublisher.PublishAsync(message, new SQSOptions
+        // Send the ChatMessage to SQS using the injected ISQSPublisher, with SQS-specific options
+        await _sqsPublisher.SendAsync(message, new SQSOptions
         {
             DelaySeconds = <delay-in-seconds>,
             MessageAttributes = <message-attributes>,
@@ -311,10 +327,18 @@ We welcome community contributions and pull requests. See [CONTRIBUTING.md](./CO
 # Security
 The AWS Message Processing Framework for .NET relies on the [AWS SDK for .NET](https://github.com/aws/aws-sdk-net) for communicating with AWS. Refer to the [security section](https://docs.aws.amazon.com/sdk-for-net/v3/developer-guide/security.html) in the [AWS SDK for .NET Developer Guide](https://docs.aws.amazon.com/sdk-for-net/v3/developer-guide/welcome.html) for more information.
 
+The framework does not log data messages sent by the user for security purposes. If users want to enable this functionality for debugging purposes, you need to call `EnableDataMessageLogging()` in the AWS Message Bus as follows:
+```csharp
+builder.Services.AddAWSMessageBus(bus =>
+{
+    builder.EnableDataMessageLogging();
+});
+```
+
 If you discover a potential security issue, refer to the [security policy](https://github.com/awslabs/aws-dotnet-messaging/security/policy) for reporting information.
 
 # Additional Resources
-* [AWS Message Processing Framework for .NET Design Document](./docs/design/message-processing-framework-design.md)
+* [AWS Message Processing Framework for .NET Design Document](./docs/docs/design/message-processing-framework-design.md)
 * [Sample Applications](https://github.com/awslabs/aws-dotnet-messaging/tree/main/sampleapps) in this repo contains samples of a publisher service, long-running subscriber service, and Lambda function handlers.
 
 # License

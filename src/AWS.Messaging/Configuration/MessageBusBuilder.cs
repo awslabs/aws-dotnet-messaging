@@ -35,36 +35,36 @@ public class MessageBusBuilder : IMessageBusBuilder
     }
 
     /// <inheritdoc/>
-    public IMessageBusBuilder AddSQSPublisher<TMessage>(string queueUrl, string? messageTypeIdentifier = null)
+    public IMessageBusBuilder AddSQSPublisher<TMessage>(string? queueUrl, string? messageTypeIdentifier = null)
     {
         return AddSQSPublisher(typeof(TMessage), queueUrl, messageTypeIdentifier);
     }
 
-    private IMessageBusBuilder AddSQSPublisher(Type messageType, string queueUrl, string? messageTypeIdentifier = null)
+    private IMessageBusBuilder AddSQSPublisher(Type messageType, string? queueUrl, string? messageTypeIdentifier = null)
     {
         var sqsPublisherConfiguration = new SQSPublisherConfiguration(queueUrl);
         return AddPublisher(messageType, sqsPublisherConfiguration, PublisherTargetType.SQS_PUBLISHER, messageTypeIdentifier);
     }
 
     /// <inheritdoc/>
-    public IMessageBusBuilder AddSNSPublisher<TMessage>(string topicUrl, string? messageTypeIdentifier = null)
+    public IMessageBusBuilder AddSNSPublisher<TMessage>(string? topicUrl, string? messageTypeIdentifier = null)
     {
         return AddSNSPublisher(typeof(TMessage), topicUrl, messageTypeIdentifier);
     }
 
-    private IMessageBusBuilder AddSNSPublisher(Type messageType, string topicUrl, string? messageTypeIdentifier = null)
+    private IMessageBusBuilder AddSNSPublisher(Type messageType, string? topicUrl, string? messageTypeIdentifier = null)
     {
         var snsPublisherConfiguration = new SNSPublisherConfiguration(topicUrl);
         return AddPublisher(messageType, snsPublisherConfiguration, PublisherTargetType.SNS_PUBLISHER, messageTypeIdentifier);
     }
 
     /// <inheritdoc/>
-    public IMessageBusBuilder AddEventBridgePublisher<TMessage>(string eventBusName, string? messageTypeIdentifier = null, EventBridgePublishOptions? options = null)
+    public IMessageBusBuilder AddEventBridgePublisher<TMessage>(string? eventBusName, string? messageTypeIdentifier = null, EventBridgePublishOptions? options = null)
     {
         return AddEventBridgePublisher(typeof(TMessage), eventBusName, messageTypeIdentifier, options);
     }
 
-    private IMessageBusBuilder AddEventBridgePublisher(Type messageType, string eventBusName, string? messageTypeIdentifier = null, EventBridgePublishOptions? options = null)
+    private IMessageBusBuilder AddEventBridgePublisher(Type messageType, string? eventBusName, string? messageTypeIdentifier = null, EventBridgePublishOptions? options = null)
     {
         var eventBridgePublisherConfiguration = new EventBridgePublisherConfiguration(eventBusName)
         {
@@ -124,8 +124,8 @@ public class MessageBusBuilder : IMessageBusBuilder
             VisibilityTimeoutExtensionThreshold = sqsMessagePollerOptions.VisibilityTimeoutExtensionThreshold,
             VisibilityTimeoutExtensionHeartbeatInterval = sqsMessagePollerOptions.VisibilityTimeoutExtensionHeartbeatInterval,
             WaitTimeSeconds = sqsMessagePollerOptions.WaitTimeSeconds,
-            IsSQSExceptionFatal = sqsMessagePollerOptions.IsSQSExceptionFatal
-            
+            IsExceptionFatal = sqsMessagePollerOptions.IsExceptionFatal
+
         };
 
         _messageConfiguration.MessagePollerConfigurations.Add(sqsMessagePollerConfiguration);
@@ -159,7 +159,7 @@ public class MessageBusBuilder : IMessageBusBuilder
         _messageConfiguration.SourceSuffix = suffix;
         return this;
     }
-    
+
     /// <inheritdoc/>
     public IMessageBusBuilder LoadConfigurationFromSettings(IConfiguration configuration)
     {
@@ -239,6 +239,9 @@ public class MessageBusBuilder : IMessageBusBuilder
             }
         }
 
+        if (settings.LogMessageContent != null)
+            _messageConfiguration.LogMessageContent = settings.LogMessageContent ?? false;
+
         return this;
     }
 
@@ -261,8 +264,17 @@ public class MessageBusBuilder : IMessageBusBuilder
         return this;
     }
 
+    /// <inheritdoc/>
+    public IMessageBusBuilder EnableMessageContentLogging()
+    {
+        _messageConfiguration.LogMessageContent = true;
+        return this;
+    }
+
     internal void Build(IServiceCollection services)
     {
+        LoadConfigurationFromEnvironment();
+
         // Make sure there is at least the default null implementation of the logger to injected so that
         // the DI constructors can be satisfied.
         services.TryAdd(ServiceDescriptor.Singleton<ILoggerFactory, NullLoggerFactory>());
@@ -329,5 +341,15 @@ public class MessageBusBuilder : IMessageBusBuilder
         {
             services.Add(service);
         }
+    }
+
+    /// <summary>
+    /// Retrieve Message Processing Framework configuration from environment variables.
+    /// </summary>
+    private void LoadConfigurationFromEnvironment()
+    {
+        var logMessageContentEnvVar = Environment.GetEnvironmentVariable("AWSMESSAGING_LOGMESSAGECONTENT");
+        if (!string.IsNullOrEmpty(logMessageContentEnvVar) && bool.TryParse(logMessageContentEnvVar, out var logMessageContent))
+            _messageConfiguration.LogMessageContent = logMessageContent;
     }
 }

@@ -51,4 +51,7 @@ public class MessageConfiguration : IMessageConfiguration
 
     /// <inheritdoc/>
     public string? SourceSuffix { get; set; }
-} 
+
+    /// <inheritdoc/>
+    public bool LogMessageContent { get; set; }
+}

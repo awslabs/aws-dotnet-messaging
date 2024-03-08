@@ -89,9 +89,10 @@ internal class SQSMessagePollerConfiguration : IMessagePollerConfiguration
     public int WaitTimeSeconds { get; init; } = DEFAULT_WAIT_TIME_SECONDS;
 
     /// <summary>
-    /// Function that indicates whether an <see cref="AmazonSQSException"/> should stop the poller or continue.
+    /// Determines if a given exception should be treated as fatal and rethrown to stop the SQS poller.
     /// </summary>
-    public Func<AmazonSQSException, bool> IsSQSExceptionFatal { get; set; } = IsFatalException;
+    /// <remarks>This method only applies to the SQS poller, and not to publishing messages nor handling messages in Lambda.</remarks>
+    public Func<Exception, bool> IsExceptionFatal { get; set; } = DefaultIsExceptionFatal;
 
     /// <summary>
     /// Construct an instance of <see cref="SQSMessagePollerConfiguration" />
@@ -123,18 +124,51 @@ internal class SQSMessagePollerConfiguration : IMessagePollerConfiguration
     /// <summary>
     /// <see cref="AmazonSQSException"/> error codes that should be treated as fatal and stop the poller
     /// </summary>
+    /// <remarks>
+    /// These are the subset of https://docs.aws.amazon.com/AWSSimpleQueueService/latest/APIReference/API_ReceiveMessage.html#API_ReceiveMessage_Errors
+    /// that aren't modeled as typed exceptions
+    /// </remarks>
     private static readonly HashSet<string> _fatalSQSErrorCodes = new HashSet<string>
     {
-        "InvalidAddress",   // Returned for an invalid queue URL
-        "AccessDenied"      // Returned with insufficient IAM permissions to read from the configured queue
+        "AccessDenied", // Returned due to insufficient IAM permissions to read from the configured queue
     };
 
     /// <summary>
-    /// Determines if a given SQS exception should be treated as fatal and rethrown to stop the poller
+    /// Default logic that determines if a given exception should be treated as fatal and rethrown to stop the SQS poller.
     /// </summary>
-    /// <param name="sqsException">SQS Exception</param>
-    internal static bool IsFatalException(AmazonSQSException sqsException)
+    /// <remarks>
+    /// This treats exceptions related to queue or KMS permissions or the framework configuration as fatal.
+    /// Exceptions related to the deserializing and handling of a specific message are not fatal.</remarks>
+    /// <param name="exception">Exception to determine if it's fatal</param>
+    /// <returns>True to stop the SQS poller if the exception is caught, false otherwise</returns>
+    internal static bool DefaultIsExceptionFatal(Exception exception)
     {
-        return sqsException is QueueDoesNotExistException ? true : _fatalSQSErrorCodes.Contains(sqsException.ErrorCode);
+        switch (exception)
+        {
+            // Modeled SQS exceptions that should be treated as fatal
+            case QueueDoesNotExistException:    // Queue URL doesn't exist
+            case UnsupportedOperationException: // Error code 400. Unsupported operation.
+            case InvalidAddressException:       // The accountId is invalid.
+            case InvalidSecurityException:      // When the request to a queue is not HTTPS and SigV4.
+            case KmsAccessDeniedException:      // The caller doesn't have the required KMS access.
+            case KmsInvalidKeyUsageException:   // The key is incompatible with the operation, or the encryption/signing algorithm is incompatible.
+            case KmsInvalidStateException:      // The state of the specified resource is not valid for this request.
+            case KmsNotFoundException:          // The specified entity or resource could not be found. 
+            case KmsOptInRequiredException:     // The specified key policy isn't syntactically or semantically correct.
+                return true;
+
+            // For unmodeled SQS exceptions that don't have a corresponding .NET type, check the error code
+            case AmazonSQSException sqsException:
+                return _fatalSQSErrorCodes.Contains(sqsException.ErrorCode);
+
+            // AWSMessagingExceptions thrown by the framework that should be treated as fatal
+            case FailedToFindAWSServiceClientException:     // Failed to resolve AWS service clients from DI
+            case InvalidAppSettingsConfigurationException:  // Failed to find the handler type from what was specified in settings
+            case InvalidMessageHandlerSignatureException:   // A subscriber mapping was registered, but failed to invoke the handler
+                return true;
+
+            default:
+                return false;
+        }
     }
 }

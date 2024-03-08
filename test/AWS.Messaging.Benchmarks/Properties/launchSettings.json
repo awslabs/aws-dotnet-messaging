@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "Single Benchmark": {
+        "commandName": "Project",
+        "commandLineArgs": "--queueUrl https://sqs.us-east-1.amazonaws.com/012345678910/benchmark-queue"
+    },
+    "Multiple Iterations": {
+        "commandName": "Project",
+        "commandLineArgs": "multi --queueUrl https://sqs.us-east-1.amazonaws.com/012345678910/benchmark-queue"
+    }
+  }
+}

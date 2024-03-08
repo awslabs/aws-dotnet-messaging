@@ -1,6 +1,9 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using Amazon.EventBridge;
+using AWS.Messaging.Configuration;
+
 namespace AWS.Messaging.Publishers.EventBridge
 {
     /// <summary>
@@ -33,5 +36,24 @@ namespace AWS.Messaging.Publishers.EventBridge
         /// Contains a list of Amazon Resource Names that the event primarily concerns.
         /// </summary>
         public List<string>? Resources { get; set; }
+
+        /// <summary>
+        /// The EventBridge Event Bus name or ARN which the publisher will use to route the message.
+        /// This can be used to override the EventBusName that is configured for a given message
+        /// type when publishing a specific message.
+        /// </summary>
+        public string? EventBusName { get; set; }
+
+        /// <summary>
+        /// The ID of the global EventBridge endpoint. This can be used to override the EndpointID
+        /// that is configured for a given message type when publishing a specific message.
+        /// </summary>
+        public string? EndpointID { get; set; }
+
+        /// <summary>
+        /// An alternative EventBridge client that can be used to publish a specific message,
+        /// instead of the client provided by the registered <see cref="IAWSClientProvider"/> implementation.
+        /// </summary>
+        public IAmazonEventBridge? OverrideClient { get; set; }
     }
 }

@@ -1,7 +1,9 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using Amazon.SQS;
 using Amazon.SQS.Model;
+using AWS.Messaging.Configuration;
 
 namespace AWS.Messaging.Publishers.SQS
 {
@@ -44,5 +46,17 @@ namespace AWS.Messaging.Publishers.SQS
         /// Refer to the <see href="https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/using-messagegroupid-property.html">SQS developer guide</see> for best practices while using MessageGroupId.
         /// </summary>
         public string? MessageGroupId { get; set; }
+
+        /// <summary>
+        /// The SQS queue URL which the publisher will use to route the message. This can be used to override the queue URL
+        /// that is configured for a given message type when publishing a specific message.
+        /// </summary>
+        public string? QueueUrl { get; set; }
+
+        /// <summary>
+        /// An alternative SQS client that can be used to publish a specific message,
+        /// instead of the client provided by the registered <see cref="IAWSClientProvider"/> implementation.
+        /// </summary>
+        public IAmazonSQS? OverrideClient { get; set; }
     }
 }

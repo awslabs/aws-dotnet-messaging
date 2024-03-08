@@ -40,6 +40,13 @@ public class ApplicationSettings
     public ICollection<SQSPoller> SQSPollers { get; set; } = default!;
 
     /// <summary>
+    /// Controls the visibility of data messages in the logging framework, exception handling and other areas.
+    /// If this is enabled, messages sent by this framework will be visible in plain text across the framework's components.
+    /// This means any sensitive user data sent by this framework will be visible in logs, any exceptions thrown and others.
+    /// </summary>
+    public bool? LogMessageContent { get; set; } = default;
+
+    /// <summary>
     /// Represents an SQS publisher configuration.
     /// </summary>
     public class SQSPublisher
