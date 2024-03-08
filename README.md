@@ -325,7 +325,7 @@ For feature requests or issues using this framework please open an [issue in thi
 We welcome community contributions and pull requests. See [CONTRIBUTING.md](./CONTRIBUTING.md) for information on how to submit code.
 
 # Security
-The AWS Message Processing Framework for .NET relies on the [AWS SDK for .NET](https://github.com/aws/aws-sdk-net) for communicating with AWS. Refer to the [security section](https://docs.aws.amazon.com/sdk-for-net/v3/developer-guide/security.html) in the [AWS SDK for .NET Developer Guide](https://docs.aws.amazon.com/sdk-for-net/v3/developer-guide/welcome.html) for more information.
+The AWS Message Processing Framework for .NET relies on the [AWS SDK for .NET](https://github.com/aws/aws-sdk-net) for communicating with AWS. Refer to the [security section](https://docs.aws.amazon.com/sdk-for-net/v3/developer-guide/security.html) in the [AWS SDK for .NET Developer Guide](https://docs.aws.amazon.com/sdk-for-net/v3/developer-guide/welcome.html) for more information. You can also find more information in [AWS Message Processing Framework for .NET Developer Guide](https://docs.aws.amazon.com/sdk-for-net/v3/developer-guide/msg-proc-fw.html).
 
 The framework does not log data messages sent by the user for security purposes. If users want to enable this functionality for debugging purposes, you need to call `EnableDataMessageLogging()` in the AWS Message Bus as follows:
 ```csharp
@@ -340,6 +340,7 @@ If you discover a potential security issue, refer to the [security policy](https
 # Additional Resources
 * [AWS Message Processing Framework for .NET Design Document](./docs/docs/design/message-processing-framework-design.md)
 * [Sample Applications](https://github.com/awslabs/aws-dotnet-messaging/tree/main/sampleapps) in this repo contains samples of a publisher service, long-running subscriber service, and Lambda function handlers.
+* [Developer Guide](https://docs.aws.amazon.com/sdk-for-net/v3/developer-guide/msg-proc-fw.html)
 
 # License
 

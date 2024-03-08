@@ -1,4 +1,4 @@
 ---
 _layout: landing
-redirect_url: docs/overview.html
+redirect_url: api/AWS.Messaging.html
 ---
