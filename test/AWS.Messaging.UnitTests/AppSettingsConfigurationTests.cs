@@ -5,6 +5,7 @@ using System;
 using System.IO;
 using System.Text;
 using AWS.Messaging.Configuration;
+using AWS.Messaging.Configuration.Internal;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -326,6 +327,64 @@ public class AppSettingsConfigurationTests
         {
             SetupConfigurationAndServices(json);
         });
+    }
+
+    [Theory]
+    [InlineData("None", BackoffPolicy.None)]
+    [InlineData("Interval", BackoffPolicy.Interval)]
+    [InlineData("CappedExponential", BackoffPolicy.CappedExponential)]
+    public void AddBackoffPolicy_NoOptions(string policyString, BackoffPolicy policyEnum)
+    {
+        var json = $@"
+            {{
+                ""AWS.Messaging"": {{
+                    ""BackoffPolicy"": ""{policyString}""
+                }}
+            }}";
+
+        var messageConfiguration = SetupConfigurationAndServices(json);
+
+        Assert.Equal(policyEnum, messageConfiguration.BackoffPolicy);
+    }
+
+    [Fact]
+    public void AddBackoffPolicy_IntervalExponentialPolicyOptions()
+    {
+        var json = @"
+            {
+                ""AWS.Messaging"": {
+                    ""BackoffPolicy"": ""Interval"",
+                    ""IntervalBackoffOptions"": {
+                        ""FixedInterval"": 2000
+                    }
+                }
+            }";
+
+        var messageConfiguration = SetupConfigurationAndServices(json);
+
+        Assert.Equal(BackoffPolicy.Interval, messageConfiguration.BackoffPolicy);
+        Assert.NotNull(messageConfiguration.IntervalBackoffOptions);
+        Assert.Equal(2000, messageConfiguration.IntervalBackoffOptions.FixedInterval);
+    }
+
+    [Fact]
+    public void AddBackoffPolicy_CappedExponentialPolicyOptions()
+    {
+        var json = @"
+            {
+                ""AWS.Messaging"": {
+                    ""BackoffPolicy"": ""CappedExponential"",
+                    ""CappedExponentialBackoffOptions"": {
+                        ""CapBackoffTime"": 2000
+                    }
+                }
+            }";
+
+        var messageConfiguration = SetupConfigurationAndServices(json);
+
+        Assert.Equal(BackoffPolicy.CappedExponential, messageConfiguration.BackoffPolicy);
+        Assert.NotNull(messageConfiguration.CappedExponentialBackoffOptions);
+        Assert.Equal(2000, messageConfiguration.CappedExponentialBackoffOptions.CapBackoffTime);
     }
 
     private IMessageConfiguration SetupConfigurationAndServices(string json)

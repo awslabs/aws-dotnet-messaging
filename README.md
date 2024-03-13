@@ -17,10 +17,10 @@ The framework is currently under active development. It already supports:
 * Handling messages from [FIFO (first-in-first-out) queues](https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/sqs-fifo-queues.html), and respecting group ordering
 * OpenTelemetry Instrumentation
 * Customizing serialization
+* Performance and error hardening
 
 Features to be added:
 * AWS X-Ray Instrumentation
-* Performance and error hardening
 
 # Getting started
 
@@ -287,6 +287,60 @@ In the following example the framework will check every 1 second for messages th
 ## Handling Messages in AWS Lambda Functions
 You can use the AWS Message Processing Framework for .NET with [SQS's integration with Lambda](https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html). This is provided by the `AWS.Messaging.Lambda` package. Refer to its [README](https://github.com/awslabs/aws-dotnet-messaging/blob/main/src/AWS.Messaging.Lambda/README.md) to get started.
 
+## SQS Poller Resiliency
+The SQS Poller is resilient by design and is able to handle errors thrown by the underlying .NET SDK as well as the framework itself in two ways. We have classified a number of exceptions that may occur due to invalid configuration from the user's side as fatal exceptions. These exceptions will cause the SQS Poller background service to stop running after throwing a user-friendly error message. However, any exceptions thrown, outside of the fatal ones we have defined, will not cause the SQS Poller to error out and will remain resilient in the event that an underlying service is facing degraded performance or outages. The SQS poller leverages backoffs in an effort to retry any failed SQS requests while applying a certain time-delay between retries. 
+
+The framework defined two interfaces, `IBackoffHandler` and `IBackoffPolicy`. The `IBackoffPolicy` is closely tied to the `BackoffHandler` which implements `IBackoffHandler`. The default implementation of `IBackoffHandler` checks the attached `IBackoffPolicy` to see if a backoff should be applied. If a backoff is to be applied, the `IBackoffPolicy` also returns the time delay between retries.
+
+The framework support three backoff policies:
+* `None`, which would disable the backoff handler. This will allow users to fully rely on the SDK’s retry logic.
+* `Interval`, which would backoff on a given and configurable interval. Default value is 1 second.
+* `CappedExponential`, which would perform an exponential backoff up until it reaches a certain configurable max backoff time, at which point it would switch to an interval backoff. Default value for the cap backoff time is 1 hour.
+
+By default, without any user configuration, the SQS Poller will use the default implementation of the `IBackoffHandler` interface, coupled with a capped exponential backoff policy.
+
+Users are free to change the backoff policy as follows:
+```csharp
+services.AddAWSMessageBus(builder =>
+{
+    builder.AddSQSPoller("https://sqs.us-west-2.amazonaws.com/536721586275/MPF");
+
+    // Optional: Configure the backoff policy used by the SQS Poller.
+    builder.ConfigureBackoffPolicy(options =>
+    {
+        // Use 1 of the available 3 backoff policies:
+
+        // No backoff Policy
+        options.UseNoBackoff();
+
+        // Interval backoff policy
+        options.UseIntervalBackoff(x =>
+        {
+            x.FixedInterval = 1000;
+        });
+
+        // Capped exponential backoff policy
+        options.UseCappedExponentialBackoff(x =>
+        {
+            x.CapBackoffTime = 3600000;
+        });
+    });
+});
+```
+
+Users can also implement their own backoff handler by implementing the interface `IBackoffHandler` and injecting it before the AWS Message Bus is added to the DI Container. This can be done as follows:
+```csharp
+services.TryAddSingleton<IBackoffHandler, CustomBackoffHandler>();
+
+services.AddAWSMessageBus(builder =>
+{
+    builder.AddSQSPoller("https://sqs.us-west-2.amazonaws.com/012345678910/MPF");
+    builder.AddMessageHandler<ChatMessageHandler, ChatMessage>("chatMessage");
+});
+```
+
+As an example, you can use [Polly](https://github.com/App-vNext/Polly) to handle the retries. A sample app that achieves this could be found [here](./sampleapps/PollyIntegration/).
+
 # Telemetry
 The AWS Message Processing Framework for .NET is instrumented for OpenTelemetry to log [traces](https://opentelemetry.io/docs/concepts/signals/traces/) for each message that is published or handled by the framework. This is provided by the `AWS.Messaging.Telemetry.OpenTelemetry` package. Refer to its [README](https://github.com/awslabs/aws-dotnet-messaging/blob/main/src/AWS.Messaging.Telemetry.OpenTelemetry/README.md) to get started.
 
@@ -327,11 +381,11 @@ We welcome community contributions and pull requests. See [CONTRIBUTING.md](./CO
 # Security
 The AWS Message Processing Framework for .NET relies on the [AWS SDK for .NET](https://github.com/aws/aws-sdk-net) for communicating with AWS. Refer to the [security section](https://docs.aws.amazon.com/sdk-for-net/v3/developer-guide/security.html) in the [AWS SDK for .NET Developer Guide](https://docs.aws.amazon.com/sdk-for-net/v3/developer-guide/welcome.html) for more information. You can also find more information in [AWS Message Processing Framework for .NET Developer Guide](https://docs.aws.amazon.com/sdk-for-net/v3/developer-guide/msg-proc-fw.html).
 
-The framework does not log data messages sent by the user for security purposes. If users want to enable this functionality for debugging purposes, you need to call `EnableDataMessageLogging()` in the AWS Message Bus as follows:
+The framework does not log data messages sent by the user for security purposes. If users want to enable this functionality for debugging purposes, you need to call `EnableMessageContentLogging()` in the AWS Message Bus as follows:
 ```csharp
 builder.Services.AddAWSMessageBus(bus =>
 {
-    builder.EnableDataMessageLogging();
+    builder.EnableMessageContentLogging();
 });
 ```
 

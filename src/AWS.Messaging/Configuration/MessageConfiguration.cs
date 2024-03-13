@@ -1,7 +1,9 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using AWS.Messaging.Configuration.Internal;
 using AWS.Messaging.Serialization;
+using AWS.Messaging.Services.Backoff.Policies.Options;
 
 namespace AWS.Messaging.Configuration;
 
@@ -54,4 +56,13 @@ public class MessageConfiguration : IMessageConfiguration
 
     /// <inheritdoc/>
     public bool LogMessageContent { get; set; }
+
+    /// <inheritdoc/>
+    public BackoffPolicy BackoffPolicy { get; set; } = BackoffPolicy.CappedExponential;
+
+    /// <inheritdoc/>
+    public IntervalBackoffOptions IntervalBackoffOptions { get; set; } = new();
+
+    /// <inheritdoc/>
+    public CappedExponentialBackoffOptions CappedExponentialBackoffOptions { get; set; } = new();
 }

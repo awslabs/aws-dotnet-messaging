@@ -6,6 +6,7 @@ using Amazon.SQS.Model;
 using AWS.Messaging.Configuration;
 using AWS.Messaging.Serialization;
 using AWS.Messaging.Services;
+using AWS.Messaging.Services.Backoff;
 using Microsoft.Extensions.Logging;
 
 namespace AWS.Messaging.SQS;
@@ -20,6 +21,7 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
     private readonly IMessageManager _messageManager;
     private readonly SQSMessagePollerConfiguration _configuration;
     private readonly IEnvelopeSerializer _envelopeSerializer;
+    private readonly IBackoffHandler _backoffHandler;
     private readonly bool _isFifoEndpoint;
 
     /// <summary>
@@ -46,17 +48,20 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
     /// <param name="awsClientProvider">Provides the AWS service client from the DI container.</param>
     /// <param name="configuration">The SQS message poller configuration.</param>
     /// <param name="envelopeSerializer">Serializer used to deserialize the SQS messages</param>
+    /// <param name="backoffHandler">Backoff handler for performing back-offs if exceptions are thrown when polling SQS.</param>
     public SQSMessagePoller(
         ILogger<SQSMessagePoller> logger,
         IMessageManagerFactory messageManagerFactory,
         IAWSClientProvider awsClientProvider,
         SQSMessagePollerConfiguration configuration,
-        IEnvelopeSerializer envelopeSerializer)
+        IEnvelopeSerializer envelopeSerializer,
+        IBackoffHandler backoffHandler)
     {
         _logger = logger;
         _sqsClient = awsClientProvider.GetServiceClient<IAmazonSQS>();
         _configuration = configuration;
         _envelopeSerializer = envelopeSerializer;
+        _backoffHandler = backoffHandler;
         _isFifoEndpoint = configuration.SubscriberEndpoint.EndsWith(".fifo");
 
         _messageManager = messageManagerFactory.CreateMessageManager(this, _configuration.ToMessageManagerConfiguration());
@@ -108,41 +113,20 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
 
             List<Message>? receivedMessages = null;
 
-            try
-            {
-                _logger.LogTrace("Retrieving up to {NumberOfMessagesToRead} messages from {QueueUrl}",
-                    receiveMessageRequest.MaxNumberOfMessages, receiveMessageRequest.QueueUrl);
-
-                var receiveMessageResponse = await _sqsClient.ReceiveMessageAsync(receiveMessageRequest, token);
-
-                _logger.LogTrace("Retrieved {MessagesCount} messages from {QueueUrl} via request ID {RequestId}",
-                    receiveMessageResponse.Messages.Count, receiveMessageRequest.QueueUrl, receiveMessageResponse.ResponseMetadata.RequestId);
-
-                receivedMessages = receiveMessageResponse.Messages;
-            }
-            catch (AmazonSQSException ex)
-            {
-                _logger.LogError(ex, "An {ExceptionName} occurred while polling", nameof(AmazonSQSException));
-
-                // Rethrow the exception to fail fast for invalid configuration, permissioning, etc.
-                // TODO: explore a "cool down mode" for repeated exceptions
-                if (_configuration.IsExceptionFatal(ex))
+            await _backoffHandler.BackoffAsync(async () =>
                 {
-                    throw;
-                }
-            }
-            catch (Exception ex)
-            {
-                // TODO: explore a "cool down mode" for repeated exceptions
-                _logger.LogError(ex, "An unknown exception occurred while polling {SubscriberEndpoint}", _configuration.SubscriberEndpoint);
+                    _logger.LogTrace("Retrieving up to {NumberOfMessagesToRead} messages from {QueueUrl}",
+                        receiveMessageRequest.MaxNumberOfMessages, receiveMessageRequest.QueueUrl);
 
-                // Rethrow the exception to fail fast for invalid configuration, permissioning, etc.
-                // TODO: explore a "cool down mode" for repeated exceptions
-                if (_configuration.IsExceptionFatal(ex))
-                {
-                    throw;
-                }
-            }
+                    var receiveMessageResponse = await _sqsClient.ReceiveMessageAsync(receiveMessageRequest, token);
+
+                    _logger.LogTrace("Retrieved {MessagesCount} messages from {QueueUrl} via request ID {RequestId}",
+                        receiveMessageResponse.Messages.Count, receiveMessageRequest.QueueUrl, receiveMessageResponse.ResponseMetadata.RequestId);
+
+                    receivedMessages = receiveMessageResponse.Messages;
+                },
+                _configuration,
+                token);
 
             if (receivedMessages is null)
                 continue;
