@@ -10,6 +10,8 @@ public class CappedExponentialBackoffOptions
 {
     /// <summary>
     /// The backoff time in seconds to cap the exponential backoff at.
+    /// Once the cap is reached, an interval backoff will occur with
+    /// <see cref="CapBackoffTime"/> as the fixed interval.
     /// The default value is 1 hour.
     /// </summary>
     public int CapBackoffTime { get; set; } = 3600;

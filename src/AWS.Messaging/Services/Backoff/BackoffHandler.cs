@@ -69,7 +69,7 @@ internal class BackoffHandler : IBackoffHandler
             {
                 // Checking the backoff policy for how long to backoff before attempting to poll SQS for messages again.
                 var waitTime = _backoffPolicy.RetrieveBackoffTime(retries);
-                _logger.LogWarning("Backing off for {WaitTime}s before trying again...", waitTime);
+                _logger.LogWarning("Backing off polling from SQS for messages for {WaitTime}s before trying again...", waitTime);
 
                 await Task.Delay(TimeSpan.FromSeconds(waitTime), token);
 
