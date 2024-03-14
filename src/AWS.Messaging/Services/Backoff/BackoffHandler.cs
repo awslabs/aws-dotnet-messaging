@@ -52,7 +52,7 @@ internal class BackoffHandler : IBackoffHandler
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "We have encountered an issue while polling '{SubscriberEndpoint}'.", configuration.SubscriberEndpoint);
+                _logger.LogError(ex, "An unknown exception occurred while polling '{SubscriberEndpoint}'.", configuration.SubscriberEndpoint);
                 capturedException = ExceptionDispatchInfo.Capture(ex);
             }
 
@@ -69,12 +69,12 @@ internal class BackoffHandler : IBackoffHandler
             {
                 // Checking the backoff policy for how long to backoff before attempting to poll SQS for messages again.
                 var waitTime = _backoffPolicy.RetrieveBackoffTime(retries);
-                _logger.LogWarning("Backing off for {WaitTime}ms before trying again...", waitTime);
+                _logger.LogWarning("Backing off for {WaitTime}s before trying again...", waitTime);
 
-                await Task.Delay(TimeSpan.FromMilliseconds(waitTime), token);
+                await Task.Delay(TimeSpan.FromSeconds(waitTime), token);
 
                 retries++;
-                _logger.LogWarning("Attempting to poll SQS for messages once again...");
+                _logger.LogWarning("Attempt #{Retry} to poll SQS for messages...", retries);
             }
 
         } while (

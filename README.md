@@ -316,13 +316,13 @@ services.AddAWSMessageBus(builder =>
         // Interval backoff policy
         options.UseIntervalBackoff(x =>
         {
-            x.FixedInterval = 1000;
+            x.FixedInterval = 1;
         });
 
         // Capped exponential backoff policy
         options.UseCappedExponentialBackoff(x =>
         {
-            x.CapBackoffTime = 3600000;
+            x.CapBackoffTime = 3600;
         });
     });
 });

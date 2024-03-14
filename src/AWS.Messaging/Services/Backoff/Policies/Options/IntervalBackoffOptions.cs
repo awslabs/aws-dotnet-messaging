@@ -9,10 +9,10 @@ namespace AWS.Messaging.Services.Backoff.Policies.Options;
 public class IntervalBackoffOptions
 {
     /// <summary>
-    /// The fixed interval in milliseconds to wait between back-offs.
+    /// The fixed interval in seconds to wait between back-offs.
     /// The default value is 1 second.
     /// </summary>
-    public int FixedInterval { get; set; } = 1000;
+    public int FixedInterval { get; set; } = 1;
 
     /// <summary>
     /// Validates that the options set for the <see cref="IntervalBackoffPolicy"/>.

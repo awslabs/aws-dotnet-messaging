@@ -9,10 +9,10 @@ namespace AWS.Messaging.Services.Backoff.Policies.Options;
 public class CappedExponentialBackoffOptions
 {
     /// <summary>
-    /// The backoff time in milliseconds to cap the exponential backoff at.
+    /// The backoff time in seconds to cap the exponential backoff at.
     /// The default value is 1 hour.
     /// </summary>
-    public int CapBackoffTime { get; set; } = 3600000;
+    public int CapBackoffTime { get; set; } = 3600;
 
     /// <summary>
     /// Validates that the options set for the <see cref="CappedExponentialBackoffPolicy"/>.

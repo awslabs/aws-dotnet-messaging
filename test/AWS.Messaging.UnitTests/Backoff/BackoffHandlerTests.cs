@@ -55,12 +55,11 @@ public class BackoffHandlerTests
     }
 
     [Theory]
-    [InlineData(500, 7)]
-    [InlineData(1000, 12)]
-    [InlineData(1500, 17)]
-    [InlineData(2000, 22)]
-    [InlineData(2500, 27)]
-    [InlineData(3000, 32)]
+    [InlineData(1000, 2)]
+    [InlineData(2000, 3)]
+    [InlineData(3000, 4)]
+    [InlineData(4000, 5)]
+    [InlineData(5000, 6)]
     public async Task RetryAsync_IntervalBackoff(int cancelAfter, int retries)
     {
         var source = new CancellationTokenSource();
@@ -72,7 +71,7 @@ public class BackoffHandlerTests
             .Returns(true);
         _backoffPolicy
             .Setup(x => x.RetrieveBackoffTime(It.IsAny<int>()))
-            .Returns(100);
+            .Returns(1);
 
         source.CancelAfter(cancelAfter);
         try

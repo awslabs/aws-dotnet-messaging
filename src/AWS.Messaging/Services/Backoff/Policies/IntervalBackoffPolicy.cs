@@ -36,10 +36,10 @@ internal class IntervalBackoffPolicy : IBackoffPolicy
     }
 
     /// <summary>
-    /// Retrieves the backoff time which is a fixed interval, regardless of how many retries have already been performed.
+    /// Retrieves the backoff time in seconds which is a fixed interval, regardless of how many retries have already been performed.
     /// </summary>
     /// <param name="numberOfRetries">The number of times the <see cref="BackoffHandler"/> has retried a request after performing a backoff.</param>
-    /// <returns>A fixed interval representing the backoff time.</returns>
+    /// <returns>A fixed interval representing the backoff time in seconds.</returns>
     public double RetrieveBackoffTime(int numberOfRetries)
     {
         return _options.FixedInterval;

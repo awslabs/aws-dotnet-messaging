@@ -7,7 +7,7 @@ using AWS.Messaging.Services.Backoff.Policies.Options;
 namespace AWS.Messaging.Configuration;
 
 /// <summary>
-/// This builder interface is used to configure the backoff policy and it's options.
+/// This builder interface is used to configure the backoff policy and its options.
 /// </summary>
 public interface IBackoffPolicyBuilder
 {
@@ -17,12 +17,12 @@ public interface IBackoffPolicyBuilder
     void UseNoBackoff();
 
     /// <summary>
-    /// Sets the backoff policy to <see cref="IntervalBackoffPolicy"/> and allows it's configuration.
+    /// Sets the backoff policy to <see cref="IntervalBackoffPolicy"/> and allows its configuration.
     /// </summary>
     void UseIntervalBackoff(Action<IntervalBackoffOptions> options);
 
     /// <summary>
-    /// Sets the backoff policy to <see cref="CappedExponentialBackoffPolicy"/> and allows it's configuration.
+    /// Sets the backoff policy to <see cref="CappedExponentialBackoffPolicy"/> and allows its configuration.
     /// </summary>
     void UseCappedExponentialBackoff(Action<CappedExponentialBackoffOptions> options);
 }

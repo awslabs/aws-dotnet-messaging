@@ -355,7 +355,7 @@ public class AppSettingsConfigurationTests
                 ""AWS.Messaging"": {
                     ""BackoffPolicy"": ""Interval"",
                     ""IntervalBackoffOptions"": {
-                        ""FixedInterval"": 2000
+                        ""FixedInterval"": 2
                     }
                 }
             }";
@@ -364,7 +364,7 @@ public class AppSettingsConfigurationTests
 
         Assert.Equal(BackoffPolicy.Interval, messageConfiguration.BackoffPolicy);
         Assert.NotNull(messageConfiguration.IntervalBackoffOptions);
-        Assert.Equal(2000, messageConfiguration.IntervalBackoffOptions.FixedInterval);
+        Assert.Equal(2, messageConfiguration.IntervalBackoffOptions.FixedInterval);
     }
 
     [Fact]
@@ -375,7 +375,7 @@ public class AppSettingsConfigurationTests
                 ""AWS.Messaging"": {
                     ""BackoffPolicy"": ""CappedExponential"",
                     ""CappedExponentialBackoffOptions"": {
-                        ""CapBackoffTime"": 2000
+                        ""CapBackoffTime"": 2
                     }
                 }
             }";
@@ -384,7 +384,7 @@ public class AppSettingsConfigurationTests
 
         Assert.Equal(BackoffPolicy.CappedExponential, messageConfiguration.BackoffPolicy);
         Assert.NotNull(messageConfiguration.CappedExponentialBackoffOptions);
-        Assert.Equal(2000, messageConfiguration.CappedExponentialBackoffOptions.CapBackoffTime);
+        Assert.Equal(2, messageConfiguration.CappedExponentialBackoffOptions.CapBackoffTime);
     }
 
     private IMessageConfiguration SetupConfigurationAndServices(string json)

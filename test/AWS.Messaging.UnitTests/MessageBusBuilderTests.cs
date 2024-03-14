@@ -143,16 +143,16 @@ public class MessageBusBuilderTests
 
         Assert.IsType<IntervalBackoffPolicy>(backoffPolicy);
 
-        Assert.Equal(1000, backoffPolicy.RetrieveBackoffTime(retry));
+        Assert.Equal(1, backoffPolicy.RetrieveBackoffTime(retry));
     }
 
     [Theory]
     [InlineData(0)]
-    [InlineData(500)]
-    [InlineData(1000)]
-    [InlineData(1500)]
-    [InlineData(2000)]
-    [InlineData(2500)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
     public void MessageBus_ConfigureBackoffPolicy_IntervalBackoffPolicy_WithOptions(int interval)
     {
         _serviceCollection.AddAWSMessageBus(builder =>
@@ -206,10 +206,10 @@ public class MessageBusBuilderTests
     }
 
     [Theory]
-    [InlineData(5, 30)]
-    [InlineData(6, 60)]
-    [InlineData(7, 100)]
-    [InlineData(8, 200)]
+    [InlineData(5, 3)]
+    [InlineData(6, 6)]
+    [InlineData(7, 10)]
+    [InlineData(8, 20)]
     public void MessageBus_ConfigureBackoffPolicy_CappedExponentialBackoffPolicy_WithOptions(int retry, int cap)
     {
         _serviceCollection.AddAWSMessageBus(builder =>

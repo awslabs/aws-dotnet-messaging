@@ -38,10 +38,10 @@ internal class CappedExponentialBackoffPolicy : IBackoffPolicy
     }
 
     /// <summary>
-    /// Retrieves the backoff time which is exponentially increasing based on the number of retries already performed.
+    /// Retrieves the backoff time in seconds which is exponentially increasing based on the number of retries already performed.
     /// </summary>
     /// <param name="numberOfRetries">The number of times the <see cref="BackoffHandler"/> has retried a request after performing a backoff.</param>
-    /// <returns>An exponentially increasing backoff time.</returns>
+    /// <returns>An exponentially increasing backoff time in seconds.</returns>
     public double RetrieveBackoffTime(int numberOfRetries)
     {
         var backoffTime = Math.Pow(2, numberOfRetries);

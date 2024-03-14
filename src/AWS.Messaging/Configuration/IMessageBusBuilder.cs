@@ -106,7 +106,7 @@ public interface IMessageBusBuilder
     IMessageBusBuilder EnableMessageContentLogging();
 
     /// <summary>
-    /// Configures the backoff policy used by <see cref="BackoffHandler"/> and it's available options.
+    /// Configures the backoff policy used by <see cref="BackoffHandler"/> and its available options.
     /// </summary>
     IMessageBusBuilder ConfigureBackoffPolicy(Action<BackoffPolicyBuilder> configure);
 }

@@ -7,7 +7,7 @@ using AWS.Messaging.Services.Backoff.Policies.Options;
 namespace AWS.Messaging.Configuration;
 
 /// <summary>
-/// This builder is used to configure the backoff policy and it's options.
+/// This builder is used to configure the backoff policy and its options.
 /// </summary>
 public class BackoffPolicyBuilder : IBackoffPolicyBuilder
 {
