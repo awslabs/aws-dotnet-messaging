@@ -45,7 +45,7 @@ await Host.CreateDefaultBuilder(args)
             {
                 options.UseCappedExponentialBackoff(x =>
                 {
-                    x.CapBackoffTime = 3600;
+                    x.CapBackoffTime = 60;
                 });
             });
 

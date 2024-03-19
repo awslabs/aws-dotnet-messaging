@@ -20,5 +20,5 @@ public interface IBackoffHandler
     /// <param name="task">The delegate for which to perform a backoff.</param>
     /// <param name="configuration">Internal configuration for polling messages from SQS.</param>
     /// <param name="token">The cancellation token used to cancel the request.</param>
-    Task BackoffAsync(Func<Task> task, SQSMessagePollerConfiguration configuration, CancellationToken token);
+    Task<T> BackoffAsync<T>(Func<Task<T>> task, SQSMessagePollerConfiguration configuration, CancellationToken token);
 }

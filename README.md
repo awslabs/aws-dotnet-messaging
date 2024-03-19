@@ -322,7 +322,7 @@ services.AddAWSMessageBus(builder =>
         // Capped exponential backoff policy
         options.UseCappedExponentialBackoff(x =>
         {
-            x.CapBackoffTime = 3600;
+            x.CapBackoffTime = 60;
         });
     });
 });

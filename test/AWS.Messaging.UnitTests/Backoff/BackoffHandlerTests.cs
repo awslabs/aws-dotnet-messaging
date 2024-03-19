@@ -24,10 +24,11 @@ public class BackoffHandlerTests
         var sqsMessagePollerConfiguration = new SQSMessagePollerConfiguration("queueURL");
         var backoffHandler = new BackoffHandler(_backoffPolicy.Object, _logger.Object);
 
-        await backoffHandler.BackoffAsync(() => Task.CompletedTask,
+        var response = await backoffHandler.BackoffAsync<bool>(() => Task.FromResult(true),
             sqsMessagePollerConfiguration,
             source.Token);
 
+        Assert.True(response);
         _backoffPolicy.Verify(x => x.ShouldBackoff(It.IsAny<Exception>(), sqsMessagePollerConfiguration), Times.Never);
         _backoffPolicy.Verify(x => x.RetrieveBackoffTime(It.IsAny<int>()), Times.Never);
     }
@@ -45,7 +46,7 @@ public class BackoffHandlerTests
 
         await Assert.ThrowsAsync<Exception>(async () =>
         {
-            await backoffHandler.BackoffAsync(() => throw new Exception("Failed to process."),
+            await backoffHandler.BackoffAsync<bool>(() => throw new Exception("Failed to process."),
                 sqsMessagePollerConfiguration,
                 source.Token);
         });
@@ -71,12 +72,12 @@ public class BackoffHandlerTests
             .Returns(true);
         _backoffPolicy
             .Setup(x => x.RetrieveBackoffTime(It.IsAny<int>()))
-            .Returns(1);
+            .Returns(TimeSpan.FromSeconds(1));
 
         source.CancelAfter(cancelAfter);
         try
         {
-            await backoffHandler.BackoffAsync(() => throw new Exception("Failed to process."),
+            await backoffHandler.BackoffAsync<bool>(() => throw new Exception("Failed to process."),
                 sqsMessagePollerConfiguration,
                 source.Token);
         }

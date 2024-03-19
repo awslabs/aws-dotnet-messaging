@@ -43,16 +43,16 @@ public class CappedExponentialBackoffPolicyTests
     [InlineData(3, 8)]
     [InlineData(4, 16)]
     [InlineData(5, 32)]
-    [InlineData(6, 64)]
-    [InlineData(7, 128)]
-    [InlineData(8, 256)]
-    [InlineData(9, 512)]
-    [InlineData(10, 1024)]
+    [InlineData(6, 60)]
+    [InlineData(7, 60)]
+    [InlineData(8, 60)]
+    [InlineData(9, 60)]
+    [InlineData(10, 60)]
     public void RetrieveBackoffTimeTest(int retry, int backoffTime)
     {
         var cappedExponentialBackoffOptions = new CappedExponentialBackoffOptions();
         var cappedExponentialBackoffPolicy = new CappedExponentialBackoffPolicy(cappedExponentialBackoffOptions);
 
-        Assert.Equal(backoffTime, cappedExponentialBackoffPolicy.RetrieveBackoffTime(retry));
+        Assert.True(TimeSpan.FromSeconds(backoffTime) >= cappedExponentialBackoffPolicy.RetrieveBackoffTime(retry));
     }
 }

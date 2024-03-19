@@ -44,6 +44,6 @@ public class IntervalBackoffPolicyTests
         var intervalBackoffOptions = new IntervalBackoffOptions();
         var intervalBackoffPolicy = new IntervalBackoffPolicy(intervalBackoffOptions);
 
-        Assert.Equal(intervalBackoffOptions.FixedInterval, intervalBackoffPolicy.RetrieveBackoffTime(It.IsAny<int>()));
+        Assert.Equal(TimeSpan.FromSeconds(intervalBackoffOptions.FixedInterval), intervalBackoffPolicy.RetrieveBackoffTime(It.IsAny<int>()));
     }
 }

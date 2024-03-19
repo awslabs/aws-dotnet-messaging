@@ -24,6 +24,6 @@ public interface IBackoffPolicy
     /// will wait before performing the next backoff.
     /// </summary>
     /// <param name="numberOfRetries">The number of times the <see cref="IBackoffHandler"/> has retried a request after performing a backoff.</param>
-    /// <returns>A number that indicates how long the <see cref="IBackoffHandler"/> should wait.</returns>
-    double RetrieveBackoffTime(int numberOfRetries);
+    /// <returns>A <see cref="TimeSpan"/> that indicates how long the <see cref="IBackoffHandler"/> should wait.</returns>
+    TimeSpan RetrieveBackoffTime(int numberOfRetries);
 }

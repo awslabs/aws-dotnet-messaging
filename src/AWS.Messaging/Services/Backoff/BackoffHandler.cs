@@ -37,26 +37,24 @@ internal class BackoffHandler : IBackoffHandler
     /// <param name="task">The delegate for which to perform a backoff.</param>
     /// <param name="configuration">Internal configuration for polling messages from SQS.</param>
     /// <param name="token">The cancellation token used to cancel the request.</param>
-    public async Task BackoffAsync(Func<Task> task, SQSMessagePollerConfiguration configuration, CancellationToken token = default)
+    public async Task<T> BackoffAsync<T>(Func<Task<T>> task, SQSMessagePollerConfiguration configuration, CancellationToken token = default)
     {
         bool shouldRetry;
         var retries = 0;
         do
         {
-            ExceptionDispatchInfo? capturedException = null;
+            ExceptionDispatchInfo capturedException;
             shouldRetry = false;
 
             try
             {
-                await task.Invoke();
+                return await task.Invoke();
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "An unknown exception occurred while polling '{SubscriberEndpoint}'.", configuration.SubscriberEndpoint);
                 capturedException = ExceptionDispatchInfo.Capture(ex);
             }
-
-            if (capturedException == null) continue;
 
             // Checking the backoff policy whether a backoff should be attempted.
             shouldRetry = _backoffPolicy.ShouldBackoff(capturedException.SourceException, configuration);
@@ -69,9 +67,9 @@ internal class BackoffHandler : IBackoffHandler
             {
                 // Checking the backoff policy for how long to backoff before attempting to poll SQS for messages again.
                 var waitTime = _backoffPolicy.RetrieveBackoffTime(retries);
-                _logger.LogWarning("Backing off polling from SQS for messages for {WaitTime}s before trying again...", waitTime);
+                _logger.LogWarning("Backing off polling from SQS for messages for {WaitTime}s before trying again...", waitTime.TotalSeconds);
 
-                await Task.Delay(TimeSpan.FromSeconds(waitTime), token);
+                await Task.Delay(waitTime, token);
 
                 retries++;
                 _logger.LogWarning("Attempt #{Retry} to poll SQS for messages...", retries);
@@ -80,5 +78,7 @@ internal class BackoffHandler : IBackoffHandler
         } while (
             shouldRetry &&
             !token.IsCancellationRequested);
+
+        return default!;
     }
 }

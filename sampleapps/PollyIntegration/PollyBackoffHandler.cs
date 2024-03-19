@@ -17,15 +17,12 @@ public class PollyBackoffHandler : IBackoffHandler
         _resiliencePipelineProvider = resiliencePipelineProvider;
     }
 
-    public async Task BackoffAsync(Func<Task> task, SQSMessagePollerConfiguration configuration, CancellationToken token)
+    public async Task<T> BackoffAsync<T>(Func<Task<T>> task, SQSMessagePollerConfiguration configuration, CancellationToken token)
     {
         ResiliencePipeline pipeline = _resiliencePipelineProvider.GetPipeline("my-pipeline");
 
         // Execute the pipeline
-        await pipeline.ExecuteAsync(async cancellationToken =>
-            {
-                await task.Invoke();
-            },
+        return await pipeline.ExecuteAsync(async cancellationToken => await task.Invoke(),
             token);
     }
 }

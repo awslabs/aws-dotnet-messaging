@@ -24,6 +24,6 @@ public class NoBackoffPolicyTests
     {
         var noBackoffPolicy = new NoBackoffPolicy();
 
-        Assert.Equal(0, noBackoffPolicy.RetrieveBackoffTime(It.IsAny<int>()));
+        Assert.Equal(TimeSpan.Zero, noBackoffPolicy.RetrieveBackoffTime(It.IsAny<int>()));
     }
 }

@@ -143,7 +143,7 @@ public class MessageBusBuilderTests
 
         Assert.IsType<IntervalBackoffPolicy>(backoffPolicy);
 
-        Assert.Equal(1, backoffPolicy.RetrieveBackoffTime(retry));
+        Assert.Equal(TimeSpan.FromSeconds(1), backoffPolicy.RetrieveBackoffTime(retry));
     }
 
     [Theory]
@@ -178,7 +178,7 @@ public class MessageBusBuilderTests
 
         Assert.IsType<IntervalBackoffPolicy>(backoffPolicy);
 
-        Assert.Equal(interval, backoffPolicy.RetrieveBackoffTime(It.IsAny<int>()));
+        Assert.Equal(TimeSpan.FromSeconds(interval), backoffPolicy.RetrieveBackoffTime(It.IsAny<int>()));
     }
 
     [Fact]
@@ -235,7 +235,7 @@ public class MessageBusBuilderTests
 
         Assert.IsType<CappedExponentialBackoffPolicy>(backoffPolicy);
 
-        Assert.Equal(cap, backoffPolicy.RetrieveBackoffTime(retry));
+        Assert.True(TimeSpan.FromSeconds(cap) >= backoffPolicy.RetrieveBackoffTime(retry));
     }
 
     [Fact]

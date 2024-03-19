@@ -111,9 +111,8 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
                 MessageAttributeNames = new List<string> { "All" }
             };
 
-            List<Message>? receivedMessages = null;
-
-            await _backoffHandler.BackoffAsync(async () =>
+            List<Message>? receivedMessages =
+                await _backoffHandler.BackoffAsync<List<Message>?>(async () =>
                 {
                     _logger.LogTrace("Retrieving up to {NumberOfMessagesToRead} messages from {QueueUrl}",
                         receiveMessageRequest.MaxNumberOfMessages, receiveMessageRequest.QueueUrl);
@@ -123,7 +122,7 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
                     _logger.LogTrace("Retrieved {MessagesCount} messages from {QueueUrl} via request ID {RequestId}",
                         receiveMessageResponse.Messages.Count, receiveMessageRequest.QueueUrl, receiveMessageResponse.ResponseMetadata.RequestId);
 
-                    receivedMessages = receiveMessageResponse.Messages;
+                    return receiveMessageResponse.Messages;
                 },
                 _configuration,
                 token);

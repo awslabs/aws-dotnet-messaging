@@ -21,5 +21,5 @@ internal class NoBackoffPolicy : IBackoffPolicy
     /// This is a no-op and will always return 0 as the backoff time is not needed.
     /// </summary>
     /// <returns>0</returns>
-    public double RetrieveBackoffTime(int numberOfRetries) => 0;
+    public TimeSpan RetrieveBackoffTime(int numberOfRetries) => TimeSpan.Zero;
 }
