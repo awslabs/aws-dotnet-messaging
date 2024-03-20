@@ -1,6 +1,9 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using AWS.Messaging.Services.Backoff;
+using AWS.Messaging.Services.Backoff.Policies.Options;
+
 namespace AWS.Messaging.Configuration.Internal;
 
 /// <summary>
@@ -38,6 +41,21 @@ public class ApplicationSettings
     /// The list of configured SQS Pollers.
     /// </summary>
     public ICollection<SQSPoller> SQSPollers { get; set; } = default!;
+
+    /// <summary>
+    /// The backoff policy used by <see cref="BackoffHandler"/> in the SQS Poller.
+    /// </summary>
+    public BackoffPolicy? BackoffPolicy { get; set; } = default;
+
+    /// <summary>
+    /// Configuration for the interval backoff policy.
+    /// </summary>
+    public IntervalBackoffOptions? IntervalBackoffOptions { get; set; }
+
+    /// <summary>
+    /// Configuration for the capped exponential backoff policy.
+    /// </summary>
+    public CappedExponentialBackoffOptions? CappedExponentialBackoffOptions { get; set; }
 
     /// <summary>
     /// Controls the visibility of data messages in the logging framework, exception handling and other areas.

@@ -12,6 +12,8 @@ using AWS.Messaging.Publishers.EventBridge;
 using Microsoft.Extensions.Configuration;
 using AWS.Messaging.Configuration.Internal;
 using System.Reflection;
+using AWS.Messaging.Services.Backoff;
+using AWS.Messaging.Services.Backoff.Policies;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Logging;
 using AWS.Messaging.Telemetry;
@@ -25,12 +27,14 @@ public class MessageBusBuilder : IMessageBusBuilder
 {
     private readonly MessageConfiguration _messageConfiguration;
     private readonly IList<ServiceDescriptor> _additionalServices = new List<ServiceDescriptor>();
+    private readonly IServiceCollection _serviceCollection;
 
     /// <summary>
     /// Creates an instance of <see cref="MessageBusBuilder"/>.
     /// </summary>
-    public MessageBusBuilder()
+    public MessageBusBuilder(IServiceCollection services)
     {
+        _serviceCollection = services;
         _messageConfiguration = new MessageConfiguration();
     }
 
@@ -242,6 +246,21 @@ public class MessageBusBuilder : IMessageBusBuilder
         if (settings.LogMessageContent != null)
             _messageConfiguration.LogMessageContent = settings.LogMessageContent ?? false;
 
+        if (settings.BackoffPolicy != null)
+        {
+            _messageConfiguration.BackoffPolicy = settings.BackoffPolicy ?? BackoffPolicy.CappedExponential;
+
+            if (settings.IntervalBackoffOptions != null)
+            {
+                _messageConfiguration.IntervalBackoffOptions = settings.IntervalBackoffOptions;
+            }
+
+            if (settings.CappedExponentialBackoffOptions != null)
+            {
+                _messageConfiguration.CappedExponentialBackoffOptions = settings.CappedExponentialBackoffOptions;
+            }
+        }
+
         return this;
     }
 
@@ -271,75 +290,104 @@ public class MessageBusBuilder : IMessageBusBuilder
         return this;
     }
 
-    internal void Build(IServiceCollection services)
+    /// <inheritdoc/>
+    public IMessageBusBuilder ConfigureBackoffPolicy(Action<BackoffPolicyBuilder> configure)
+    {
+        var builder = new BackoffPolicyBuilder(_messageConfiguration);
+
+        configure(builder);
+        return this;
+    }
+
+    internal void Build()
     {
         LoadConfigurationFromEnvironment();
 
         // Make sure there is at least the default null implementation of the logger to injected so that
         // the DI constructors can be satisfied.
-        services.TryAdd(ServiceDescriptor.Singleton<ILoggerFactory, NullLoggerFactory>());
-        services.TryAdd(ServiceDescriptor.Singleton(typeof(ILogger<>), typeof(NullLogger<>)));
+        _serviceCollection.TryAdd(ServiceDescriptor.Singleton<ILoggerFactory, NullLoggerFactory>());
+        _serviceCollection.TryAdd(ServiceDescriptor.Singleton(typeof(ILogger<>), typeof(NullLogger<>)));
 
-        services.AddSingleton<IMessageConfiguration>(_messageConfiguration);
-        services.TryAddSingleton<IMessageSerializer, MessageSerializer>();
-        services.TryAddSingleton<IEnvelopeSerializer, EnvelopeSerializer>();
-        services.TryAddSingleton<IDateTimeHandler, DateTimeHandler>();
-        services.TryAddSingleton<IMessageIdGenerator, MessageIdGenerator>();
-        services.TryAddSingleton<IAWSClientProvider, AWSClientProvider>();
-        services.TryAddSingleton<IMessageSourceHandler, MessageSourceHandler>();
-        services.TryAddSingleton<IEnvironmentManager, EnvironmentManager>();
-        services.TryAddSingleton<IEC2InstanceMetadataManager, EC2InstanceMetadataManager>();
-        services.TryAddSingleton<IECSContainerMetadataManager, ECSContainerMetadataManager>();
-        services.AddHttpClient("ECSMetadataClient");
-        services.TryAddSingleton<IMessageManagerFactory, DefaultMessageManagerFactory>();
-        services.TryAddSingleton<IHandlerInvoker, HandlerInvoker>();
-        services.TryAddSingleton<IMessagePollerFactory, DefaultMessagePollerFactory>();
-        services.TryAddSingleton<ITelemetryFactory, DefaultTelemetryFactory>();
+        _serviceCollection.AddSingleton<IMessageConfiguration>(_messageConfiguration);
+        _serviceCollection.TryAddSingleton<IMessageSerializer, MessageSerializer>();
+        _serviceCollection.TryAddSingleton<IEnvelopeSerializer, EnvelopeSerializer>();
+        _serviceCollection.TryAddSingleton<IDateTimeHandler, DateTimeHandler>();
+        _serviceCollection.TryAddSingleton<IMessageIdGenerator, MessageIdGenerator>();
+        _serviceCollection.TryAddSingleton<IAWSClientProvider, AWSClientProvider>();
+        _serviceCollection.TryAddSingleton<IMessageSourceHandler, MessageSourceHandler>();
+        _serviceCollection.TryAddSingleton<IEnvironmentManager, EnvironmentManager>();
+        _serviceCollection.TryAddSingleton<IEC2InstanceMetadataManager, EC2InstanceMetadataManager>();
+        _serviceCollection.TryAddSingleton<IECSContainerMetadataManager, ECSContainerMetadataManager>();
+        _serviceCollection.AddHttpClient("ECSMetadataClient");
+        _serviceCollection.TryAddSingleton<IMessageManagerFactory, DefaultMessageManagerFactory>();
+        _serviceCollection.TryAddSingleton<IHandlerInvoker, HandlerInvoker>();
+        _serviceCollection.TryAddSingleton<IMessagePollerFactory, DefaultMessagePollerFactory>();
+        _serviceCollection.TryAddSingleton<ITelemetryFactory, DefaultTelemetryFactory>();
 
         if (_messageConfiguration.PublisherMappings.Any())
         {
-            services.AddSingleton<IMessagePublisher, MessageRoutingPublisher>();
+            _serviceCollection.AddSingleton<IMessagePublisher, MessageRoutingPublisher>();
 
             if (_messageConfiguration.PublisherMappings.Any(x => x.PublishTargetType == PublisherTargetType.SQS_PUBLISHER))
             {
-                services.TryAddAWSService<Amazon.SQS.IAmazonSQS>();
-                services.TryAddSingleton<ISQSPublisher, SQSPublisher>();
+                _serviceCollection.TryAddAWSService<Amazon.SQS.IAmazonSQS>();
+                _serviceCollection.TryAddSingleton<ISQSPublisher, SQSPublisher>();
             }
             if (_messageConfiguration.PublisherMappings.Any(x => x.PublishTargetType == PublisherTargetType.SNS_PUBLISHER))
             {
-                services.TryAddAWSService<Amazon.SimpleNotificationService.IAmazonSimpleNotificationService>();
-                services.TryAddSingleton<ISNSPublisher, SNSPublisher>();
+                _serviceCollection.TryAddAWSService<Amazon.SimpleNotificationService.IAmazonSimpleNotificationService>();
+                _serviceCollection.TryAddSingleton<ISNSPublisher, SNSPublisher>();
             }
             if (_messageConfiguration.PublisherMappings.Any(x => x.PublishTargetType == PublisherTargetType.EVENTBRIDGE_PUBLISHER))
             {
-                services.TryAddAWSService<Amazon.EventBridge.IAmazonEventBridge>();
-                services.TryAddSingleton<IEventBridgePublisher, EventBridgePublisher>();
+                _serviceCollection.TryAddAWSService<Amazon.EventBridge.IAmazonEventBridge>();
+                _serviceCollection.TryAddSingleton<IEventBridgePublisher, EventBridgePublisher>();
             }
         }
 
         if (_messageConfiguration.SubscriberMappings.Any())
         {
-            services.TryAddAWSService<Amazon.SQS.IAmazonSQS>();
+            _serviceCollection.TryAddAWSService<Amazon.SQS.IAmazonSQS>();
 
             foreach (var subscriberMapping in _messageConfiguration.SubscriberMappings)
             {
-                services.AddScoped(subscriberMapping.HandlerType);
+                _serviceCollection.AddScoped(subscriberMapping.HandlerType);
             }
         }
 
         if (_messageConfiguration.MessagePollerConfigurations.Any())
         {
-            services.AddHostedService<MessagePumpService>();
+            _serviceCollection.AddHostedService<MessagePumpService>();
 
             if (_messageConfiguration.MessagePollerConfigurations.OfType<SQSMessagePollerConfiguration>().Any())
             {
-                services.TryAddAWSService<Amazon.SQS.IAmazonSQS>();
+                _serviceCollection.TryAddAWSService<Amazon.SQS.IAmazonSQS>();
+
+                switch (_messageConfiguration.BackoffPolicy)
+                {
+                    case BackoffPolicy.None:
+                        _serviceCollection.TryAddSingleton<IBackoffPolicy, NoBackoffPolicy>();
+                        break;
+
+                    case BackoffPolicy.Interval:
+                        _serviceCollection.TryAddSingleton<IBackoffPolicy>(new IntervalBackoffPolicy(_messageConfiguration.IntervalBackoffOptions));
+                        break;
+
+                    case BackoffPolicy.CappedExponential:
+                        _serviceCollection.TryAddSingleton<IBackoffPolicy>(new CappedExponentialBackoffPolicy(_messageConfiguration.CappedExponentialBackoffOptions));
+                        break;
+
+                    default:
+                        throw new ConfigurationException("The specified backoff policy is currently unsupported.");
+                }
+
+                _serviceCollection.TryAddSingleton<IBackoffHandler, BackoffHandler>();
             }
         }
 
         foreach (var service in _additionalServices)
         {
-            services.Add(service);
+            _serviceCollection.Add(service);
         }
     }
 

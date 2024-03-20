@@ -40,8 +40,17 @@ await Host.CreateDefaultBuilder(args)
                 };
             });
 
+            // Optional: Configure the backoff policy used by the SQS Poller.
+            builder.ConfigureBackoffPolicy(options =>
+            {
+                options.UseCappedExponentialBackoff(x =>
+                {
+                    x.CapBackoffTime = 60;
+                });
+            });
+
             // Logging data messages is disabled by default to protect sensitive user data. If you want this enabled, uncomment the line below.
-            // builder.EnableDataMessageLogging();
+            // builder.EnableMessageContentLogging();
         })
         .AddOpenTelemetry()
             .ConfigureResource(resource => resource.AddService("SubscriberService"))

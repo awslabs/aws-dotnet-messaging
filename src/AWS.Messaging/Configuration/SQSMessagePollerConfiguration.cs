@@ -9,7 +9,7 @@ namespace AWS.Messaging.Configuration;
 /// <summary>
 /// Internal configuration for polling messages from SQS
 /// </summary>
-internal class SQSMessagePollerConfiguration : IMessagePollerConfiguration
+public class SQSMessagePollerConfiguration : IMessagePollerConfiguration
 {
     /// <summary>
     /// Default value for <see cref="MaxNumberOfConcurrentMessages"/>
@@ -153,7 +153,7 @@ internal class SQSMessagePollerConfiguration : IMessagePollerConfiguration
             case KmsAccessDeniedException:      // The caller doesn't have the required KMS access.
             case KmsInvalidKeyUsageException:   // The key is incompatible with the operation, or the encryption/signing algorithm is incompatible.
             case KmsInvalidStateException:      // The state of the specified resource is not valid for this request.
-            case KmsNotFoundException:          // The specified entity or resource could not be found. 
+            case KmsNotFoundException:          // The specified entity or resource could not be found.
             case KmsOptInRequiredException:     // The specified key policy isn't syntactically or semantically correct.
                 return true;
 

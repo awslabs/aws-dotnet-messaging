@@ -11,7 +11,7 @@ namespace Microsoft.Extensions.DependencyInjection;
 public static class ServiceCollectionExtensions
 {
     /// <summary>
-    /// Adds the <see cref="IMessageBusBuilder"/> to the dependency injection framework 
+    /// Adds the <see cref="IMessageBusBuilder"/> to the dependency injection framework
     /// to allow access to the framework components throughout the application.
     /// Allows the configuration of the messaging framework by exposing methods to add publishers and subscribers.
     /// </summary>
@@ -19,10 +19,10 @@ public static class ServiceCollectionExtensions
     /// <param name="builder">An action to define the message framework configuration using <see cref="MessageBusBuilder"/></param>
     public static IServiceCollection AddAWSMessageBus(this IServiceCollection services, Action<MessageBusBuilder> builder)
     {
-        var messageBusBuilder = new MessageBusBuilder();
+        var messageBusBuilder = new MessageBusBuilder(services);
 
         builder(messageBusBuilder);
-        messageBusBuilder.Build(services);
+        messageBusBuilder.Build();
 
         return services;
     }
