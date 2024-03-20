@@ -1,5 +1,14 @@
 # Changelog
 
+### Release 2024-03-20
+* **AWS.Messaging (0.3.0-beta)**
+  * Added back-off logic to the SQS Poller that can perform Exponential, Interval or disable back-offs entirely. The SQS Poller will now back-off before attempting to reach SQS in case of an exception.
+  * Added support for SourceLink
+* **AWS.Messaging.Lambda (0.1.1-beta)**
+  * Added support for SourceLink
+* **AWS.Messaging.Telemetry.OpenTelemetry (0.1.1-beta)**
+  * Added support for SourceLink
+
 ### Release 2024-03-08
 * **AWS.Messaging (0.2.0-beta)**
   * BREAKING CHANGE: Message content is no longer included by default in logs or exceptions. Call `EnableDataMessageLogging` during setup to re-enable.
