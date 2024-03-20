@@ -34,7 +34,7 @@ builder.Services.AddAWSMessageBus(bus =>
     });
 
     // Logging data messages is disabled by default to protect sensitive user data. If you want this enabled, uncomment the line below.
-    // builder.EnableDataMessageLogging();
+    // bus.EnableMessageContentLogging();
 });
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();

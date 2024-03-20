@@ -1,7 +1,11 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using AWS.Messaging.Configuration.Internal;
 using AWS.Messaging.Serialization;
+using AWS.Messaging.Services.Backoff;
+using AWS.Messaging.Services.Backoff.Policies;
+using AWS.Messaging.Services.Backoff.Policies.Options;
 
 namespace AWS.Messaging.Configuration;
 
@@ -74,4 +78,19 @@ public interface IMessageConfiguration
     /// This means any sensitive user data sent by this framework will be visible in logs, any exceptions thrown and others.
     /// </summary>
     bool LogMessageContent { get; set; }
+
+    /// <summary>
+    /// Sets the Backoff Policy to be used with <see cref="BackoffHandler"/>.
+    /// </summary>
+    BackoffPolicy BackoffPolicy { get; set; }
+
+    /// <summary>
+    /// Holds an instance of <see cref="IntervalBackoffOptions"/> to control the behavior of <see cref="IntervalBackoffPolicy"/>.
+    /// </summary>
+    IntervalBackoffOptions IntervalBackoffOptions { get; }
+
+    /// <summary>
+    /// Holds an instance of <see cref="CappedExponentialBackoffOptions"/> to control the behavior of <see cref="CappedExponentialBackoffPolicy"/>.
+    /// </summary>
+    CappedExponentialBackoffOptions CappedExponentialBackoffOptions { get; }
 }

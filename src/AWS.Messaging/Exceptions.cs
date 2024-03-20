@@ -184,6 +184,17 @@ public class InvalidSQSMessagePollerOptionsException : AWSMessagingException
 }
 
 /// <summary>
+/// Thrown when the backoff policy options are configured with one or more invalid values.
+/// </summary>
+public class InvalidBackoffOptionsException : AWSMessagingException
+{
+    /// <summary>
+    /// Creates an instance of <see cref="InvalidBackoffOptionsException"/>.
+    /// </summary>
+    public InvalidBackoffOptionsException(string message, Exception? innerException = null) : base(message, innerException) { }
+}
+
+/// <summary>
 /// Thrown during message handling if unable to find an <see cref="IMessageHandler{T}.HandleAsync(MessageEnvelope{T}, CancellationToken)"/>
 /// method on the handler type for a given message
 /// </summary>

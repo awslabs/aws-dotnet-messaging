@@ -5,6 +5,7 @@ using AWS.Messaging.Publishers.EventBridge;
 using AWS.Messaging.Publishers.SNS;
 using AWS.Messaging.Publishers.SQS;
 using AWS.Messaging.Serialization;
+using AWS.Messaging.Services.Backoff;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -103,4 +104,9 @@ public interface IMessageBusBuilder
     /// This means any sensitive user data sent by this framework will be visible in logs, any exceptions thrown and others.
     /// </summary>
     IMessageBusBuilder EnableMessageContentLogging();
+
+    /// <summary>
+    /// Configures the backoff policy used by <see cref="BackoffHandler"/> and its available options.
+    /// </summary>
+    IMessageBusBuilder ConfigureBackoffPolicy(Action<BackoffPolicyBuilder> configure);
 }

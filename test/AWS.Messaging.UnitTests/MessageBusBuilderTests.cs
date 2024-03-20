@@ -16,6 +16,8 @@ using AWS.Messaging.Publishers.SNS;
 using AWS.Messaging.Publishers.SQS;
 using AWS.Messaging.Serialization;
 using AWS.Messaging.Services;
+using AWS.Messaging.Services.Backoff;
+using AWS.Messaging.Services.Backoff.Policies;
 using AWS.Messaging.UnitTests.MessageHandlers;
 using AWS.Messaging.UnitTests.Models;
 using Microsoft.Extensions.DependencyInjection;
@@ -53,6 +55,187 @@ public class MessageBusBuilderTests
         Assert.NotNull(messagePublisher);
 
         CheckRequiredServices(serviceProvider);
+    }
+
+    [Fact]
+    public void MessageBus_ConfigureBackoffPolicy_Default()
+    {
+        _serviceCollection.AddAWSMessageBus(builder =>
+        {
+            builder.AddSQSPoller("queueUrl");
+        });
+
+        var serviceProvider = _serviceCollection.BuildServiceProvider();
+
+        var backoffHandler = serviceProvider.GetService<IBackoffHandler>();
+        Assert.NotNull(backoffHandler);
+
+        var backoffPolicy = serviceProvider.GetService<IBackoffPolicy>();
+        Assert.NotNull(backoffPolicy);
+
+        Assert.IsType<CappedExponentialBackoffPolicy>(backoffPolicy);
+    }
+
+    [Fact]
+    public void MessageBus_ConfigureBackoffPolicy_NoBackoffHandler()
+    {
+        _serviceCollection.AddAWSMessageBus(builder => { });
+
+        var serviceProvider = _serviceCollection.BuildServiceProvider();
+
+        var backoffHandler = serviceProvider.GetService<IBackoffHandler>();
+        Assert.Null(backoffHandler);
+
+        var backoffPolicy = serviceProvider.GetService<IBackoffPolicy>();
+        Assert.Null(backoffPolicy);
+    }
+
+    [Fact]
+    public void MessageBus_ConfigureBackoffPolicy_NoBackoffPolicy()
+    {
+        _serviceCollection.AddAWSMessageBus(builder =>
+        {
+            builder.AddSQSPoller("queueUrl");
+
+            builder.ConfigureBackoffPolicy(options =>
+            {
+                options.UseNoBackoff();
+            });
+        });
+
+        var serviceProvider = _serviceCollection.BuildServiceProvider();
+
+        var backoffHandler = serviceProvider.GetService<IBackoffHandler>();
+        Assert.NotNull(backoffHandler);
+
+        var backoffPolicy = serviceProvider.GetService<IBackoffPolicy>();
+        Assert.NotNull(backoffPolicy);
+
+        Assert.IsType<NoBackoffPolicy>(backoffPolicy);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
+    public void MessageBus_ConfigureBackoffPolicy_IntervalBackoffPolicy(int retry)
+    {
+        _serviceCollection.AddAWSMessageBus(builder =>
+        {
+            builder.AddSQSPoller("queueUrl");
+
+            builder.ConfigureBackoffPolicy(options =>
+            {
+                options.UseIntervalBackoff();
+            });
+        });
+
+        var serviceProvider = _serviceCollection.BuildServiceProvider();
+
+        var backoffHandler = serviceProvider.GetService<IBackoffHandler>();
+        Assert.NotNull(backoffHandler);
+
+        var backoffPolicy = serviceProvider.GetService<IBackoffPolicy>();
+        Assert.NotNull(backoffPolicy);
+
+        Assert.IsType<IntervalBackoffPolicy>(backoffPolicy);
+
+        Assert.True(TimeSpan.FromSeconds(1) >= backoffPolicy.RetrieveBackoffTime(retry));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(2)]
+    [InlineData(3)]
+    [InlineData(4)]
+    [InlineData(5)]
+    public void MessageBus_ConfigureBackoffPolicy_IntervalBackoffPolicy_WithOptions(int interval)
+    {
+        _serviceCollection.AddAWSMessageBus(builder =>
+        {
+            builder.AddSQSPoller("queueUrl");
+
+            builder.ConfigureBackoffPolicy(options =>
+            {
+                options.UseIntervalBackoff(x =>
+                {
+                    x.FixedInterval = interval;
+                });
+            });
+        });
+
+        var serviceProvider = _serviceCollection.BuildServiceProvider();
+
+        var backoffHandler = serviceProvider.GetService<IBackoffHandler>();
+        Assert.NotNull(backoffHandler);
+
+        var backoffPolicy = serviceProvider.GetService<IBackoffPolicy>();
+        Assert.NotNull(backoffPolicy);
+
+        Assert.IsType<IntervalBackoffPolicy>(backoffPolicy);
+
+        Assert.True(TimeSpan.FromSeconds(interval) >= backoffPolicy.RetrieveBackoffTime(It.IsAny<int>()));
+    }
+
+    [Fact]
+    public void MessageBus_ConfigureBackoffPolicy_CappedExponentialBackoffPolicy()
+    {
+        _serviceCollection.AddAWSMessageBus(builder =>
+        {
+            builder.AddSQSPoller("queueUrl");
+
+            builder.ConfigureBackoffPolicy(options =>
+            {
+                options.UseCappedExponentialBackoff();
+            });
+        });
+
+        var serviceProvider = _serviceCollection.BuildServiceProvider();
+
+        var backoffHandler = serviceProvider.GetService<IBackoffHandler>();
+        Assert.NotNull(backoffHandler);
+
+        var backoffPolicy = serviceProvider.GetService<IBackoffPolicy>();
+        Assert.NotNull(backoffPolicy);
+
+        Assert.IsType<CappedExponentialBackoffPolicy>(backoffPolicy);
+    }
+
+    [Theory]
+    [InlineData(5, 3)]
+    [InlineData(6, 6)]
+    [InlineData(7, 10)]
+    [InlineData(8, 20)]
+    public void MessageBus_ConfigureBackoffPolicy_CappedExponentialBackoffPolicy_WithOptions(int retry, int cap)
+    {
+        _serviceCollection.AddAWSMessageBus(builder =>
+        {
+            builder.AddSQSPoller("queueUrl");
+
+            builder.ConfigureBackoffPolicy(options =>
+            {
+                options.UseCappedExponentialBackoff(x =>
+                {
+                    x.CapBackoffTime = cap;
+                });
+            });
+        });
+
+        var serviceProvider = _serviceCollection.BuildServiceProvider();
+
+        var backoffHandler = serviceProvider.GetService<IBackoffHandler>();
+        Assert.NotNull(backoffHandler);
+
+        var backoffPolicy = serviceProvider.GetService<IBackoffPolicy>();
+        Assert.NotNull(backoffPolicy);
+
+        Assert.IsType<CappedExponentialBackoffPolicy>(backoffPolicy);
+
+        Assert.True(TimeSpan.FromSeconds(cap) >= backoffPolicy.RetrieveBackoffTime(retry));
     }
 
     [Fact]
@@ -236,7 +419,7 @@ public class MessageBusBuilderTests
     }
 
     /// <summary>
-    /// Asserts that adding a SQS Poller will add the required 
+    /// Asserts that adding a SQS Poller will add the required
     /// factories and services to the service provider
     /// </summary>
     [Fact]
@@ -376,7 +559,7 @@ public class MessageBusBuilderTests
     /// </summary>
     public static IEnumerable<object[]> GetInvalidSQSMessagePollerOptionsCases()
     {
-        // MaxNumberOfConcurrentMessages must be postive 
+        // MaxNumberOfConcurrentMessages must be postive
         yield return new object[] { new Action<SQSMessagePollerOptions>((options) => options.MaxNumberOfConcurrentMessages = -1) };
         yield return new object[] { new Action<SQSMessagePollerOptions>((options) => options.MaxNumberOfConcurrentMessages = 0) };
 
@@ -388,7 +571,7 @@ public class MessageBusBuilderTests
         yield return new object[] { new Action<SQSMessagePollerOptions>((options) => options.WaitTimeSeconds = -1) };
         yield return new object[] { new Action<SQSMessagePollerOptions>((options) => options.WaitTimeSeconds = 21) };
 
-        // VisibilityTimeoutExtensionThreshold must be postive 
+        // VisibilityTimeoutExtensionThreshold must be postive
         yield return new object[] { new Action<SQSMessagePollerOptions>((options) => options.VisibilityTimeoutExtensionThreshold = -1) };
         yield return new object[] { new Action<SQSMessagePollerOptions>((options) => options.VisibilityTimeoutExtensionThreshold = 0) };
 
