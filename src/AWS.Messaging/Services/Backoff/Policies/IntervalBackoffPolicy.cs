@@ -37,11 +37,14 @@ internal class IntervalBackoffPolicy : IBackoffPolicy
 
     /// <summary>
     /// Retrieves the backoff time in seconds which is a fixed interval, regardless of how many retries have already been performed.
+    /// Jitter is applied to the fixed interval to add some amount of randomness to the backoff to spread the retries around in time.
     /// </summary>
     /// <param name="numberOfRetries">The number of times the <see cref="BackoffHandler"/> has retried a request after performing a backoff.</param>
-    /// <returns>A fixed interval representing the backoff time as a <see cref="TimeSpan"/>.</returns>
+    /// <returns>An interval representing the backoff time as a <see cref="TimeSpan"/>.</returns>
     public TimeSpan RetrieveBackoffTime(int numberOfRetries)
     {
-        return TimeSpan.FromSeconds(_options.FixedInterval);
+        double jitter = Random.Shared.NextDouble();
+        var backoffTime = Convert.ToInt32(jitter * _options.FixedInterval);
+        return TimeSpan.FromSeconds(backoffTime);
     }
 }

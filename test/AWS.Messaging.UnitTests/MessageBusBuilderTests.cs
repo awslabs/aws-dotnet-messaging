@@ -143,7 +143,7 @@ public class MessageBusBuilderTests
 
         Assert.IsType<IntervalBackoffPolicy>(backoffPolicy);
 
-        Assert.Equal(TimeSpan.FromSeconds(1), backoffPolicy.RetrieveBackoffTime(retry));
+        Assert.True(TimeSpan.FromSeconds(1) >= backoffPolicy.RetrieveBackoffTime(retry));
     }
 
     [Theory]
@@ -178,7 +178,7 @@ public class MessageBusBuilderTests
 
         Assert.IsType<IntervalBackoffPolicy>(backoffPolicy);
 
-        Assert.Equal(TimeSpan.FromSeconds(interval), backoffPolicy.RetrieveBackoffTime(It.IsAny<int>()));
+        Assert.True(TimeSpan.FromSeconds(interval) >= backoffPolicy.RetrieveBackoffTime(It.IsAny<int>()));
     }
 
     [Fact]

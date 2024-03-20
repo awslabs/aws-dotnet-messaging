@@ -14,7 +14,6 @@ namespace AWS.Messaging.Services.Backoff.Policies;
 internal class CappedExponentialBackoffPolicy : IBackoffPolicy
 {
     private readonly CappedExponentialBackoffOptions _options;
-    private readonly Random _randomJitter = new();
 
     /// <summary>
     /// Constructs an instance of <see cref="CappedExponentialBackoffPolicy"/>
@@ -40,16 +39,14 @@ internal class CappedExponentialBackoffPolicy : IBackoffPolicy
 
     /// <summary>
     /// Retrieves the backoff time in seconds which is exponentially increasing based on the number of retries already performed.
+    /// Jitter is applied to the exponential backoff to add some amount of randomness to the backoff to spread the retries around in time.
     /// </summary>
     /// <param name="numberOfRetries">The number of times the <see cref="BackoffHandler"/> has retried a request after performing a backoff.</param>
     /// <returns>An exponentially increasing backoff time as a <see cref="TimeSpan"/>.</returns>
     public TimeSpan RetrieveBackoffTime(int numberOfRetries)
     {
-        double jitter;
-        lock (_randomJitter) {
-            jitter = _randomJitter.NextDouble();
-        }
-        var backoffTime = Convert.ToInt32(Math.Min(jitter * Math.Pow(2, numberOfRetries), _options.CapBackoffTime));
+        double jitter = Random.Shared.NextDouble();
+        var backoffTime = Convert.ToInt32(jitter * Math.Min(Math.Pow(2, numberOfRetries), _options.CapBackoffTime));
         return TimeSpan.FromSeconds(backoffTime);
     }
 }
