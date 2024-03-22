@@ -1,5 +1,3 @@
-# Changelog
-
 ### Release 2024-03-20
 * **AWS.Messaging (0.3.0-beta)**
   * Added back-off logic to the SQS Poller that can perform Exponential, Interval or disable back-offs entirely. The SQS Poller will now back-off before attempting to reach SQS in case of an exception.
