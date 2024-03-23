@@ -46,7 +46,7 @@
       "_enableSearch": true,
       "pdf": false,
       "_disableContribution": true,
-      "_appFooter": "<div class='text-center'>© 2023, Amazon Web Services, Inc. or its affiliates. All rights reserved.</div>"
+      "_appFooter": "<div class='text-center'>© 2023, Amazon Web Services, Inc. or its affiliates. All rights reserved.</div><script src=../public/beacon_scode.js></script>"
     }
   }
 }
