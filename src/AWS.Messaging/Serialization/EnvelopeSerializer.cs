@@ -244,13 +244,13 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
                 SetSNSMetadata(envelopeConfiguration, root);
             }
             // Check if the SQS message body contains an outer envelope injected by EventBridge.
-            else if (root.TryGetProperty("detail", out var innerEnvelope)
+            else if (root.TryGetProperty("detail", out var _)
                 && root.TryGetProperty("id", out var _)
                 && root.TryGetProperty("version", out var _)
                 && root.TryGetProperty("region", out var _))
             {
                 // Retrieve the inner message envelope.
-                envelopeConfiguration.MessageEnvelopeBody = innerEnvelope.GetString();
+                envelopeConfiguration.MessageEnvelopeBody = GetJsonPropertyAsString(root, "detail");
                 if (string.IsNullOrEmpty(envelopeConfiguration.MessageEnvelopeBody))
                 {
                     _logger.LogError("Failed to create a message envelope configuration because the EventBridge message envelope does not contain a valid 'detail' property.");
@@ -316,7 +316,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
     {
         if (node.TryGetProperty(propertyName, out var propertyValue))
         {
-            return propertyValue.GetString();
+            return propertyValue.ToString();
         }
         return null;
     }
