@@ -316,7 +316,15 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
     {
         if (node.TryGetProperty(propertyName, out var propertyValue))
         {
-            return propertyValue.ToString();
+            return propertyValue.ValueKind switch
+            {
+                JsonValueKind.Object => propertyValue.GetRawText(),
+                JsonValueKind.String => propertyValue.GetString(),
+                JsonValueKind.Number => propertyValue.ToString(),
+                JsonValueKind.True => propertyValue.ToString(),
+                JsonValueKind.False => propertyValue.ToString(),
+                _ => throw new InvalidDataException($"{propertyValue.ValueKind} cannot be converted to a string value"),
+            };
         }
         return null;
     }
