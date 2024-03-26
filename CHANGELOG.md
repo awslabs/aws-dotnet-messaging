@@ -1,3 +1,12 @@
+## Release 2024-03-26
+
+### AWS.Messaging (0.9.0)
+* **AWS.Messaging** is now in _**Developer Preview**_
+### AWS.Messaging.Lambda (0.9.0)
+* **AWS.Messaging.Lambda** is now in _**Developer Preview**_
+### AWS.Messaging.Telemetry.OpenTelemetry (0.9.0)
+* **AWS.Messaging.Telemetry.OpenTelemetry** is now in _**Developer Preview**_
+
 ## Release 2024-03-20
 
 ### AWS.Messaging (0.3.0-beta)
