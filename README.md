@@ -2,7 +2,7 @@
 [![nuget](https://img.shields.io/nuget/v/AWS.Messaging.svg) ![downloads](https://img.shields.io/nuget/dt/AWS.Messaging.svg)](https://www.nuget.org/packages/AWS.Messaging/)
 [![build status](https://img.shields.io/github/actions/workflow/status/awslabs/aws-dotnet-messaging/aws-ci.yml?branch=dev)](https://github.com/awslabs/aws-dotnet-messaging/actions/workflows/aws-ci.yml)
 
-**Notice:** *This library is still in active development and is meant for early access and feedback purposes only. It should not be used in production environments, and any releases before 1.0.0 might include breaking changes.*
+**Notice:** *This library is in **developer preview**. It provides early access to upcoming features in the **AWS Message Processing Framework for .NET** framework. Any releases prior to 1.0.0 might include breaking changes.*
 
 The **AWS Message Processing Framework for .NET** is an AWS-native framework that simplifies the development of .NET message processing applications that use AWS services, such as Amazon Simple Queue Service (SQS), Amazon Simple Notification Service (SNS), and Amazon EventBridge. The framework reduces the amount of boiler-plate code developers need to write, allowing you to focus on your business logic when publishing and consuming messages.
 * For publishers, the framework serializes the message from a .NET object to a [CloudEvents](https://cloudevents.io/)-compatible message, and then wraps that in the service-specific AWS message. It then publishes the message to the configured SQS queue, SNS topic, or EventBridge event bus. 
@@ -10,7 +10,7 @@ The **AWS Message Processing Framework for .NET** is an AWS-native framework tha
 
 ## Project Status
 
-The framework is currently under active development. It already supports:
+The framework is currently in **developer preview**. The following features are supported:
 * Publishing to SQS, SNS, and EventBridge
 * Handling SQS messages in a long-running, polling process
 * Handling SQS messages in AWS Lambda functions
