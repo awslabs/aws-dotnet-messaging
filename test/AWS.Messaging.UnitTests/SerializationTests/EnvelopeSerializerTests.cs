@@ -268,19 +268,19 @@ public class EnvelopeSerializerTests
         var serviceProvider = _serviceCollection.BuildServiceProvider();
         var envelopeSerializer = serviceProvider.GetRequiredService<IEnvelopeSerializer>();
 
-        var innerMessageEnvelope = new MessageEnvelope<AddressInfo>
+        var innerMessageEnvelope = new MessageEnvelope<string>
         {
             Id = "66659d05-e4ff-462f-81c4-09e560e66a5c",
             Source = new Uri("/aws/messaging", UriKind.Relative),
             Version = "1.0",
             MessageTypeIdentifier = "addressInfo",
             TimeStamp = _testdate,
-            Message = new AddressInfo
+            Message = JsonSerializer.Serialize(new AddressInfo
             {
                 Street = "Prince St",
                 Unit = 123,
                 ZipCode = "00001"
-            }
+            })
         };
 
         var outerMessageEnvelope = new Dictionary<string, object>
@@ -293,7 +293,7 @@ public class EnvelopeSerializerTests
             { "account", "123456789123" },
             { "region", "us-west-2" },
             { "resources", new List<string>{ "arn1", "arn2" } },
-            { "detail", await envelopeSerializer.SerializeAsync(innerMessageEnvelope) },
+            { "detail", innerMessageEnvelope }, // The "detail" property is set as a JSON object and not a string.
         };
 
         var sqsMessage = new Message
