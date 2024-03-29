@@ -393,8 +393,10 @@ If you discover a potential security issue, refer to the [security policy](https
 
 # Additional Resources
 * [AWS Message Processing Framework for .NET Design Document](./docs/docs/design/message-processing-framework-design.md)
-* [Sample Applications](https://github.com/awslabs/aws-dotnet-messaging/tree/main/sampleapps) in this repo contains samples of a publisher service, long-running subscriber service, and Lambda function handlers.
+* [Sample Applications](https://github.com/awslabs/aws-dotnet-messaging/tree/main/sampleapps) - contains sample applications of a publisher service, long-running subscriber service, Lambda function handlers, and using Polly to override the framework's built-in backoff logic.
 * [Developer Guide](https://docs.aws.amazon.com/sdk-for-net/v3/developer-guide/msg-proc-fw.html)
+* [API Reference](https://awslabs.github.io/aws-dotnet-messaging/)
+* [Introducing the AWS Message Processing Framework for .NET (Preview) Blog Post](https://aws.amazon.com/blogs/developer/introducing-the-aws-message-processing-framework-for-net-preview/) - walks through creating simple applications to send and receive SQS messages.
 
 # License
 

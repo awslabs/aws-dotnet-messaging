@@ -11,7 +11,7 @@ In AWS Lambda, the service takes care of reading the messages from the SQS queue
 
 To get started, add the `AWS.Messaging.Lambda` NuGet package to your project:
 ```
-dotnet add package AWS.Messaging.Lambda --prerelease
+dotnet add package AWS.Messaging.Lambda
 ```
 
 The example shown below uses the [.NET Amazon Lambda Annotations](https://github.com/aws/aws-lambda-dotnet/tree/master/Libraries/src/Amazon.Lambda.Annotations) framework, which makes it easy to set up .NET's dependency injection.
@@ -66,7 +66,11 @@ was successful. If the function is configured for partial response failure this 
 
 
 # Useful Links
-* [AWS Message Processing Framework for .NET Design Document](./docs/design/message-processing-framework-design.md)
+* [AWS Message Processing Framework for .NET Design Document](../../docs/docs/design/message-processing-framework-design.md)
+* [Sample Applications](https://github.com/awslabs/aws-dotnet-messaging/tree/main/sampleapps) - contains sample applications of a publisher service, long-running subscriber service, Lambda function handlers, and using Polly to override the framework's built-in backoff logic.
+* [Developer Guide](https://docs.aws.amazon.com/sdk-for-net/v3/developer-guide/msg-proc-fw.html)
+* [API Reference](https://awslabs.github.io/aws-dotnet-messaging/)
+* [Introducing the AWS Message Processing Framework for .NET (Preview) Blog Post](https://aws.amazon.com/blogs/developer/introducing-the-aws-message-processing-framework-for-net-preview/) - walks through creating simple applications to send and receive SQS messages.
 
 # Security
 
