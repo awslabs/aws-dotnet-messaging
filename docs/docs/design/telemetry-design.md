@@ -2,8 +2,8 @@
 
 It is expected a large numbers of messages will be going through a system using the AWS Message Processing Framework for .NET moving from publishers to subscribers.
 Users of the library need access to telemetry that shows how messages traverse through their messaging system. For example, if an alarm goes off for a message that
-failed to process users need to be able to see where the message came from and how it got to the point it failed. Another need is total processing time for a message
-exceeds an SLA the user needs to be able see where the bottlenecks are for messages being processed.
+failed to process, users need to be able to see where the message came from and how it got to the point it failed. Another need is total processing time for when a message
+exceeds an SLA, the user needs to be able see where the bottlenecks are for messages being processed.
 
 ### Tenets
 
