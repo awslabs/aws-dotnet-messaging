@@ -13,7 +13,7 @@ namespace AWS.Messaging.Configuration;
 internal class AWSClientProvider : IAWSClientProvider
 {
     private const string _userAgentHeader = "User-Agent";
-    private static readonly string _userAgentString = $"lib/aws-dotnet-messaging_{TelemetryKeys.AWSMessagingAssemblyVersion}";
+    private static readonly string _userAgentString = $"lib/aws-dotnet-messaging#{TelemetryKeys.AWSMessagingAssemblyVersion}";
 
     private readonly IServiceProvider _serviceProvider;
 
