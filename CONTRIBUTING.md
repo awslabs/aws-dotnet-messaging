@@ -60,7 +60,7 @@ A `change file` looks like the following example:
 ```
 The `change file` lists all the modified projects, the changelog message for each project as well as the increment type. 
 
-These files are located in the repo at [.autover/changes/](./.autover/changes/)
+These files are located in the repo at .autover/changes/
 
 You can use the `AutoVer` tool to create the change file. You can install it using the following command:
 ```
