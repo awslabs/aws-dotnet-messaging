@@ -48,9 +48,9 @@ internal class SNSPublisher : IMessagePublisher, ISNSPublisher
     /// <param name="token">The cancellation token used to cancel the request.</param>
     /// <exception cref="InvalidMessageException">If the message is null or invalid.</exception>
     /// <exception cref="MissingMessageTypeConfigurationException">If cannot find the publisher configuration for the message type.</exception>
-    public async Task PublishAsync<T>(T message, CancellationToken token = default)
+    public async Task<IPublishResponse> PublishAsync<T>(T message, CancellationToken token = default)
     {
-       await PublishAsync(message, null, token);
+       return await PublishAsync(message, null, token);
     }
 
     /// <summary>
@@ -61,7 +61,7 @@ internal class SNSPublisher : IMessagePublisher, ISNSPublisher
     /// <param name="token">The cancellation token used to cancel the request.</param>
     /// <exception cref="InvalidMessageException">If the message is null or invalid.</exception>
     /// <exception cref="MissingMessageTypeConfigurationException">If cannot find the publisher configuration for the message type.</exception>
-    public async Task PublishAsync<T>(T message, SNSOptions? snsOptions, CancellationToken token = default)
+    public async Task<SNSPublishResponse> PublishAsync<T>(T message, SNSOptions? snsOptions, CancellationToken token = default)
     {
         using (var trace = _telemetryFactory.Trace("Publish to AWS SNS"))
         {
@@ -105,8 +105,12 @@ internal class SNSPublisher : IMessagePublisher, ISNSPublisher
 
                 _logger.LogDebug("Sending the message of type '{MessageType}' to SNS. Publisher Endpoint: {Endpoint}", typeof(T), topicArn);
                 var request = CreatePublishRequest(topicArn, messageBody, snsOptions);
-                await client.PublishAsync(request, token);
+                var publishResponse =await client.PublishAsync(request, token);
                 _logger.LogDebug("The message of type '{MessageType}' has been pushed to SNS.", typeof(T));
+                return new SNSPublishResponse
+                {
+                    EventId = publishResponse.MessageId
+                };
             }
             catch (Exception ex)
             {

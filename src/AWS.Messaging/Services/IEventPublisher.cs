@@ -1,6 +1,9 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.\r
 // SPDX-License-Identifier: Apache-2.0
 
+using AWS.Messaging.Publishers;
+using AWS.Messaging.Publishers.EventBridge;
+
 namespace AWS.Messaging.Services;
 
 /// <summary>
@@ -14,5 +17,5 @@ public interface IEventPublisher
     /// </summary>
     /// <param name="message">The application message that will be serialized and published.</param>
     /// <param name="token">The cancellation token used to cancel the request.</param>
-    Task PublishAsync<T>(T message, CancellationToken token = default);
+    Task<IPublishResponse> PublishAsync<T>(T message, CancellationToken token = default);
 }
