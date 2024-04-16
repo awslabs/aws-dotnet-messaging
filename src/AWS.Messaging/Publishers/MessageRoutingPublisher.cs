@@ -68,7 +68,7 @@ internal class MessageRoutingPublisher : IMessagePublisher
     /// </summary>
     /// <param name="message">The message to be sent.</param>
     /// <param name="token">The cancellation token used to cancel the request.</param>
-    public async Task PublishAsync<T>(T message, CancellationToken token = default)
+    public async Task<IPublishResponse> PublishAsync<T>(T message, CancellationToken token = default)
     {
         using (var trace = _telemetryFactory.Trace("Routing message to AWS service"))
         {
@@ -90,12 +90,12 @@ internal class MessageRoutingPublisher : IMessagePublisher
                     if (typeof(ICommandPublisher).IsAssignableFrom(publisherType))
                     {
                         var publisher = _commandPublisherInstances.GetOrAdd(publisherType, _ => (ICommandPublisher) ActivatorUtilities.CreateInstance(_serviceProvider, publisherType));
-                        await publisher.SendAsync(message, token);
+                        return await publisher.SendAsync(message, token);
                     }
                     else if (typeof(IEventPublisher).IsAssignableFrom(publisherType))
                     {
                         var publisher = _eventPublisherInstances.GetOrAdd(publisherType, _ => (IEventPublisher) ActivatorUtilities.CreateInstance(_serviceProvider, publisherType));
-                        await publisher.PublishAsync(message, token);
+                        return await publisher.PublishAsync(message, token);
                     }
                     else
                     {
