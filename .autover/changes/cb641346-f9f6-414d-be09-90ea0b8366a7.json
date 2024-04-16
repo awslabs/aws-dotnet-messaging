@@ -1,0 +1,25 @@
+{
+    "Projects": [
+      {
+        "Name": "AWS.Messaging",
+        "Type": "Patch",
+        "ChangelogMessages": [
+          "Update User-Agent string"
+        ]
+      },
+      {
+        "Name": "AWS.Messaging.Lambda",
+        "Type": "Patch",
+        "ChangelogMessages": [
+          "Update project dependencies"
+        ]
+      },
+      {
+        "Name": "AWS.Messaging.Telemetry.OpenTelemetry",
+        "Type": "Patch",
+        "ChangelogMessages": [
+          "Update project dependencies"
+        ]
+      }
+    ]
+  }
