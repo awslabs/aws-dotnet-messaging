@@ -47,6 +47,7 @@ internal class SQSPublisher : ISQSPublisher
     /// </summary>
     /// <param name="message">The application message that will be serialized and sent to an SQS queue</param>
     /// <param name="token">The cancellation token used to cancel the request.</param>
+    /// <exception cref="FailedToPublishException">If the message failed to publish.</exception>
     /// <exception cref="InvalidMessageException">If the message is null or invalid.</exception>
     /// <exception cref="MissingMessageTypeConfigurationException">If cannot find the publisher configuration for the message type.</exception>
     public async Task<IPublishResponse> SendAsync<T>(T message, CancellationToken token = default)
@@ -60,6 +61,7 @@ internal class SQSPublisher : ISQSPublisher
     /// <param name="message">The application message that will be serialized and sent to an SQS queue</param>
     /// <param name="sqsOptions">Contains additional parameters that can be set while sending a message to an SQS queue</param>
     /// <param name="token">The cancellation token used to cancel the request.</param>
+    /// <exception cref="FailedToPublishException">If the message failed to publish.</exception>
     /// <exception cref="InvalidMessageException">If the message is null or invalid.</exception>
     /// <exception cref="MissingMessageTypeConfigurationException">If cannot find the publisher configuration for the message type.</exception>
     public async Task<SQSSendResponse> SendAsync<T>(T message, SQSOptions? sqsOptions, CancellationToken token = default)
@@ -111,12 +113,14 @@ internal class SQSPublisher : ISQSPublisher
                 _logger.LogDebug("The message of type '{MessageType}' has been pushed to SQS.", typeof(T));
                 return new SQSSendResponse
                 {
-                    EventId = response.MessageId
+                    MessageId = response.MessageId
                 };
             }
             catch (Exception ex)
             {
                 trace.AddException(ex);
+                if (ex is AmazonSQSException)
+                    throw new FailedToPublishException("Message failed to publish.", ex);
                 throw;
             }
         }

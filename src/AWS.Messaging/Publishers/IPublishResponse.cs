@@ -4,23 +4,15 @@
 namespace AWS.Messaging.Publishers;
 
 /// <summary>
-/// Represents the results of a published event
+/// Represents the results of a published message
 /// </summary>
 public interface IPublishResponse
 {
     /// <summary>
-    /// Gets and sets the property ErrorMessage.
+    /// Gets and sets the property MessageId.
     /// <para>
-    /// The error message that explains why the event publish failed.
+    /// The ID of the message.
     /// </para>
     /// </summary>
-    public string? ErrorMessage { get; set; }
-
-    /// <summary>
-    /// Gets and sets the property EventId.
-    /// <para>
-    /// The ID of the event.
-    /// </para>
-    /// </summary>
-    public string? EventId { get; set; }
+    public string? MessageId { get; set; }
 }

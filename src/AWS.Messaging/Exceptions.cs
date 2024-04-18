@@ -118,6 +118,17 @@ public class FailedToSerializeApplicationMessageException : AWSMessagingExceptio
 }
 
 /// <summary>
+/// Thrown if an exception occurs while publishing the message to SNS, SQS or EventBridge.
+/// </summary>
+public class FailedToPublishException : AWSMessagingException
+{
+    /// <summary>
+    /// Creates an instance of <see cref="FailedToPublishException"/>.
+    /// </summary>
+    public FailedToPublishException(string message, Exception? innerException = null) : base(message, innerException) { }
+}
+
+/// <summary>
 /// Thrown if the message being sent is invalid.
 /// </summary>
 public class InvalidMessageException : AWSMessagingException
@@ -260,3 +271,23 @@ public class InvalidFifoPublishingRequestException : AWSMessagingException
     /// </summary>
     public InvalidFifoPublishingRequestException(string message, Exception? innerException = null) : base(message, innerException) { }
 }
+
+/// <summary>
+/// Thrown if the EventBridgePublishResponse contains a message with an errorcode
+/// </summary>
+public class EventBridgePutEventsException : Exception
+{
+    /// <summary>
+    /// The error code from the EventBridge SDK
+    /// </summary>
+    public string ErrorCode { get; }
+
+    /// <summary>
+    /// Creates an instance of <see cref="EventBridgePutEventsException"/>.
+    /// </summary>
+    public EventBridgePutEventsException(string message, string errorCode) : base(message)
+    {
+        ErrorCode = errorCode;
+    }
+}
+

@@ -21,5 +21,5 @@ public class SQSSendResponse : IPublishResponse
     /// and Message Identifiers</a> in the <i>Amazon SQS Developer Guide</i>.
     /// </para>
     /// </summary>
-    public string? EventId { get; set; }
+    public string? MessageId { get; set; }
 }

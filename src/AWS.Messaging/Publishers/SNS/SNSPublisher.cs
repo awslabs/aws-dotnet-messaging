@@ -46,6 +46,7 @@ internal class SNSPublisher : IMessagePublisher, ISNSPublisher
     /// </summary>
     /// <param name="message">The application message that will be serialized and sent to an SNS topic</param>
     /// <param name="token">The cancellation token used to cancel the request.</param>
+    /// <exception cref="FailedToPublishException">If the message failed to publish.</exception>
     /// <exception cref="InvalidMessageException">If the message is null or invalid.</exception>
     /// <exception cref="MissingMessageTypeConfigurationException">If cannot find the publisher configuration for the message type.</exception>
     public async Task<IPublishResponse> PublishAsync<T>(T message, CancellationToken token = default)
@@ -59,6 +60,7 @@ internal class SNSPublisher : IMessagePublisher, ISNSPublisher
     /// <param name="message">The application message that will be serialized and sent to an SNS topic</param>
     /// <param name="snsOptions">Contains additional parameters that can be set while sending a message to an SNS topic</param>
     /// <param name="token">The cancellation token used to cancel the request.</param>
+    /// <exception cref="FailedToPublishException">If the message failed to publish.</exception>
     /// <exception cref="InvalidMessageException">If the message is null or invalid.</exception>
     /// <exception cref="MissingMessageTypeConfigurationException">If cannot find the publisher configuration for the message type.</exception>
     public async Task<SNSPublishResponse> PublishAsync<T>(T message, SNSOptions? snsOptions, CancellationToken token = default)
@@ -109,12 +111,14 @@ internal class SNSPublisher : IMessagePublisher, ISNSPublisher
                 _logger.LogDebug("The message of type '{MessageType}' has been pushed to SNS.", typeof(T));
                 return new SNSPublishResponse
                 {
-                    EventId = publishResponse.MessageId
+                    MessageId = publishResponse.MessageId
                 };
             }
             catch (Exception ex)
             {
                 trace.AddException(ex);
+                if (ex is AmazonSimpleNotificationServiceException) // if the exception inherits from the AmazonSimpleNotificationServiceException
+                    throw new FailedToPublishException("Message failed to publish.", ex);
                 throw;
             }
         }
