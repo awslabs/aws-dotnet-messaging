@@ -4,14 +4,10 @@
 namespace AWS.Messaging.Publishers.SQS;
 
 /// <summary>
-///
+/// The response for an SQS Send action.
 /// </summary>
 public class SQSSendResponse : IPublishResponse
 {
-    /// <summary>
-    ///
-    /// </summary>
-    public string? ErrorMessage { get; set; }
 
     /// <summary>
     /// Gets and sets the property MessageId.
