@@ -29,5 +29,6 @@ public interface IMessagePublisher
     /// This method is accessible by injecting <see cref="IMessagePublisher"/> into the application code
     /// using the dependency injection framework.
     /// </summary>
+    /// <exception cref="FailedToPublishException">If the message failed to publish. The inner exception contains more details if failures arise from the SDK.</exception>
     Task<IPublishResponse> PublishAsync<T>(T message, CancellationToken token = default);
 }

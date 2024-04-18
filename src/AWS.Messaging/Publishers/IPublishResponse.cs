@@ -4,15 +4,15 @@
 namespace AWS.Messaging.Publishers;
 
 /// <summary>
-/// Represents the results of a published event
+/// Represents the results of a published message
 /// </summary>
 public interface IPublishResponse
 {
     /// <summary>
-    /// Gets and sets the property EventId.
+    /// Gets and sets the property MessageId.
     /// <para>
-    /// The ID of the event.
+    /// The ID of the message.
     /// </para>
     /// </summary>
-    public string? EventId { get; set; }
+    public string? MessageId { get; set; }
 }
