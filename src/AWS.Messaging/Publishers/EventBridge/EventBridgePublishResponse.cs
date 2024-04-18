@@ -22,5 +22,5 @@ public class EventBridgePublishResponse : IPublishResponse
     /// The ID of the event.
     /// </para>
     /// </summary>
-    public string? EventId { get; set; }
+    public string? MessageId { get; set; }
 }

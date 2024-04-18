@@ -18,5 +18,5 @@ public class SNSPublishResponse : IPublishResponse
     /// Length Constraint: Maximum 100 characters
     /// </para>
     /// </summary>
-    public string? EventId { get; set; }
+    public string? MessageId { get; set; }
 }

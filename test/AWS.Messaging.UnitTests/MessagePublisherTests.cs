@@ -94,7 +94,7 @@ public class MessagePublisherTests
                         request.QueueUrl.Equals("endpoint")),
                     It.IsAny<CancellationToken>()),
             Times.Exactly(1));
-        Assert.Equal("MessageId", result.EventId);
+        Assert.Equal("MessageId", result.MessageId);
     }
 
     [Fact]
@@ -133,7 +133,7 @@ public class MessagePublisherTests
                     It.Is<string>(request =>
                         request.Equals("AWS.Messaging.UnitTests.Models.ChatMessage"))),
             Times.Exactly(1));
-        Assert.Equal("MessageId", publishResponse.EventId);
+        Assert.Equal("MessageId", publishResponse.MessageId);
     }
 
     [Fact]
@@ -230,7 +230,7 @@ public class MessagePublisherTests
                 x.RecordTelemetryContext(
                     It.IsAny<MessageEnvelope>()),
             Times.Exactly(1));
-        Assert.Equal("MessageId", sendResult.EventId);
+        Assert.Equal("MessageId", sendResult.MessageId);
     }
 
     [Fact]
@@ -372,7 +372,7 @@ public class MessagePublisherTests
 
         // And not the endpoint configured for this message type via SetupSQSPublisherDIServices
         _sqsClient.VerifyNoOtherCalls();
-        Assert.Equal("MessageId", sendResult.EventId);
+        Assert.Equal("MessageId", sendResult.MessageId);
     }
 
     /// <summary>
@@ -406,7 +406,7 @@ public class MessagePublisherTests
         // And not the default client
         _sqsClient.VerifyNoOtherCalls();
 
-        Assert.Equal("MessageId", sendResult.EventId);
+        Assert.Equal("MessageId", sendResult.MessageId);
     }
 
     /// <summary>
@@ -477,7 +477,7 @@ public class MessagePublisherTests
                         request.TopicArn.Equals("endpoint")),
                     It.IsAny<CancellationToken>()),
             Times.Exactly(1));
-        Assert.Equal("MessageId", publishResult.EventId);
+        Assert.Equal("MessageId", publishResult.MessageId);
     }
 
     [Fact]
@@ -628,7 +628,7 @@ public class MessagePublisherTests
 
         // And not the topic arn configured for this message type via SetupSNSPublisherDIServices
         _snsClient.VerifyNoOtherCalls();
-        Assert.Equal("MessageId", publishResponse.EventId);
+        Assert.Equal("MessageId", publishResponse.MessageId);
     }
 
     /// <summary>
@@ -738,7 +738,7 @@ public class MessagePublisherTests
                     It.IsAny<CancellationToken>()),
             Times.Exactly(1));
 
-        Assert.Equal("ReturnedEventId", publishResponse.EventId);
+        Assert.Equal("ReturnedEventId", publishResponse.MessageId);
     }
 
     [Fact]
@@ -764,7 +764,7 @@ public class MessagePublisherTests
             new DefaultTelemetryFactory(serviceProvider)
         );
 
-        var publishResponse = await messagePublisher.PublishAsync(_chatMessage);
+        var publishResponse = Assert.ThrowsAsync<FailedToPublishException>(async () => await messagePublisher.PublishAsync(_chatMessage));
 
         _eventBridgeClient.Verify(x =>
                 x.PutEventsAsync(
@@ -774,7 +774,9 @@ public class MessagePublisherTests
                     It.IsAny<CancellationToken>()),
             Times.Exactly(1));
 
-        Assert.Null(publishResponse.EventId);
+        Assert.Equal("Message failed to publish.", publishResponse.Result.Message);
+        Assert.Equal("ErrorMessage", publishResponse.Result.InnerException.Message);
+        Assert.Equal("ErrorCode", ((EventBridgePutEventsException)publishResponse.Result.InnerException).ErrorCode);
     }
 
     [Fact]
@@ -870,7 +872,7 @@ public class MessagePublisherTests
             telemetryFactory.Object
         );
 
-        await Assert.ThrowsAsync<Exception>(() => messagePublisher.PublishAsync(_chatMessage));
+        await Assert.ThrowsAsync<FailedToPublishException>(() => messagePublisher.PublishAsync(_chatMessage));
 
         telemetryTrace.Verify(x =>
                 x.AddException(
