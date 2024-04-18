@@ -115,9 +115,7 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
                 var firstEntry = putEventsResponse.Entries.First(); // only 1 message is published, so we only expect 1 result
                 var publishResponse = new EventBridgePublishResponse()
                 {
-                    EventId = firstEntry.EventId,
-                    ErrorMessage = firstEntry.ErrorMessage,
-                    ErrorCode = firstEntry.ErrorCode
+                    EventId = firstEntry.EventId
                 };
                 if (string.IsNullOrWhiteSpace(firstEntry.ErrorCode))
                 {
@@ -125,7 +123,7 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
                 }
                 else
                 {
-                    _logger.LogDebug("The message of type '{MessageType}' has been pushed to EventBridge but failed with '{ErrorCode}'.", typeof(T), publishResponse.ErrorCode);
+                    _logger.LogDebug("The message of type '{MessageType}' has been pushed to EventBridge but failed with '{ErrorCode}'.", typeof(T), firstEntry.ErrorCode);
                 }
 
                 return publishResponse;

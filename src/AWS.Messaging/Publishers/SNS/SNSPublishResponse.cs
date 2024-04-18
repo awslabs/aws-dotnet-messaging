@@ -4,15 +4,10 @@
 namespace AWS.Messaging.Publishers.SNS;
 
 /// <summary>
-/// Response for Publish action.
+/// The response for an SNS publish action.
 /// </summary>
 public class SNSPublishResponse : IPublishResponse
 {
-    /// <summary>
-    /// The error message as provided by SNS, if any
-    /// </summary>
-    public string? ErrorMessage { get; set; }
-
     /// <summary>
     /// Gets and sets the property MessageId.
     /// <para>
