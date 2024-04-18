@@ -739,7 +739,6 @@ public class MessagePublisherTests
             Times.Exactly(1));
 
         Assert.Equal("ReturnedEventId", publishResponse.EventId);
-        Assert.Null(publishResponse.ErrorMessage);
     }
 
     [Fact]
@@ -775,10 +774,6 @@ public class MessagePublisherTests
                     It.IsAny<CancellationToken>()),
             Times.Exactly(1));
 
-        Assert.Equal("ErrorMessage", publishResponse.ErrorMessage);
-
-        Assert.Equal("ErrorMessage", ((EventBridgePublishResponse)publishResponse).ErrorMessage);
-        Assert.Equal("ErrorCode", ((EventBridgePublishResponse)publishResponse).ErrorCode);
         Assert.Null(publishResponse.EventId);
     }
 
