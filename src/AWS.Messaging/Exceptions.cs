@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using AWS.Messaging.Configuration;
+using AWS.Messaging.Publishers.EventBridge;
 using AWS.Messaging.Serialization;
 using Microsoft.Extensions.Configuration;
 
@@ -118,7 +119,7 @@ public class FailedToSerializeApplicationMessageException : AWSMessagingExceptio
 }
 
 /// <summary>
-/// Thrown if an exception occurs while publishing the message to SNS, SQS or EventBridge.
+/// Thrown if an exception occurs while publishing the message.
 /// </summary>
 public class FailedToPublishException : AWSMessagingException
 {
@@ -273,9 +274,9 @@ public class InvalidFifoPublishingRequestException : AWSMessagingException
 }
 
 /// <summary>
-/// Thrown if the EventBridgePublishResponse contains a message with an errorcode
+/// Thrown if the <see cref="EventBridgePublishResponse"/> contains a message with an error code
 /// </summary>
-public class EventBridgePutEventsException : Exception
+public class EventBridgePutEventsException : AWSMessagingException
 {
     /// <summary>
     /// The error code from the EventBridge SDK
