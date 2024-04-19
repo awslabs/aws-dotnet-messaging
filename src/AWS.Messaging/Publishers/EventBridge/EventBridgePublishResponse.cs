@@ -4,8 +4,6 @@
 namespace AWS.Messaging.Publishers.EventBridge;
 /// <summary>
 /// Represents the results of an event published to an event bus.
-///
-///
 /// <para>
 /// If the publishing was successful, the entry has the event ID in it. Otherwise, an exception will be thrown
 /// </para>
@@ -17,9 +15,9 @@ namespace AWS.Messaging.Publishers.EventBridge;
 public class EventBridgePublishResponse : IPublishResponse
 {
     /// <summary>
-    /// Gets and sets the property EventId.
+    /// Gets and sets the property MessageId.
     /// <para>
-    /// The ID of the event.
+    /// The ID of the message.
     /// </para>
     /// </summary>
     public string? MessageId { get; set; }

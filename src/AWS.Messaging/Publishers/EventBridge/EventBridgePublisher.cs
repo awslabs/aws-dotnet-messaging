@@ -132,7 +132,7 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
             catch (Exception ex)
             {
                 trace.AddException(ex);
-                if (ex is not AWSMessagingException)
+                if (ex is EventBridgePutEventsException)
                     throw new FailedToPublishException("Message failed to publish.", ex);
                 throw;
             }
