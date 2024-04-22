@@ -1,3 +1,13 @@
+## Release 2024-04-22
+
+### AWS.Messaging (0.9.1)
+* Adding the response to the publish operation
+* Update User-Agent string
+### AWS.Messaging.Lambda (0.9.1)
+* Update project dependencies
+### AWS.Messaging.Telemetry.OpenTelemetry (0.9.1)
+* Update project dependencies
+
 ## Release 2024-03-26
 
 ### AWS.Messaging (0.9.0)
