@@ -5,6 +5,7 @@ using Amazon.EventBridge;
 using Amazon.EventBridge.Model;
 using AWS.Messaging.Configuration;
 using AWS.Messaging.Serialization;
+using AWS.Messaging.Services;
 using AWS.Messaging.Telemetry;
 using Microsoft.Extensions.Logging;
 
@@ -42,11 +43,12 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
     /// <summary>
     /// <inheritdoc/>
     /// </summary>
+    /// <exception cref="FailedToPublishException">If the message failed to publish.</exception>
     /// <exception cref="InvalidMessageException">If the message is null or invalid.</exception>
     /// <exception cref="MissingMessageTypeConfigurationException">If cannot find the publisher configuration for the message type.</exception>
-    public async Task PublishAsync<T>(T message, CancellationToken token = default)
+    public async Task<IPublishResponse> PublishAsync<T>(T message, CancellationToken token = default)
     {
-        await PublishAsync(message, null, token);
+        return await PublishAsync(message, null, token);
     }
 
     /// <summary>
@@ -55,9 +57,10 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
     /// <param name="message">The application message that will be serialized and sent to an event bus</param>
     /// <param name="eventBridgeOptions">Contains additional parameters that can be set while sending a message to EventBridge</param>
     /// <param name="token">The cancellation token used to cancel the request.</param>
+    /// <exception cref="FailedToPublishException">If the message failed to publish.</exception>
     /// <exception cref="InvalidMessageException">If the message is null or invalid.</exception>
     /// <exception cref="MissingMessageTypeConfigurationException">If cannot find the publisher configuration for the message type.</exception>
-    public async Task PublishAsync<T>(T message, EventBridgeOptions? eventBridgeOptions, CancellationToken token = default)
+    public async Task<EventBridgePublishResponse> PublishAsync<T>(T message, EventBridgeOptions? eventBridgeOptions, CancellationToken token = default)
     {
         using (var trace = _telemetryFactory.Trace("Publish to AWS EventBridge"))
         {
@@ -79,7 +82,7 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
                 if (string.IsNullOrEmpty(eventBusName))
                 {
                     _logger.LogError("Unable to determine a destination event bus for message of type '{MessageType}'.", typeof(T));
-                    throw new InvalidPublisherEndpointException($"Unable to determine a destination queue for message of type '{typeof(T)}'.");
+                    throw new InvalidPublisherEndpointException($"Unable to determine a destination event bus for message of type '{typeof(T)}'.");
                 }
 
                 trace.AddMetadata(TelemetryKeys.EventBusName, eventBusName);
@@ -110,12 +113,26 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
 
                 _logger.LogDebug("Sending the message of type '{MessageType}' to EventBridge. Publisher Endpoint: {Endpoint}", typeof(T), eventBusName);
                 var request = CreatePutEventsRequest(publisherMapping, messageEnvelope.Source?.ToString(), messageBody, eventBridgeOptions, eventBusName);
-                await client.PutEventsAsync(request, token);
-                _logger.LogDebug("The message of type '{MessageType}' has been pushed to EventBridge.", typeof(T));
+                var putEventsResponse = await client.PutEventsAsync(request, token);
+                var firstEntry = putEventsResponse.Entries.First(); // only 1 message is published, so we only expect 1 result
+                var publishResponse = new EventBridgePublishResponse()
+                {
+                    MessageId = firstEntry.EventId
+                };
+
+                if (string.IsNullOrWhiteSpace(firstEntry.ErrorCode))
+                {
+                    _logger.LogDebug("The message of type '{MessageType}' has been pushed successfully to EventBridge as event-id '{EventId}'.", typeof(T), publishResponse.MessageId);
+                    return publishResponse;
+                }
+                _logger.LogDebug("The message of type '{MessageType}' has been pushed to EventBridge but failed with '{ErrorCode}'.", typeof(T), firstEntry.ErrorCode);
+                throw new EventBridgePutEventsException(firstEntry.ErrorMessage, firstEntry.ErrorCode);
             }
             catch (Exception ex)
             {
                 trace.AddException(ex);
+                if (ex is EventBridgePutEventsException)
+                    throw new FailedToPublishException("Message failed to publish.", ex);
                 throw;
             }
         }

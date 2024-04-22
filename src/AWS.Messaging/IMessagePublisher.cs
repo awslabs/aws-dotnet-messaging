@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using AWS.Messaging.Configuration;
+using AWS.Messaging.Publishers;
 using AWS.Messaging.Publishers.SQS;
 
 namespace AWS.Messaging;
@@ -13,7 +14,7 @@ namespace AWS.Messaging;
 /// Using dependency injection, this interface is available to inject anywhere in the code.
 /// </summary>
 /// <remarks>
-/// This is the generic publisher, which can publish multiple message types to any of the 
+/// This is the generic publisher, which can publish multiple message types to any of the
 /// supported AWS services. To set service-specific options when publishing, use the service-specific
 /// publisher interface (such as <see cref="ISQSPublisher"/> for SQS) instead.
 /// </remarks>
@@ -28,5 +29,6 @@ public interface IMessagePublisher
     /// This method is accessible by injecting <see cref="IMessagePublisher"/> into the application code
     /// using the dependency injection framework.
     /// </summary>
-    Task PublishAsync<T>(T message, CancellationToken token = default);
+    /// <exception cref="FailedToPublishException">If the message failed to publish. The inner exception contains more details if failures arise from the SDK.</exception>
+    Task<IPublishResponse> PublishAsync<T>(T message, CancellationToken token = default);
 }

@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Net;
 using Amazon.SQS;
 using Amazon.SQS.Model;
 using AWS.Messaging.Configuration;
@@ -46,11 +47,12 @@ internal class SQSPublisher : ISQSPublisher
     /// </summary>
     /// <param name="message">The application message that will be serialized and sent to an SQS queue</param>
     /// <param name="token">The cancellation token used to cancel the request.</param>
+    /// <exception cref="FailedToPublishException">If the message failed to publish.</exception>
     /// <exception cref="InvalidMessageException">If the message is null or invalid.</exception>
     /// <exception cref="MissingMessageTypeConfigurationException">If cannot find the publisher configuration for the message type.</exception>
-    public async Task SendAsync<T>(T message, CancellationToken token = default)
+    public async Task<IPublishResponse> SendAsync<T>(T message, CancellationToken token = default)
     {
-        await SendAsync(message, null, token);
+        return await SendAsync(message, null, token);
     }
 
     /// <summary>
@@ -59,9 +61,10 @@ internal class SQSPublisher : ISQSPublisher
     /// <param name="message">The application message that will be serialized and sent to an SQS queue</param>
     /// <param name="sqsOptions">Contains additional parameters that can be set while sending a message to an SQS queue</param>
     /// <param name="token">The cancellation token used to cancel the request.</param>
+    /// <exception cref="FailedToPublishException">If the message failed to publish.</exception>
     /// <exception cref="InvalidMessageException">If the message is null or invalid.</exception>
     /// <exception cref="MissingMessageTypeConfigurationException">If cannot find the publisher configuration for the message type.</exception>
-    public async Task SendAsync<T>(T message, SQSOptions? sqsOptions, CancellationToken token = default)
+    public async Task<SQSSendResponse> SendAsync<T>(T message, SQSOptions? sqsOptions, CancellationToken token = default)
     {
         using (var trace = _telemetryFactory.Trace("Publish to AWS SQS"))
         {
@@ -100,17 +103,24 @@ internal class SQSPublisher : ISQSPublisher
                         // If we haven't resolved the client yet for this publisher, do so now
                         _sqsClient = _awsClientProvider.GetServiceClient<IAmazonSQS>();
                     }
+
                     client = _sqsClient;
                 }
 
                 _logger.LogDebug("Sending the message of type '{MessageType}' to SQS. Publisher Endpoint: {Endpoint}", typeof(T), queueUrl);
                 var sendMessageRequest = CreateSendMessageRequest(queueUrl, messageBody, sqsOptions);
-                await client.SendMessageAsync(sendMessageRequest, token);
+                var response = await client.SendMessageAsync(sendMessageRequest, token);
                 _logger.LogDebug("The message of type '{MessageType}' has been pushed to SQS.", typeof(T));
+                return new SQSSendResponse
+                {
+                    MessageId = response.MessageId
+                };
             }
             catch (Exception ex)
             {
                 trace.AddException(ex);
+                if (ex is AmazonSQSException)
+                    throw new FailedToPublishException("Message failed to publish.", ex);
                 throw;
             }
         }
@@ -163,6 +173,7 @@ internal class SQSPublisher : ISQSPublisher
             _logger.LogError("Cannot find a configuration for the message of type '{MessageType}'.", messageType.FullName);
             throw new MissingMessageTypeConfigurationException($"The framework is not configured to accept messages of type '{messageType.FullName}'.");
         }
+
         if (mapping.PublishTargetType != PublisherTargetType.SQS_PUBLISHER)
         {
             _logger.LogError("Messages of type '{MessageType}' are not configured for publishing to SQS.", messageType.FullName);
