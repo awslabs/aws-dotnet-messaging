@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System;
+using System.Collections.Generic;
 using AWS.Messaging.Configuration;
 using Microsoft.Extensions.Logging;
 using Xunit;
@@ -59,7 +60,10 @@ public class MessagePublisherTests
         }));
 
 
-        _chatMessage = new ChatMessage { MessageDescription = "Test Description" };
+        _chatMessage = new ChatMessage
+        {
+            MessageDescription = "Test Description"
+        };
     }
 
     [Fact]
@@ -72,15 +76,25 @@ public class MessagePublisherTests
             _messageConfiguration.Object,
             _messagePublisherLogger.Object,
             new DefaultTelemetryFactory(serviceProvider)
-            );
-
-        await messagePublisher.PublishAsync(_chatMessage);
-
-        _sqsClient.Verify(x =>
+        );
+        _sqsClient.Setup(x =>
             x.SendMessageAsync(
                 It.Is<SendMessageRequest>(request =>
                     request.QueueUrl.Equals("endpoint")),
-                It.IsAny<CancellationToken>()), Times.Exactly(1));
+                It.IsAny<CancellationToken>())).ReturnsAsync(new SendMessageResponse()
+        {
+            MessageId = "MessageId"
+        });
+
+        var result = await messagePublisher.PublishAsync(_chatMessage);
+
+        _sqsClient.Verify(x =>
+                x.SendMessageAsync(
+                    It.Is<SendMessageRequest>(request =>
+                        request.QueueUrl.Equals("endpoint")),
+                    It.IsAny<CancellationToken>()),
+            Times.Exactly(1));
+        Assert.Equal("MessageId", result.MessageId);
     }
 
     [Fact]
@@ -90,7 +104,10 @@ public class MessagePublisherTests
         var telemetryFactory = new Mock<ITelemetryFactory>();
         var telemetryTrace = new Mock<ITelemetryTrace>();
 
-        _sqsClient.Setup(x => x.SendMessageAsync(It.IsAny<SendMessageRequest>(), It.IsAny<CancellationToken>()));
+        _sqsClient.Setup(x => x.SendMessageAsync(It.IsAny<SendMessageRequest>(), It.IsAny<CancellationToken>())).ReturnsAsync(new SendMessageResponse()
+        {
+            MessageId = "MessageId"
+        });
         telemetryFactory.Setup(x => x.Trace(It.IsAny<string>())).Returns(telemetryTrace.Object);
         telemetryTrace.Setup(x => x.AddMetadata(It.IsAny<string>(), It.IsAny<string>()));
 
@@ -99,21 +116,24 @@ public class MessagePublisherTests
             _messageConfiguration.Object,
             _messagePublisherLogger.Object,
             telemetryFactory.Object
-            );
+        );
 
-        await messagePublisher.PublishAsync(_chatMessage);
+        var publishResponse = await messagePublisher.PublishAsync(_chatMessage);
 
         telemetryFactory.Verify(x =>
-            x.Trace(
-                It.Is<string>(request =>
-                    request.Equals("Routing message to AWS service"))), Times.Exactly(1));
+                x.Trace(
+                    It.Is<string>(request =>
+                        request.Equals("Routing message to AWS service"))),
+            Times.Exactly(1));
 
         telemetryTrace.Verify(x =>
-            x.AddMetadata(
-                It.Is<string>(request =>
-                    request.Equals(TelemetryKeys.ObjectType)),
-                It.Is<string>(request =>
-                    request.Equals("AWS.Messaging.UnitTests.Models.ChatMessage"))), Times.Exactly(1));
+                x.AddMetadata(
+                    It.Is<string>(request =>
+                        request.Equals(TelemetryKeys.ObjectType)),
+                    It.Is<string>(request =>
+                        request.Equals("AWS.Messaging.UnitTests.Models.ChatMessage"))),
+            Times.Exactly(1));
+        Assert.Equal("MessageId", publishResponse.MessageId);
     }
 
     [Fact]
@@ -132,15 +152,16 @@ public class MessagePublisherTests
             _messageConfiguration.Object,
             _messagePublisherLogger.Object,
             telemetryFactory.Object
-            );
+        );
 
         await Assert.ThrowsAsync<Exception>(() => messagePublisher.PublishAsync(_chatMessage));
 
         telemetryTrace.Verify(x =>
-            x.AddException(
-                It.Is<Exception>(request =>
-                    request.Message.Equals("Telemetry exception")),
-                It.IsAny<bool>()), Times.Exactly(1));
+                x.AddException(
+                    It.Is<Exception>(request =>
+                        request.Message.Equals("Telemetry exception")),
+                    It.IsAny<bool>()),
+            Times.Exactly(1));
     }
 
     [Fact]
@@ -149,6 +170,10 @@ public class MessagePublisherTests
         var serviceProvider = SetupSQSPublisherDIServices();
         var telemetryFactory = new Mock<ITelemetryFactory>();
         var telemetryTrace = new Mock<ITelemetryTrace>();
+        _sqsClient.Setup(x => x.SendMessageAsync(It.IsAny<SendMessageRequest>(), It.IsAny<CancellationToken>())).ReturnsAsync(new SendMessageResponse()
+        {
+            MessageId = "MessageId"
+        });
 
         telemetryFactory.Setup(x => x.Trace(It.IsAny<string>())).Returns(telemetryTrace.Object);
         telemetryTrace.Setup(x => x.AddMetadata(It.IsAny<string>(), It.IsAny<string>()));
@@ -159,46 +184,53 @@ public class MessagePublisherTests
             _messageConfiguration.Object,
             _envelopeSerializer.Object,
             telemetryFactory.Object
-            );
+        );
 
-        await messagePublisher.SendAsync(_chatMessage);
+        var sendResult = await messagePublisher.SendAsync(_chatMessage);
 
         telemetryFactory.Verify(x =>
-            x.Trace(
-                It.Is<string>(request =>
-                    request.Equals("Publish to AWS SQS"))), Times.Exactly(1));
+                x.Trace(
+                    It.Is<string>(request =>
+                        request.Equals("Publish to AWS SQS"))),
+            Times.Exactly(1));
 
         telemetryTrace.Verify(x =>
-            x.AddMetadata(
-                It.Is<string>(request =>
-                    request.Equals(TelemetryKeys.ObjectType)),
-                It.Is<string>(request =>
-                    request.Equals("AWS.Messaging.UnitTests.Models.ChatMessage"))), Times.Exactly(1));
+                x.AddMetadata(
+                    It.Is<string>(request =>
+                        request.Equals(TelemetryKeys.ObjectType)),
+                    It.Is<string>(request =>
+                        request.Equals("AWS.Messaging.UnitTests.Models.ChatMessage"))),
+            Times.Exactly(1));
 
         telemetryTrace.Verify(x =>
-            x.AddMetadata(
-                It.Is<string>(request =>
-                    request.Equals(TelemetryKeys.MessageType)),
-                It.Is<string>(request =>
-                    request.Equals("AWS.Messaging.UnitTests.Models.ChatMessage"))), Times.Exactly(1));
+                x.AddMetadata(
+                    It.Is<string>(request =>
+                        request.Equals(TelemetryKeys.MessageType)),
+                    It.Is<string>(request =>
+                        request.Equals("AWS.Messaging.UnitTests.Models.ChatMessage"))),
+            Times.Exactly(1));
 
         telemetryTrace.Verify(x =>
-            x.AddMetadata(
-                It.Is<string>(request =>
-                    request.Equals(TelemetryKeys.QueueUrl)),
-                It.Is<string>(request =>
-                    request.Equals("endpoint"))), Times.Exactly(1));
+                x.AddMetadata(
+                    It.Is<string>(request =>
+                        request.Equals(TelemetryKeys.QueueUrl)),
+                    It.Is<string>(request =>
+                        request.Equals("endpoint"))),
+            Times.Exactly(1));
 
         telemetryTrace.Verify(x =>
-            x.AddMetadata(
-                It.Is<string>(request =>
-                    request.Equals(TelemetryKeys.MessageId)),
-                It.Is<string>(request =>
-                    request.Equals("1234"))), Times.Exactly(1));
+                x.AddMetadata(
+                    It.Is<string>(request =>
+                        request.Equals(TelemetryKeys.MessageId)),
+                    It.Is<string>(request =>
+                        request.Equals("1234"))),
+            Times.Exactly(1));
 
         telemetryTrace.Verify(x =>
-            x.RecordTelemetryContext(
-                It.IsAny<MessageEnvelope>()), Times.Exactly(1));
+                x.RecordTelemetryContext(
+                    It.IsAny<MessageEnvelope>()),
+            Times.Exactly(1));
+        Assert.Equal("MessageId", sendResult.MessageId);
     }
 
     [Fact]
@@ -218,15 +250,16 @@ public class MessagePublisherTests
             _messageConfiguration.Object,
             _envelopeSerializer.Object,
             telemetryFactory.Object
-            );
+        );
 
         await Assert.ThrowsAsync<Exception>(() => messagePublisher.SendAsync(_chatMessage));
 
         telemetryTrace.Verify(x =>
-            x.AddException(
-                It.Is<Exception>(request =>
-                    request.Message.Equals("Telemetry exception")),
-                It.IsAny<bool>()), Times.Exactly(1));
+                x.AddException(
+                    It.Is<Exception>(request =>
+                        request.Message.Equals("Telemetry exception")),
+                    It.IsAny<bool>()),
+            Times.Exactly(1));
     }
 
     [Fact]
@@ -239,7 +272,7 @@ public class MessagePublisherTests
             _messageConfiguration.Object,
             _messagePublisherLogger.Object,
             new DefaultTelemetryFactory(serviceProvider)
-            );
+        );
 
         await Assert.ThrowsAsync<MissingMessageTypeConfigurationException>(() => messagePublisher.PublishAsync(_chatMessage));
     }
@@ -254,7 +287,7 @@ public class MessagePublisherTests
             _messageConfiguration.Object,
             _messagePublisherLogger.Object,
             new DefaultTelemetryFactory(serviceProvider)
-            );
+        );
 
         await Assert.ThrowsAsync<InvalidMessageException>(() => messagePublisher.PublishAsync<ChatMessage?>(null));
     }
@@ -280,12 +313,12 @@ public class MessagePublisherTests
     private ISQSPublisher SetupSQSPublisher(IServiceProvider serviceProvider)
     {
         return new SQSPublisher(
-          (IAWSClientProvider)serviceProvider.GetService(typeof(IAWSClientProvider))!,
-          _sqsPublisherLogger.Object,
-          _messageConfiguration.Object,
-          _envelopeSerializer.Object,
-          (ITelemetryFactory)serviceProvider.GetService(typeof(ITelemetryFactory))!
-          );
+            (IAWSClientProvider)serviceProvider.GetService(typeof(IAWSClientProvider))!,
+            _sqsPublisherLogger.Object,
+            _messageConfiguration.Object,
+            _envelopeSerializer.Object,
+            (ITelemetryFactory)serviceProvider.GetService(typeof(ITelemetryFactory))!
+        );
     }
 
     [Fact]
@@ -301,7 +334,7 @@ public class MessagePublisherTests
             _messageConfiguration.Object,
             _messagePublisherLogger.Object,
             new DefaultTelemetryFactory(serviceProvider)
-            );
+        );
 
         await Assert.ThrowsAsync<UnsupportedPublisherException>(() => messagePublisher.PublishAsync(_chatMessage));
     }
@@ -314,18 +347,32 @@ public class MessagePublisherTests
     {
         var serviceProvider = SetupSQSPublisherDIServices();
         var messagePublisher = SetupSQSPublisher(serviceProvider);
-
-        await messagePublisher.SendAsync(_chatMessage, new SQSOptions { QueueUrl = "overrideEndpoint" });
-
-        // Assert we used the override endpoint specified above
-        _sqsClient.Verify(x =>
+        _sqsClient.Setup(x =>
             x.SendMessageAsync(
                 It.Is<SendMessageRequest>(request =>
                     request.QueueUrl.Equals("overrideEndpoint")),
-                It.IsAny<CancellationToken>()), Times.Exactly(1));
+                It.IsAny<CancellationToken>())).ReturnsAsync(new SendMessageResponse()
+        {
+            MessageId = "MessageId"
+        });
+
+        var sendResult = await messagePublisher.SendAsync(_chatMessage,
+            new SQSOptions
+            {
+                QueueUrl = "overrideEndpoint"
+            });
+
+        // Assert we used the override endpoint specified above
+        _sqsClient.Verify(x =>
+                x.SendMessageAsync(
+                    It.Is<SendMessageRequest>(request =>
+                        request.QueueUrl.Equals("overrideEndpoint")),
+                    It.IsAny<CancellationToken>()),
+            Times.Exactly(1));
 
         // And not the endpoint configured for this message type via SetupSQSPublisherDIServices
         _sqsClient.VerifyNoOtherCalls();
+        Assert.Equal("MessageId", sendResult.MessageId);
     }
 
     /// <summary>
@@ -338,21 +385,28 @@ public class MessagePublisherTests
         var messagePublisher = SetupSQSPublisher(serviceProvider);
 
         var overrideSQSClient = new Mock<IAmazonSQS>();
-        overrideSQSClient.Setup(x => x.SendMessageAsync(It.IsAny<SendMessageRequest>(), It.IsAny<CancellationToken>()));
-
-        await messagePublisher.SendAsync(_chatMessage, new SQSOptions
+        overrideSQSClient.Setup(x => x.SendMessageAsync(It.IsAny<SendMessageRequest>(), It.IsAny<CancellationToken>())).ReturnsAsync(new SendMessageResponse()
         {
-            OverrideClient = overrideSQSClient.Object
+            MessageId = "MessageId"
         });
+
+        var sendResult = await messagePublisher.SendAsync(_chatMessage,
+            new SQSOptions
+            {
+                OverrideClient = overrideSQSClient.Object
+            });
 
         // Assert that the override client was invoked
         overrideSQSClient.Verify(x =>
-            x.SendMessageAsync(
-                It.IsAny<SendMessageRequest>(),
-                It.IsAny<CancellationToken>()), Times.Exactly(1));
+                x.SendMessageAsync(
+                    It.IsAny<SendMessageRequest>(),
+                    It.IsAny<CancellationToken>()),
+            Times.Exactly(1));
 
         // And not the default client
         _sqsClient.VerifyNoOtherCalls();
+
+        Assert.Equal("MessageId", sendResult.MessageId);
     }
 
     /// <summary>
@@ -394,7 +448,7 @@ public class MessagePublisherTests
             _messageConfiguration.Object,
             _envelopeSerializer.Object,
             (ITelemetryFactory)serviceProvider.GetService(typeof(ITelemetryFactory))!
-            );
+        );
     }
 
     [Fact]
@@ -407,15 +461,23 @@ public class MessagePublisherTests
             _messageConfiguration.Object,
             _messagePublisherLogger.Object,
             new DefaultTelemetryFactory(serviceProvider)
-            );
+        );
+        _snsClient.Setup(x => x.PublishAsync(It.Is<PublishRequest>(request =>
+                request.TopicArn.Equals("endpoint")),
+            It.IsAny<CancellationToken>())).ReturnsAsync(new PublishResponse()
+        {
+            MessageId = "MessageId"
+        });
 
-        await messagePublisher.PublishAsync(_chatMessage);
+        var publishResult = await messagePublisher.PublishAsync(_chatMessage);
 
         _snsClient.Verify(x =>
-            x.PublishAsync(
-                It.Is<PublishRequest>(request =>
-                    request.TopicArn.Equals("endpoint")),
-                It.IsAny<CancellationToken>()), Times.Exactly(1));
+                x.PublishAsync(
+                    It.Is<PublishRequest>(request =>
+                        request.TopicArn.Equals("endpoint")),
+                    It.IsAny<CancellationToken>()),
+            Times.Exactly(1));
+        Assert.Equal("MessageId", publishResult.MessageId);
     }
 
     [Fact]
@@ -424,6 +486,13 @@ public class MessagePublisherTests
         var serviceProvider = SetupSNSPublisherDIServices();
         var telemetryFactory = new Mock<ITelemetryFactory>();
         var telemetryTrace = new Mock<ITelemetryTrace>();
+        _snsClient.Setup(x =>
+            x.PublishAsync(
+                It.IsAny<PublishRequest>(),
+                It.IsAny<CancellationToken>())).ReturnsAsync(new PublishResponse()
+        {
+            MessageId = "MessageId"
+        });
 
         telemetryFactory.Setup(x => x.Trace(It.IsAny<string>())).Returns(telemetryTrace.Object);
         telemetryTrace.Setup(x => x.AddMetadata(It.IsAny<string>(), It.IsAny<string>()));
@@ -434,46 +503,52 @@ public class MessagePublisherTests
             _messageConfiguration.Object,
             _envelopeSerializer.Object,
             telemetryFactory.Object
-            );
+        );
 
         await messagePublisher.PublishAsync(_chatMessage);
 
         telemetryFactory.Verify(x =>
-            x.Trace(
-                It.Is<string>(request =>
-                    request.Equals("Publish to AWS SNS"))), Times.Exactly(1));
+                x.Trace(
+                    It.Is<string>(request =>
+                        request.Equals("Publish to AWS SNS"))),
+            Times.Exactly(1));
 
         telemetryTrace.Verify(x =>
-            x.AddMetadata(
-                It.Is<string>(request =>
-                    request.Equals(TelemetryKeys.ObjectType)),
-                It.Is<string>(request =>
-                    request.Equals("AWS.Messaging.UnitTests.Models.ChatMessage"))), Times.Exactly(1));
+                x.AddMetadata(
+                    It.Is<string>(request =>
+                        request.Equals(TelemetryKeys.ObjectType)),
+                    It.Is<string>(request =>
+                        request.Equals("AWS.Messaging.UnitTests.Models.ChatMessage"))),
+            Times.Exactly(1));
 
         telemetryTrace.Verify(x =>
-            x.AddMetadata(
-                It.Is<string>(request =>
-                    request.Equals(TelemetryKeys.MessageType)),
-                It.Is<string>(request =>
-                    request.Equals("AWS.Messaging.UnitTests.Models.ChatMessage"))), Times.Exactly(1));
+                x.AddMetadata(
+                    It.Is<string>(request =>
+                        request.Equals(TelemetryKeys.MessageType)),
+                    It.Is<string>(request =>
+                        request.Equals("AWS.Messaging.UnitTests.Models.ChatMessage"))),
+            Times.Exactly(1));
 
         telemetryTrace.Verify(x =>
-            x.AddMetadata(
-                It.Is<string>(request =>
-                    request.Equals(TelemetryKeys.TopicUrl)),
-                It.Is<string>(request =>
-                    request.Equals("endpoint"))), Times.Exactly(1));
+                x.AddMetadata(
+                    It.Is<string>(request =>
+                        request.Equals(TelemetryKeys.TopicUrl)),
+                    It.Is<string>(request =>
+                        request.Equals("endpoint"))),
+            Times.Exactly(1));
 
         telemetryTrace.Verify(x =>
-            x.AddMetadata(
-                It.Is<string>(request =>
-                    request.Equals(TelemetryKeys.MessageId)),
-                It.Is<string>(request =>
-                    request.Equals("1234"))), Times.Exactly(1));
+                x.AddMetadata(
+                    It.Is<string>(request =>
+                        request.Equals(TelemetryKeys.MessageId)),
+                    It.Is<string>(request =>
+                        request.Equals("1234"))),
+            Times.Exactly(1));
 
         telemetryTrace.Verify(x =>
-            x.RecordTelemetryContext(
-                It.IsAny<MessageEnvelope>()), Times.Exactly(1));
+                x.RecordTelemetryContext(
+                    It.IsAny<MessageEnvelope>()),
+            Times.Exactly(1));
     }
 
     [Fact]
@@ -493,15 +568,16 @@ public class MessagePublisherTests
             _messageConfiguration.Object,
             _envelopeSerializer.Object,
             telemetryFactory.Object
-            );
+        );
 
         await Assert.ThrowsAsync<Exception>(() => messagePublisher.PublishAsync(_chatMessage));
 
         telemetryTrace.Verify(x =>
-            x.AddException(
-                It.Is<Exception>(request =>
-                    request.Message.Equals("Telemetry exception")),
-                It.IsAny<bool>()), Times.Exactly(1));
+                x.AddException(
+                    It.Is<Exception>(request =>
+                        request.Message.Equals("Telemetry exception")),
+                    It.IsAny<bool>()),
+            Times.Exactly(1));
     }
 
     [Fact]
@@ -514,7 +590,7 @@ public class MessagePublisherTests
             _messageConfiguration.Object,
             _messagePublisherLogger.Object,
             new DefaultTelemetryFactory(serviceProvider)
-            );
+        );
 
         await Assert.ThrowsAsync<InvalidMessageException>(() => messagePublisher.PublishAsync<ChatMessage?>(null));
     }
@@ -527,18 +603,32 @@ public class MessagePublisherTests
     {
         var serviceProvider = SetupSNSPublisherDIServices();
         var messagePublisher = SetupSNSPublisher(serviceProvider);
+        _snsClient.Setup(x =>
+            x.PublishAsync(
+                It.Is<PublishRequest>(request =>
+                    request.TopicArn.Equals("overrideTopicArn")),
+                It.IsAny<CancellationToken>())).ReturnsAsync(new PublishResponse()
+        {
+            MessageId = "MessageId"
+        });
 
-        await messagePublisher.PublishAsync(_chatMessage, new SNSOptions { TopicArn = "overrideTopicArn" });
+        var publishResponse = await messagePublisher.PublishAsync(_chatMessage,
+            new SNSOptions
+            {
+                TopicArn = "overrideTopicArn"
+            });
 
         // Assert we used the override topic arn specified above
         _snsClient.Verify(x =>
-          x.PublishAsync(
-              It.Is<PublishRequest>(request =>
-                  request.TopicArn.Equals("overrideTopicArn")),
-              It.IsAny<CancellationToken>()), Times.Exactly(1));
+                x.PublishAsync(
+                    It.Is<PublishRequest>(request =>
+                        request.TopicArn.Equals("overrideTopicArn")),
+                    It.IsAny<CancellationToken>()),
+            Times.Exactly(1));
 
         // And not the topic arn configured for this message type via SetupSNSPublisherDIServices
         _snsClient.VerifyNoOtherCalls();
+        Assert.Equal("MessageId", publishResponse.MessageId);
     }
 
     /// <summary>
@@ -551,15 +641,20 @@ public class MessagePublisherTests
         var messagePublisher = SetupSNSPublisher(serviceProvider);
 
         var overrideSNSClient = new Mock<IAmazonSimpleNotificationService>();
-        overrideSNSClient.Setup(x => x.PublishAsync(It.IsAny<PublishRequest>(), It.IsAny<CancellationToken>()));
+        overrideSNSClient.Setup(x => x.PublishAsync(It.IsAny<PublishRequest>(), It.IsAny<CancellationToken>())).ReturnsAsync(new PublishResponse());
 
-        await messagePublisher.PublishAsync(_chatMessage, new SNSOptions { OverrideClient = overrideSNSClient.Object });
+        await messagePublisher.PublishAsync(_chatMessage,
+            new SNSOptions
+            {
+                OverrideClient = overrideSNSClient.Object
+            });
 
         // Assert that the override client was invoked
         overrideSNSClient.Verify(x =>
-         x.PublishAsync(
-             It.IsAny<PublishRequest>(),
-             It.IsAny<CancellationToken>()), Times.Exactly(1));
+                x.PublishAsync(
+                    It.IsAny<PublishRequest>(),
+                    It.IsAny<CancellationToken>()),
+            Times.Exactly(1));
 
         // And not the default client
         _snsClient.VerifyNoOtherCalls();
@@ -603,34 +698,85 @@ public class MessagePublisherTests
     private IEventBridgePublisher SetupEventBridgePublisher(IServiceProvider serviceProvider)
     {
         return new EventBridgePublisher(
-           (IAWSClientProvider)serviceProvider.GetService(typeof(IAWSClientProvider))!,
-           _messagePublisherLogger.Object,
-           _messageConfiguration.Object,
-           _envelopeSerializer.Object,
-           (ITelemetryFactory)serviceProvider.GetService(typeof(ITelemetryFactory))!
-           );
+            (IAWSClientProvider)serviceProvider.GetService(typeof(IAWSClientProvider))!,
+            _messagePublisherLogger.Object,
+            _messageConfiguration.Object,
+            _envelopeSerializer.Object,
+            (ITelemetryFactory)serviceProvider.GetService(typeof(ITelemetryFactory))!
+        );
     }
 
     [Fact]
     public async Task EventBridgePublisher_HappyPath()
     {
         var serviceProvider = SetupEventBridgePublisherDIServices("event-bus-123");
+        _eventBridgeClient.Setup(x => x.PutEventsAsync(It.IsAny<PutEventsRequest>(), It.IsAny<CancellationToken>())).ReturnsAsync(new PutEventsResponse
+        {
+            Entries = new List<PutEventsResultEntry>
+            {
+                new()
+                {
+                    EventId = "ReturnedEventId"
+                }
+            }
+        });
 
         var messagePublisher = new MessageRoutingPublisher(
             serviceProvider,
             _messageConfiguration.Object,
             _messagePublisherLogger.Object,
             new DefaultTelemetryFactory(serviceProvider)
-            );
+        );
 
-        await messagePublisher.PublishAsync(_chatMessage);
+        var publishResponse = await messagePublisher.PublishAsync(_chatMessage);
 
         _eventBridgeClient.Verify(x =>
-            x.PutEventsAsync(
-                It.Is<PutEventsRequest>(request =>
-                    request.Entries[0].EventBusName.Equals("event-bus-123") && string.IsNullOrEmpty(request.EndpointId)
-                    && request.Entries[0].DetailType.Equals("AWS.Messaging.UnitTests.Models.ChatMessage") && request.Entries[0].Source.Equals("/aws/messaging/unittest")),
-                It.IsAny<CancellationToken>()), Times.Exactly(1));
+                x.PutEventsAsync(
+                    It.Is<PutEventsRequest>(request =>
+                        request.Entries[0].EventBusName.Equals("event-bus-123") && string.IsNullOrEmpty(request.EndpointId)
+                                                                                && request.Entries[0].DetailType.Equals("AWS.Messaging.UnitTests.Models.ChatMessage") && request.Entries[0].Source.Equals("/aws/messaging/unittest")),
+                    It.IsAny<CancellationToken>()),
+            Times.Exactly(1));
+
+        Assert.Equal("ReturnedEventId", publishResponse.MessageId);
+    }
+
+    [Fact]
+    public async Task EventBridgePublisher_UnhappyPath()
+    {
+        var serviceProvider = SetupEventBridgePublisherDIServices("event-bus-123");
+        _eventBridgeClient.Setup(x => x.PutEventsAsync(It.IsAny<PutEventsRequest>(), It.IsAny<CancellationToken>())).ReturnsAsync(new PutEventsResponse
+        {
+            Entries = new List<PutEventsResultEntry>
+            {
+                new()
+                {
+                    ErrorMessage = "ErrorMessage",
+                    ErrorCode = "ErrorCode"
+                }
+            }
+        });
+
+        var messagePublisher = new MessageRoutingPublisher(
+            serviceProvider,
+            _messageConfiguration.Object,
+            _messagePublisherLogger.Object,
+            new DefaultTelemetryFactory(serviceProvider)
+        );
+
+        var publishResponse = Assert.ThrowsAsync<FailedToPublishException>(async () => await messagePublisher.PublishAsync(_chatMessage));
+
+        _eventBridgeClient.Verify(x =>
+                x.PutEventsAsync(
+                    It.Is<PutEventsRequest>(request =>
+                        request.Entries[0].EventBusName.Equals("event-bus-123") && string.IsNullOrEmpty(request.EndpointId)
+                                                                                && request.Entries[0].DetailType.Equals("AWS.Messaging.UnitTests.Models.ChatMessage") && request.Entries[0].Source.Equals("/aws/messaging/unittest")),
+                    It.IsAny<CancellationToken>()),
+            Times.Exactly(1));
+
+        Assert.Equal("Message failed to publish.", publishResponse.Result.Message);
+        Assert.Equal("ErrorMessage", publishResponse.Result.InnerException.Message);
+        Assert.Equal("ErrorCode", ((EventBridgePutEventsException)publishResponse.Result.InnerException).ErrorCode);
     }
 
     [Fact]
@@ -649,46 +795,62 @@ public class MessagePublisherTests
             _messageConfiguration.Object,
             _envelopeSerializer.Object,
             telemetryFactory.Object
-            );
+        );
+        _eventBridgeClient.Setup(x => x.PutEventsAsync(It.IsAny<PutEventsRequest>(), It.IsAny<CancellationToken>())).ReturnsAsync(new PutEventsResponse
+        {
+            Entries = new List<PutEventsResultEntry>
+            {
+                new()
+                {
+                    EventId = "ReturnedEventId"
+                }
+            }
+        });
 
         await messagePublisher.PublishAsync(_chatMessage);
 
         telemetryFactory.Verify(x =>
-            x.Trace(
-                It.Is<string>(request =>
-                    request.Equals("Publish to AWS EventBridge"))), Times.Exactly(1));
+                x.Trace(
+                    It.Is<string>(request =>
+                        request.Equals("Publish to AWS EventBridge"))),
+            Times.Exactly(1));
 
         telemetryTrace.Verify(x =>
-            x.AddMetadata(
-                It.Is<string>(request =>
-                    request.Equals(TelemetryKeys.ObjectType)),
-                It.Is<string>(request =>
-                    request.Equals("AWS.Messaging.UnitTests.Models.ChatMessage"))), Times.Exactly(1));
+                x.AddMetadata(
+                    It.Is<string>(request =>
+                        request.Equals(TelemetryKeys.ObjectType)),
+                    It.Is<string>(request =>
+                        request.Equals("AWS.Messaging.UnitTests.Models.ChatMessage"))),
+            Times.Exactly(1));
 
         telemetryTrace.Verify(x =>
-            x.AddMetadata(
-                It.Is<string>(request =>
-                    request.Equals(TelemetryKeys.MessageType)),
-                It.Is<string>(request =>
-                    request.Equals("AWS.Messaging.UnitTests.Models.ChatMessage"))), Times.Exactly(1));
+                x.AddMetadata(
+                    It.Is<string>(request =>
+                        request.Equals(TelemetryKeys.MessageType)),
+                    It.Is<string>(request =>
+                        request.Equals("AWS.Messaging.UnitTests.Models.ChatMessage"))),
+            Times.Exactly(1));
 
         telemetryTrace.Verify(x =>
-            x.AddMetadata(
-                It.Is<string>(request =>
-                    request.Equals(TelemetryKeys.EventBusName)),
-                It.Is<string>(request =>
-                    request.Equals("event-bus-123"))), Times.Exactly(1));
+                x.AddMetadata(
+                    It.Is<string>(request =>
+                        request.Equals(TelemetryKeys.EventBusName)),
+                    It.Is<string>(request =>
+                        request.Equals("event-bus-123"))),
+            Times.Exactly(1));
 
         telemetryTrace.Verify(x =>
-            x.AddMetadata(
-                It.Is<string>(request =>
-                    request.Equals(TelemetryKeys.MessageId)),
-                It.Is<string>(request =>
-                    request.Equals("1234"))), Times.Exactly(1));
+                x.AddMetadata(
+                    It.Is<string>(request =>
+                        request.Equals(TelemetryKeys.MessageId)),
+                    It.Is<string>(request =>
+                        request.Equals("1234"))),
+            Times.Exactly(1));
 
         telemetryTrace.Verify(x =>
-            x.RecordTelemetryContext(
-                It.IsAny<MessageEnvelope>()), Times.Exactly(1));
+                x.RecordTelemetryContext(
+                    It.IsAny<MessageEnvelope>()),
+            Times.Exactly(1));
     }
 
     [Fact]
@@ -708,37 +870,49 @@ public class MessagePublisherTests
             _messageConfiguration.Object,
             _envelopeSerializer.Object,
             telemetryFactory.Object
-            );
+        );
 
         await Assert.ThrowsAsync<Exception>(() => messagePublisher.PublishAsync(_chatMessage));
 
         telemetryTrace.Verify(x =>
-            x.AddException(
-                It.Is<Exception>(request =>
-                    request.Message.Equals("Telemetry exception")),
-                It.IsAny<bool>()), Times.Exactly(1));
+                x.AddException(
+                    It.Is<Exception>(request =>
+                        request.Message.Equals("Telemetry exception")),
+                    It.IsAny<bool>()),
+            Times.Exactly(1));
     }
 
     [Fact]
     public async Task EventBridgePublisher_GlobalEP()
     {
         var serviceProvider = SetupEventBridgePublisherDIServices("event-bus-123", "endpoint.123");
+        _eventBridgeClient.Setup(x => x.PutEventsAsync(It.IsAny<PutEventsRequest>(), It.IsAny<CancellationToken>())).ReturnsAsync(new PutEventsResponse
+        {
+            Entries = new List<PutEventsResultEntry>
+            {
+                new()
+                {
+                    EventId = "ReturnedEventId"
+                }
+            }
+        });
 
         var messagePublisher = new MessageRoutingPublisher(
             serviceProvider,
             _messageConfiguration.Object,
             _messagePublisherLogger.Object,
             new DefaultTelemetryFactory(serviceProvider)
-            );
+        );
 
         await messagePublisher.PublishAsync(_chatMessage);
 
         _eventBridgeClient.Verify(x =>
-            x.PutEventsAsync(
-                It.Is<PutEventsRequest>(request =>
-                    request.Entries[0].EventBusName.Equals("event-bus-123") && request.EndpointId.Equals("endpoint.123")
-                    && request.Entries[0].DetailType.Equals("AWS.Messaging.UnitTests.Models.ChatMessage") && request.Entries[0].Source.Equals("/aws/messaging/unittest")),
-                It.IsAny<CancellationToken>()), Times.Exactly(1));
+                x.PutEventsAsync(
+                    It.Is<PutEventsRequest>(request =>
+                        request.Entries[0].EventBusName.Equals("event-bus-123") && request.EndpointId.Equals("endpoint.123")
+                                                                                && request.Entries[0].DetailType.Equals("AWS.Messaging.UnitTests.Models.ChatMessage") && request.Entries[0].Source.Equals("/aws/messaging/unittest")),
+                    It.IsAny<CancellationToken>()),
+            Times.Exactly(1));
     }
 
     [Fact]
@@ -747,17 +921,30 @@ public class MessagePublisherTests
         var serviceProvider = SetupEventBridgePublisherDIServices("event-bus-123");
         var messagePublisher = SetupEventBridgePublisher(serviceProvider);
 
-        await messagePublisher.PublishAsync(_chatMessage, new EventBridgeOptions
+        _eventBridgeClient.Setup(x => x.PutEventsAsync(It.IsAny<PutEventsRequest>(), It.IsAny<CancellationToken>())).ReturnsAsync(new PutEventsResponse
         {
-            Source = "/aws/custom"
+            Entries = new List<PutEventsResultEntry>
+            {
+                new()
+                {
+                    EventId = "ReturnedEventId"
+                }
+            }
         });
 
+        await messagePublisher.PublishAsync(_chatMessage,
+            new EventBridgeOptions
+            {
+                Source = "/aws/custom"
+            });
+
         _eventBridgeClient.Verify(x =>
-            x.PutEventsAsync(
-                It.Is<PutEventsRequest>(request =>
-                    request.Entries[0].EventBusName.Equals("event-bus-123") && string.IsNullOrEmpty(request.EndpointId)
-                    && request.Entries[0].DetailType.Equals("AWS.Messaging.UnitTests.Models.ChatMessage") && request.Entries[0].Source.Equals("/aws/custom")),
-                It.IsAny<CancellationToken>()), Times.Exactly(1));
+                x.PutEventsAsync(
+                    It.Is<PutEventsRequest>(request =>
+                        request.Entries[0].EventBusName.Equals("event-bus-123") && string.IsNullOrEmpty(request.EndpointId)
+                                                                                && request.Entries[0].DetailType.Equals("AWS.Messaging.UnitTests.Models.ChatMessage") && request.Entries[0].Source.Equals("/aws/custom")),
+                    It.IsAny<CancellationToken>()),
+            Times.Exactly(1));
     }
 
     [Fact]
@@ -766,21 +953,32 @@ public class MessagePublisherTests
         var serviceProvider = SetupEventBridgePublisherDIServices("event-bus-123");
         var messagePublisher = SetupEventBridgePublisher(serviceProvider);
 
+        _eventBridgeClient.Setup(x => x.PutEventsAsync(It.IsAny<PutEventsRequest>(), It.IsAny<CancellationToken>())).ReturnsAsync(new PutEventsResponse
+        {
+            Entries = new List<PutEventsResultEntry>
+            {
+                new()
+                {
+                    EventId = "ReturnedEventId"
+                }
+            }
+        });
         DateTimeOffset dateTimeOffset = new DateTimeOffset(2015, 2, 17, 0, 0, 0, TimeSpan.Zero);
 
-        await messagePublisher.PublishAsync(_chatMessage, new EventBridgeOptions
-        {
-            TraceHeader = "trace-header1",
-            Time = dateTimeOffset
-        });
+        await messagePublisher.PublishAsync(_chatMessage,
+            new EventBridgeOptions
+            {
+                TraceHeader = "trace-header1",
+                Time = dateTimeOffset
+            });
 
         _eventBridgeClient.Verify(x =>
-            x.PutEventsAsync(
-                It.Is<PutEventsRequest>(request =>
-                    request.Entries[0].EventBusName.Equals("event-bus-123") && string.IsNullOrEmpty(request.EndpointId)
-                    && request.Entries[0].TraceHeader.Equals("trace-header1") && request.Entries[0].Time.Year == dateTimeOffset.Year),
-
-                It.IsAny<CancellationToken>()), Times.Exactly(1));
+                x.PutEventsAsync(
+                    It.Is<PutEventsRequest>(request =>
+                        request.Entries[0].EventBusName.Equals("event-bus-123") && string.IsNullOrEmpty(request.EndpointId)
+                                                                                && request.Entries[0].TraceHeader.Equals("trace-header1") && request.Entries[0].Time.Year == dateTimeOffset.Year),
+                    It.IsAny<CancellationToken>()),
+            Times.Exactly(1));
     }
 
     [Fact]
@@ -793,7 +991,7 @@ public class MessagePublisherTests
             _messageConfiguration.Object,
             _messagePublisherLogger.Object,
             new DefaultTelemetryFactory(serviceProvider)
-            );
+        );
 
         await Assert.ThrowsAsync<InvalidMessageException>(() => messagePublisher.PublishAsync<ChatMessage?>(null));
     }
@@ -806,20 +1004,31 @@ public class MessagePublisherTests
     {
         var serviceProvider = SetupEventBridgePublisherDIServices("defaultBus", "defaultEndpoint");
         var messagePublisher = SetupEventBridgePublisher(serviceProvider);
-
-        await messagePublisher.PublishAsync(_chatMessage, new EventBridgeOptions
+        _eventBridgeClient.Setup(x => x.PutEventsAsync(It.IsAny<PutEventsRequest>(), It.IsAny<CancellationToken>())).ReturnsAsync(new PutEventsResponse
         {
-            EventBusName = "overrideBus",
-            EndpointID = "overrideEndpoint"
+            Entries = new List<PutEventsResultEntry>
+            {
+                new()
+                {
+                    EventId = "ReturnedEventId"
+                }
+            }
         });
+        await messagePublisher.PublishAsync(_chatMessage,
+            new EventBridgeOptions
+            {
+                EventBusName = "overrideBus",
+                EndpointID = "overrideEndpoint"
+            });
 
         // Assert we used the event bus and endpointspecified above
         _eventBridgeClient.Verify(x =>
-                    x.PutEventsAsync(
-                        It.Is<PutEventsRequest>(request =>
-                            request.Entries[0].EventBusName.Equals("overrideBus") &&
-                            request.EndpointId == "overrideEndpoint"),
-                        It.IsAny<CancellationToken>()), Times.Exactly(1));
+                x.PutEventsAsync(
+                    It.Is<PutEventsRequest>(request =>
+                        request.Entries[0].EventBusName.Equals("overrideBus") &&
+                        request.EndpointId == "overrideEndpoint"),
+                    It.IsAny<CancellationToken>()),
+            Times.Exactly(1));
 
         // And not the desination configured for this message type via SetupEventBridgePublisherDIServices
         _eventBridgeClient.VerifyNoOtherCalls();
@@ -835,15 +1044,28 @@ public class MessagePublisherTests
         var messagePublisher = SetupEventBridgePublisher(serviceProvider);
 
         var overrideEventBridgeClient = new Mock<IAmazonEventBridge>();
-        overrideEventBridgeClient.Setup(x => x.PutEventsAsync(It.IsAny<PutEventsRequest>(), It.IsAny<CancellationToken>()));
-
-        await messagePublisher.PublishAsync(_chatMessage, new EventBridgeOptions { OverrideClient = overrideEventBridgeClient.Object });
+        overrideEventBridgeClient.Setup(x => x.PutEventsAsync(It.IsAny<PutEventsRequest>(), It.IsAny<CancellationToken>())).ReturnsAsync(new PutEventsResponse
+        {
+            Entries = new List<PutEventsResultEntry>
+            {
+                new()
+                {
+                    EventId = "ReturnedEventId"
+                }
+            }
+        });
+        await messagePublisher.PublishAsync(_chatMessage,
+            new EventBridgeOptions
+            {
+                OverrideClient = overrideEventBridgeClient.Object
+            });
 
         // Assert that the override client was invoked
         overrideEventBridgeClient.Verify(x =>
-                    x.PutEventsAsync(
-                        It.IsAny<PutEventsRequest>(),
-                        It.IsAny<CancellationToken>()), Times.Exactly(1));
+                x.PutEventsAsync(
+                    It.IsAny<PutEventsRequest>(),
+                    It.IsAny<CancellationToken>()),
+            Times.Exactly(1));
 
         // And not the default client
         _eventBridgeClient.VerifyNoOtherCalls();
@@ -872,7 +1094,7 @@ public class MessagePublisherTests
             _messageConfiguration.Object,
             _messagePublisherLogger.Object,
             new DefaultTelemetryFactory(serviceProvider)
-            );
+        );
 
         var sqsMessagePublisher = new SQSPublisher(
             (IAWSClientProvider)serviceProvider.GetService(typeof(IAWSClientProvider))!,
@@ -880,7 +1102,7 @@ public class MessagePublisherTests
             _messageConfiguration.Object,
             _envelopeSerializer.Object,
             new DefaultTelemetryFactory(serviceProvider)
-            );
+        );
 
         await Assert.ThrowsAsync<InvalidFifoPublishingRequestException>(() => messagePublisher.PublishAsync<ChatMessage?>(new ChatMessage()));
         await Assert.ThrowsAsync<InvalidFifoPublishingRequestException>(() => sqsMessagePublisher.SendAsync<ChatMessage?>(new ChatMessage(), new SQSOptions()));
@@ -896,7 +1118,7 @@ public class MessagePublisherTests
             _messageConfiguration.Object,
             _messagePublisherLogger.Object,
             new DefaultTelemetryFactory(serviceProvider)
-            );
+        );
 
         var snsMessagePublisher = SetupSNSPublisher(serviceProvider);
 
