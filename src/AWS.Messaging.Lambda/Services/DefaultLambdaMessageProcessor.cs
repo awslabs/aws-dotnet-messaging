@@ -76,7 +76,7 @@ internal class DefaultLambdaMessageProcessor : ILambdaMessageProcessor, ISQSMess
                 var sqsEvent = _configuration.SQSEvent;
 
                 trace.AddMetadata(TelemetryKeys.QueueUrl, _configuration.SubscriberEndpoint);
-
+                
                 if (sqsEvent is null || !sqsEvent.Records.Any())
                 {
                     return _sqsBatchResponse;
@@ -175,8 +175,7 @@ internal class DefaultLambdaMessageProcessor : ILambdaMessageProcessor, ISQSMess
             if (messageGroupMapping.TryGetValue(groupId, out var messageGroup))
                 messageGroup.Add(messageEnvelopResult);
             else
-                messageGroupMapping[groupId] = new List<ConvertToEnvelopeResult>
-                    { messageEnvelopResult };
+                messageGroupMapping[groupId] = new() { messageEnvelopResult };
         }
 
         var messageGroups = messageGroupMapping.Keys.ToList();

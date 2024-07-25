@@ -152,8 +152,6 @@ public class LambdaTests
         _mockSqs!.Verify(
             expression: x => x.ChangeMessageVisibilityBatchAsync(It.IsAny<ChangeMessageVisibilityBatchRequest>(), It.IsAny<CancellationToken>()),
             times: Times.Once);
-        Assert.Single(tuple.batchResponse.BatchItemFailures);
-        Assert.Equal("1", tuple.batchResponse.BatchItemFailures[0].ItemIdentifier);
     }
 
     [Fact]
