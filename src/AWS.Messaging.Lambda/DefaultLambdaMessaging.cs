@@ -125,6 +125,7 @@ internal class DefaultLambdaMessaging : ILambdaMessaging
         {
             SQSEvent = sqsEvent,
             UseBatchResponse = useBatchResponse,
+            VisibilityTimeoutForBatchFailures = options?.VisibilityTimeoutForBatchFailures,
             DeleteMessagesWhenCompleted = options?.DeleteMessagesWhenCompleted ?? false,
             // TODO: This value should be set differently when working with FIFO queues.
             MaxNumberOfConcurrentMessages = options?.MaxNumberOfConcurrentMessages ?? LambdaMessagingOptions.DEFAULT_MAX_NUMBER_OF_CONCURRENT_MESSAGES
