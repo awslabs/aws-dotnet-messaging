@@ -218,7 +218,7 @@ internal class DefaultLambdaMessageProcessor : ILambdaMessageProcessor, ISQSMess
         if(!messages.Any())
         {
             return;
-        }    
+        }
 
         var request = new DeleteMessageBatchRequest
         {
