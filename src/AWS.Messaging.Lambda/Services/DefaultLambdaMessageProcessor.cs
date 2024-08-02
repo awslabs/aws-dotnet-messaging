@@ -264,11 +264,15 @@ internal class DefaultLambdaMessageProcessor : ILambdaMessageProcessor, ISQSMess
     /// </summary>
     private async Task ResetVisibilityTimeoutForFailures()
     {
-        if (_configuration.SQSEvent == null) return;
-        if (!_configuration.UseBatchResponse) return;
-        if (!_configuration.VisibilityTimeoutForBatchFailures.HasValue) return;
+        if (_configuration.SQSEvent == null || !_configuration.UseBatchResponse || !_configuration.VisibilityTimeoutForBatchFailures.HasValue)
+        {
+            return;
+        }
         var failureCount = _sqsBatchResponse.BatchItemFailures?.Count ?? 0;
-        if (failureCount == 0) return;
+        if (failureCount == 0)
+        {
+            return;
+        }
 
         var lookup = _configuration.SQSEvent.Records.ToDictionary(x => x.MessageId);
         var visibilityTimeout = _configuration.VisibilityTimeoutForBatchFailures.Value;
