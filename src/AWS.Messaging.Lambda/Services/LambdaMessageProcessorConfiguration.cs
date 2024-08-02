@@ -32,6 +32,13 @@ public class LambdaMessageProcessorConfiguration
     public bool UseBatchResponse { get; init; } = false;
 
     /// <summary>
+    /// How many seconds to set the VisibilityTimeout value to on partial batch failures.
+    ///
+    /// This is only applicable if <see cref="AWS.Messaging.Lambda.Services.LambdaMessageProcessorConfiguration.UseBatchResponse"/> is true.
+    /// </summary>
+    public int? VisibilityTimeoutForBatchFailures { get; init; }
+
+    /// <summary>
     /// The SQS event that will be processed by the Lambda function.
     /// </summary>
     public SQSEvent? SQSEvent { get; init; }
