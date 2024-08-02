@@ -107,8 +107,51 @@ public class LambdaTests
         };
 
         var tuple = await ExecuteWithBatchResponse(new SimulatedMessage[] { failedMessage });
+        _mockSqs!.Verify(
+            expression: x => x.ChangeMessageVisibilityAsync(It.IsAny<ChangeMessageVisibilityRequest>(), It.IsAny<CancellationToken>()),
+            times: Times.Never);
         Assert.Single(tuple.batchResponse.BatchItemFailures);
         Assert.Equal("1", tuple.batchResponse.BatchItemFailures[0].ItemIdentifier);
+    }
+
+    [Fact]
+    public async Task MessageHandlerResetsVisibilityWhenFailedStatusBatchResponse()
+    {
+        var failedMessage = new SimulatedMessage
+        {
+            Id = "failed-message-1",
+            ReturnFailedStatus = true
+        };
+
+        var tuple = await ExecuteWithBatchResponse(new SimulatedMessage[] { failedMessage }, visibilityTimeoutForBatchFailures: 10);
+        _mockSqs!.Verify(
+            expression: x => x.ChangeMessageVisibilityAsync(It.IsAny<ChangeMessageVisibilityRequest>(), It.IsAny<CancellationToken>()),
+            times: Times.Once);
+        Assert.Single(tuple.batchResponse.BatchItemFailures);
+        Assert.Equal("1", tuple.batchResponse.BatchItemFailures[0].ItemIdentifier);
+    }
+
+    [Fact]
+    public async Task MessageHandlerResetsVisibilityBatchWhenFailedStatusBatchResponse()
+    {
+        var failedMessage1 = new SimulatedMessage
+        {
+            Id = "failed-message-1",
+            ReturnFailedStatus = true
+        };
+        var failedMessage2 = new SimulatedMessage
+        {
+            Id = "failed-message-2",
+            ReturnFailedStatus = true
+        };
+
+        var tuple = await ExecuteWithBatchResponse(new SimulatedMessage[] { failedMessage1, failedMessage2 }, visibilityTimeoutForBatchFailures: 10);
+        _mockSqs!.Verify(
+            expression: x => x.ChangeMessageVisibilityAsync(It.IsAny<ChangeMessageVisibilityRequest>(), It.IsAny<CancellationToken>()),
+            times: Times.Never);
+        _mockSqs!.Verify(
+            expression: x => x.ChangeMessageVisibilityBatchAsync(It.IsAny<ChangeMessageVisibilityBatchRequest>(), It.IsAny<CancellationToken>()),
+            times: Times.Once);
     }
 
     [Fact]
@@ -257,9 +300,16 @@ public class LambdaTests
         return logger.Buffer.ToString();
     }
 
-    private async Task<(string log, SQSBatchResponse batchResponse)> ExecuteWithBatchResponse(SimulatedMessage[] messages, int maxNumberOfConcurrentMessages = 1, bool deleteMessagesWhenCompleted = false)
+    private async Task<(string log, SQSBatchResponse batchResponse)> ExecuteWithBatchResponse(
+        SimulatedMessage[] messages,
+        int maxNumberOfConcurrentMessages = 1,
+        bool deleteMessagesWhenCompleted = false,
+        int? visibilityTimeoutForBatchFailures = default)
     {
-        var provider = CreateServiceProvider(maxNumberOfConcurrentMessages: maxNumberOfConcurrentMessages, deleteMessagesWhenCompleted: deleteMessagesWhenCompleted);
+        var provider = CreateServiceProvider(
+            maxNumberOfConcurrentMessages: maxNumberOfConcurrentMessages,
+            deleteMessagesWhenCompleted: deleteMessagesWhenCompleted,
+            visibilityTimeoutForBatchFailures: visibilityTimeoutForBatchFailures);
         var sqsEvent = await CreateLambdaEvent(provider, messages);
 
         var logger = new TestLambdaLogger();
@@ -277,7 +327,7 @@ public class LambdaTests
     private async Task<SQSEvent> CreateLambdaEvent(IServiceProvider provider,  SimulatedMessage[] messages, bool addInvalidMessageFormatRecord = false, bool isFifoQueue = false)
     {
         var envelopeSerializer = provider.GetRequiredService<IEnvelopeSerializer>();
-        
+
         var sqsEvent = new SQSEvent()
         {
             Records = new List<SQSMessage>()
@@ -333,7 +383,11 @@ public class LambdaTests
         return sqsEvent;
     }
 
-    private IServiceProvider CreateServiceProvider(int maxNumberOfConcurrentMessages = 1, bool deleteMessagesWhenCompleted = false, bool isFifoQueue = false)
+    private IServiceProvider CreateServiceProvider(
+        int maxNumberOfConcurrentMessages = 1,
+        bool deleteMessagesWhenCompleted = false,
+        bool isFifoQueue = false,
+        int? visibilityTimeoutForBatchFailures = default)
     {
         _mockSqs = new Mock<IAmazonSQS>();
 
@@ -360,6 +414,7 @@ public class LambdaTests
             {
                 options.MaxNumberOfConcurrentMessages = maxNumberOfConcurrentMessages;
                 options.DeleteMessagesWhenCompleted = deleteMessagesWhenCompleted;
+                options.VisibilityTimeoutForBatchFailures = visibilityTimeoutForBatchFailures;
             });
         });
 
