@@ -1,3 +1,8 @@
+## Release 2024-08-02
+
+### AWS.Messaging.Lambda (0.10.0)
+* Add default visibility timeout for failed partial batch response.
+
 ## Release 2024-04-22
 
 ### AWS.Messaging (0.9.1)
