@@ -25,9 +25,18 @@ namespace AWS.Messaging.Configuration;
 /// </summary>
 public class MessageBusBuilder : IMessageBusBuilder
 {
-    private readonly MessageConfiguration _messageConfiguration;
+    private static MessageConfiguration _messageConfiguration = new();
     private readonly IList<ServiceDescriptor> _additionalServices = new List<ServiceDescriptor>();
     private readonly IServiceCollection _serviceCollection;
+
+    /// <summary>
+    /// This is for unit testing purposes.
+    /// Need a way to reset the MessageConfiguration so that it is not shared between test runs.
+    /// </summary>
+    internal static void ResetMessageConfiguration()
+    {
+        _messageConfiguration = new MessageConfiguration();
+    }
 
     /// <summary>
     /// Creates an instance of <see cref="MessageBusBuilder"/>.
@@ -35,7 +44,6 @@ public class MessageBusBuilder : IMessageBusBuilder
     public MessageBusBuilder(IServiceCollection services)
     {
         _serviceCollection = services;
-        _messageConfiguration = new MessageConfiguration();
     }
 
     /// <inheritdoc/>
@@ -129,7 +137,6 @@ public class MessageBusBuilder : IMessageBusBuilder
             VisibilityTimeoutExtensionHeartbeatInterval = sqsMessagePollerOptions.VisibilityTimeoutExtensionHeartbeatInterval,
             WaitTimeSeconds = sqsMessagePollerOptions.WaitTimeSeconds,
             IsExceptionFatal = sqsMessagePollerOptions.IsExceptionFatal
-
         };
 
         _messageConfiguration.MessagePollerConfigurations.Add(sqsMessagePollerConfiguration);
@@ -333,11 +340,13 @@ public class MessageBusBuilder : IMessageBusBuilder
                 _serviceCollection.TryAddAWSService<Amazon.SQS.IAmazonSQS>();
                 _serviceCollection.TryAddSingleton<ISQSPublisher, SQSPublisher>();
             }
+
             if (_messageConfiguration.PublisherMappings.Any(x => x.PublishTargetType == PublisherTargetType.SNS_PUBLISHER))
             {
                 _serviceCollection.TryAddAWSService<Amazon.SimpleNotificationService.IAmazonSimpleNotificationService>();
                 _serviceCollection.TryAddSingleton<ISNSPublisher, SNSPublisher>();
             }
+
             if (_messageConfiguration.PublisherMappings.Any(x => x.PublishTargetType == PublisherTargetType.EVENTBRIDGE_PUBLISHER))
             {
                 _serviceCollection.TryAddAWSService<Amazon.EventBridge.IAmazonEventBridge>();
