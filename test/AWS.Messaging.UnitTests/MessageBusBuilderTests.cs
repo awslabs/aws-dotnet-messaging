@@ -58,6 +58,35 @@ public class MessageBusBuilderTests
     }
 
     [Fact]
+    public void BuildMessageBus_MultipleInvocations()
+    {
+        _serviceCollection.AddAWSMessageBus(builder =>
+        {
+            builder.AddSQSPublisher<OrderInfo>("sqsQueueUrl");
+            builder.AddMessageHandler<AddressInfoHandler, AddressInfo>();
+        });
+
+        _serviceCollection.AddAWSMessageBus(builder =>
+        {
+            builder.AddMessageHandler<ChatMessageHandler, ChatMessage>();
+        });
+
+        var serviceProvider = _serviceCollection.BuildServiceProvider();
+
+        var messagePublisher = serviceProvider.GetService<IMessagePublisher>();
+        Assert.NotNull(messagePublisher);
+
+        CheckRequiredServices(serviceProvider);
+
+        var mesageConfiguration = serviceProvider.GetRequiredService<IMessageConfiguration>();
+        Assert.Equal(2, mesageConfiguration.SubscriberMappings.Count);
+        Assert.Equal(typeof(AddressInfo), mesageConfiguration.SubscriberMappings[0].MessageType);
+        Assert.Equal(typeof(AddressInfoHandler), mesageConfiguration.SubscriberMappings[0].HandlerType);
+        Assert.Equal(typeof(ChatMessage), mesageConfiguration.SubscriberMappings[1].MessageType);
+        Assert.Equal(typeof(ChatMessageHandler), mesageConfiguration.SubscriberMappings[1].HandlerType);
+    }
+
+    [Fact]
     public void MessageBus_ConfigureBackoffPolicy_Default()
     {
         _serviceCollection.AddAWSMessageBus(builder =>
