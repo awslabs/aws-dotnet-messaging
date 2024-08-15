@@ -1,0 +1,11 @@
+{
+  "Projects": [
+    {
+      "Name": "AWS.Messaging",
+      "Type": "Patch",
+      "ChangelogMessages": [
+        "Add support for AddAWSMessageBus being invoked multiple times against the same ServiceCollection. This allows different modules to register their own handlers rather than requiring a centralized registration."
+      ]
+    }
+  ]
+}
