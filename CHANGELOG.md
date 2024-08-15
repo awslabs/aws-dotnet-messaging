@@ -1,3 +1,8 @@
+## Release 2024-08-15
+
+### AWS.Messaging (0.9.2)
+* Add support for AddAWSMessageBus being invoked multiple times against the same ServiceCollection. This allows different modules to register their own handlers rather than requiring a centralized registration.
+
 ## Release 2024-08-02
 
 ### AWS.Messaging.Lambda (0.10.0)
