@@ -107,7 +107,7 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
                 VisibilityTimeout = _configuration.VisibilityTimeout,
                 WaitTimeSeconds = _configuration.WaitTimeSeconds,
                 MaxNumberOfMessages = numberOfMessagesToRead,
-                AttributeNames = new List<string> { "All" },
+                MessageSystemAttributeNames = new List<string> { "All" },
                 MessageAttributeNames = new List<string> { "All" }
             };
 
@@ -214,7 +214,8 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
 
         var request = new DeleteMessageBatchRequest
         {
-            QueueUrl = _configuration.SubscriberEndpoint
+            QueueUrl = _configuration.SubscriberEndpoint,
+            Entries = new List<DeleteMessageBatchRequestEntry>()
         };
 
         foreach (var message in messages)
@@ -240,12 +241,15 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
         {
             var response = await _sqsClient.DeleteMessageBatchAsync(request, token);
 
-            foreach (var successMessage in response.Successful)
+            var successfulResponses = response.Successful ?? new List<DeleteMessageBatchResultEntry>();
+            var failedResponses = response.Failed ?? new List<BatchResultErrorEntry>();
+
+            foreach (var successMessage in successfulResponses)
             {
                 _logger.LogTrace("Deleted message {MessageId} from queue {SubscriberEndpoint} successfully", successMessage.Id, _configuration.SubscriberEndpoint);
             }
 
-            foreach (var failedMessage in response.Failed)
+            foreach (var failedMessage in failedResponses)
             {
                 _logger.LogError("Failed to delete message {FailedMessageId} from queue {SubscriberEndpoint}: {FailedMessage}",
                     failedMessage.Id, _configuration.SubscriberEndpoint, failedMessage.Message);
@@ -286,7 +290,8 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
 
         var currentRequest = new ChangeMessageVisibilityBatchRequest
         {
-            QueueUrl = _configuration.SubscriberEndpoint
+            QueueUrl = _configuration.SubscriberEndpoint,
+            Entries = new List<ChangeMessageVisibilityBatchRequestEntry>()
         };
         foreach (var message in messages)
         {
@@ -300,7 +305,8 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
                     requestBatches.Add(currentRequest);
                     currentRequest = new ChangeMessageVisibilityBatchRequest
                     {
-                        QueueUrl = _configuration.SubscriberEndpoint
+                        QueueUrl = _configuration.SubscriberEndpoint,
+                        Entries = new List<ChangeMessageVisibilityBatchRequestEntry>()
                     };
                 }
                 currentRequest.Entries.Add(new ChangeMessageVisibilityBatchRequestEntry
@@ -338,12 +344,15 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
             if (!changeMessageVisibilityBatchTask.IsFaulted)
             {
                 var response = changeMessageVisibilityBatchTask.Result;
-                foreach (var successMessage in response.Successful)
+                var successFulResonses = response.Successful ?? new List<ChangeMessageVisibilityBatchResultEntry>();
+                var failedResponses = response.Failed ?? new List<BatchResultErrorEntry>();
+
+                foreach (var successMessage in successFulResonses)
                 {
                     _logger.LogTrace("Extended the visibility of message {MessageId} on queue {SubscriberEndpoint} successfully", successMessage.Id, _configuration.SubscriberEndpoint);
                 }
 
-                foreach (var failedMessage in response.Failed)
+                foreach (var failedMessage in failedResponses)
                 {
                     // It's possible that the task that is extending the message visibility timeout of in flight messages attempts to extend
                     // a message whose handler task has just finished and deleted the message. Rather than adding synchronization between the two

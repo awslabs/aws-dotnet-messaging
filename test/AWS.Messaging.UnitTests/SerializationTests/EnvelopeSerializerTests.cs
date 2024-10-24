@@ -145,7 +145,9 @@ public class EnvelopeSerializerTests
         var sqsMessage = new Message
         {
             Body = await envelopeSerializer.SerializeAsync(messageEnvelope),
-            ReceiptHandle = "receipt-handle"
+            ReceiptHandle = "receipt-handle",
+            MessageAttributes = new Dictionary<string, MessageAttributeValue>(),
+            Attributes = new Dictionary<string, string>()
         };
         sqsMessage.MessageAttributes.Add("attr1", new MessageAttributeValue { DataType = "String", StringValue = "val1" });
         sqsMessage.Attributes.Add("MessageGroupId", "group-123");
