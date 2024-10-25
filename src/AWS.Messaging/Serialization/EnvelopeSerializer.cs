@@ -272,6 +272,10 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             MessageAttributes = sqsMessage.MessageAttributes,
             ReceiptHandle = sqsMessage.ReceiptHandle
         };
+        if (sqsMessage.Attributes is null || sqsMessage.Attributes.Count == 0)
+        {
+            return;
+        }
         if (sqsMessage.Attributes.TryGetValue("MessageGroupId", out var attribute))
         {
             envelopeConfiguration.SQSMetadata.MessageGroupId = attribute;

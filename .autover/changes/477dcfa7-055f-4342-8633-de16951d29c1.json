@@ -1,0 +1,25 @@
+{
+  "Projects": [
+    {
+      "Name": "AWS.Messaging",
+      "Type": "Major",
+      "ChangelogMessages": [
+        "Updated the .NET SDK dependencies to the latest version 4.0.0-preview.4"
+      ]
+    },
+    {
+      "Name": "AWS.Messaging.Lambda",
+      "Type": "Major",
+      "ChangelogMessages": [
+        "Updated the .NET SDK dependencies to the latest version 4.0.0-preview.4"
+      ]
+    },
+    {
+      "Name": "AWS.Messaging.Telemetry.OpenTelemetry",
+      "Type": "Major",
+      "ChangelogMessages": [
+        "Updated the .NET SDK dependencies to the latest version 4.0.0-preview.4"
+      ]
+    }
+  ]
+}
