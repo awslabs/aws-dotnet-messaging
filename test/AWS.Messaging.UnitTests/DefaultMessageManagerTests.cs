@@ -343,6 +343,40 @@ namespace AWS.Messaging.UnitTests
             Assert.Equal("2", transactionsInGroupA[1].Id);
         }
 
+        [Fact]
+        public async Task DefaultMessageManager_RethrowsInvalidMessageHandlerSignatureException()
+        {
+            var mockSQSMessageCommunication = CreateMockSQSMessageCommunication();
+            var mockHandlerInvoker = new Mock<IHandlerInvoker>();
+            mockHandlerInvoker
+                .Setup(x => x.InvokeAsync(It.IsAny<MessageEnvelope>(), It.IsAny<SubscriberMapping>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new InvalidMessageHandlerSignatureException("Test exception"));
+
+            var manager = new DefaultMessageManager(
+                mockSQSMessageCommunication.Object,
+                mockHandlerInvoker.Object,
+                new NullLogger<DefaultMessageManager>(),
+                new MessageManagerConfiguration());
+
+            var messageEnvelope = new MessageEnvelope<ChatMessage> { Id = "1" };
+            var subscriberMapping = new SubscriberMapping(typeof(ChatMessageHandler), typeof(ChatMessage));
+
+            await Assert.ThrowsAsync<InvalidMessageHandlerSignatureException>(() =>
+                manager.ProcessMessageAsync(messageEnvelope, subscriberMapping));
+
+            // Verify that the handler was invoked
+            mockHandlerInvoker.Verify(x => x.InvokeAsync(
+                It.Is<MessageEnvelope>(m => m == messageEnvelope),
+                It.Is<SubscriberMapping>(s => s == subscriberMapping),
+                It.IsAny<CancellationToken>()),
+                Times.Once);
+
+            mockSQSMessageCommunication.Verify(x => x.DeleteMessagesAsync(It.IsAny<IEnumerable<MessageEnvelope>>(), It.IsAny<CancellationToken>()), Times.Never);
+            mockSQSMessageCommunication.Verify(x => x.ReportMessageFailureAsync(It.IsAny<MessageEnvelope>(), It.IsAny<CancellationToken>()), Times.Never);
+
+            Assert.Equal(0, manager.ActiveMessageCount);
+        }
+
         private MessageEnvelope<TransactionInfo> CreateTransactionEnvelope(string id, string userId, bool shouldFail)
         {
             return new MessageEnvelope<TransactionInfo>

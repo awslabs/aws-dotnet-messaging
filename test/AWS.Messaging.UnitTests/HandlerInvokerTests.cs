@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using AWS.Messaging.Configuration;
@@ -153,5 +154,33 @@ public class HandlerInvokerTests
             messageStorage2.Add(item.Message);
         }
         Assert.Equal(3, messageStorage2.Count);
+    }
+
+    [Fact]
+    public async Task HandlerInvoker_VerifyHandlersFatalErrorWhenDIFails()
+    {
+        var serviceCollection = new ServiceCollection()
+           .AddAWSMessageBus(builder =>
+           {
+               builder.AddMessageHandler<ChatMessageHandlerWithDependencies, ChatMessage>();
+           }).AddSingleton<IDependentThing>(x =>
+           {
+               var thingDoer = x.GetRequiredService<IThingDoer>();
+               throw new InvalidOperationException("Blah blah"); // intentionally make the DI fail.
+           });
+
+        var serviceProvider = serviceCollection.BuildServiceProvider();
+
+        var handlerInvoker = new HandlerInvoker(
+            serviceProvider,
+            new NullLogger<HandlerInvoker>(),
+            new DefaultTelemetryFactory(serviceProvider));
+
+        var envelope = new MessageEnvelope<ChatMessage>();
+        var subscriberMapping = new SubscriberMapping(typeof(ChatMessageHandlerWithDependencies), typeof(ChatMessage));
+        await Assert.ThrowsAsync<InvalidMessageHandlerSignatureException>(async () =>
+        {
+            await handlerInvoker.InvokeAsync(envelope, subscriberMapping);
+        });
     }
 }
