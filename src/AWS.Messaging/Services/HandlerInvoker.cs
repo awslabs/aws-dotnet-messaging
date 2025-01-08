@@ -61,11 +61,11 @@ public class HandlerInvoker : IHandlerInvoker
                     {
                         handler = scope.ServiceProvider.GetRequiredService(subscriberMapping.HandlerType);
                     }
-                    catch
+                    catch (Exception e)
                     {
                         _logger.LogError("Unable to resolve a handler for {HandlerType} while handling message ID {MessageEnvelopeId}.", subscriberMapping.HandlerType, messageEnvelope.Id);
                         throw new InvalidMessageHandlerSignatureException($"Unable to resolve a handler for {subscriberMapping.HandlerType} " +
-                                                                          $"while handling message ID {messageEnvelope.Id}.");
+                                                                          $"while handling message ID {messageEnvelope.Id}.", e);
                     }
 
                     var method = _handlerMethods.GetOrAdd(subscriberMapping.MessageType, x =>
