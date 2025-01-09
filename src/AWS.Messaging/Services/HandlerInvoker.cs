@@ -56,13 +56,16 @@ public class HandlerInvoker : IHandlerInvoker
 
                 using (var scope = _serviceProvider.CreateScope())
                 {
-                    var handler = scope.ServiceProvider.GetService(subscriberMapping.HandlerType);
-
-                    if (handler == null)
+                    object handler;
+                    try
+                    {
+                        handler = scope.ServiceProvider.GetRequiredService(subscriberMapping.HandlerType);
+                    }
+                    catch (Exception e)
                     {
                         _logger.LogError("Unable to resolve a handler for {HandlerType} while handling message ID {MessageEnvelopeId}.", subscriberMapping.HandlerType, messageEnvelope.Id);
                         throw new InvalidMessageHandlerSignatureException($"Unable to resolve a handler for {subscriberMapping.HandlerType} " +
-                                                                          $"while handling message ID {messageEnvelope.Id}.");
+                                                                          $"while handling message ID {messageEnvelope.Id}.", e);
                     }
 
                     var method = _handlerMethods.GetOrAdd(subscriberMapping.MessageType, x =>

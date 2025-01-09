@@ -175,6 +175,10 @@ public class DefaultMessageManager : IMessageManager
         {
             await handlerTask;
         }
+        catch (InvalidMessageHandlerSignatureException)
+        {
+            throw;
+        }
         catch (AWSMessagingException)
         {
             // Swallow exceptions thrown by the framework, and rely on the thrower to log
