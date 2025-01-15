@@ -13,9 +13,9 @@ namespace AWS.Messaging.Publishers.EventBridge
     public interface IEventBridgePublisher : IEventPublisher
     {
         /// <summary>
-        /// Publishes the application message to SNS.
+        /// Publishes the application message to EventBridge.
         /// </summary>
-        /// <param name="message">The application message that will be serialized and sent to an SNS topic</param>
+        /// <param name="message">The application message that will be serialized and sent to an EventBridge event bus</param>
         /// <param name="eventBridgeOptions">Contains additional parameters that can be set while sending a message to EventBridge</param>
         /// <param name="token">The cancellation token used to cancel the request.</param>
         Task<EventBridgePublishResponse> PublishAsync<T>(T message, EventBridgeOptions? eventBridgeOptions, CancellationToken token = default);

@@ -1,3 +1,9 @@
+## Release 2025-01-13
+
+### AWS.Messaging (0.9.3)
+* Removes references to SNS in the EventBridge publisher documentation
+* Update logic to make DefaultMessageManager fail on InvalidMessageHandlerSignatureException
+
 ## Release 2024-08-15
 
 ### AWS.Messaging (0.9.2)
