@@ -105,12 +105,41 @@ public class LambdaTests
             Id = "failed-message-1",
             ReturnFailedStatus = true
         };
+        var secondMessage = new SimulatedMessage
+        {
+            Id = "second-message-1",
+            ReturnFailedStatus = false
+        };
 
-        var tuple = await ExecuteWithBatchResponse(new SimulatedMessage[] { failedMessage });
+        var tuple = await ExecuteWithBatchResponse(new SimulatedMessage[] { failedMessage, secondMessage });
         _mockSqs!.Verify(
             expression: x => x.ChangeMessageVisibilityAsync(It.IsAny<ChangeMessageVisibilityRequest>(), It.IsAny<CancellationToken>()),
             times: Times.Never);
         Assert.Single(tuple.batchResponse.BatchItemFailures);
+        Assert.Equal("1", tuple.batchResponse.BatchItemFailures[0].ItemIdentifier);
+    }
+
+    [Fact]
+    public async Task MessageHandlerReturnsFailedStatusBatchResponseFifo()
+    {
+        var failedMessage = new SimulatedMessage
+        {            
+            Id = "failed-message-1",
+            ReturnFailedStatus = true,
+            MessageGroupId = "group1"
+        };
+        var secondMessage = new SimulatedMessage
+        {
+            Id = "second-message-1",
+            ReturnFailedStatus = false,
+            MessageGroupId = "group1"
+        };
+
+        var tuple = await ExecuteWithBatchResponse(new SimulatedMessage[] { failedMessage, secondMessage }, isFifoQueue: true);
+        _mockSqs!.Verify(
+            expression: x => x.ChangeMessageVisibilityAsync(It.IsAny<ChangeMessageVisibilityRequest>(), It.IsAny<CancellationToken>()),
+            times: Times.Never);
+        Assert.Equal(2, tuple.batchResponse.BatchItemFailures.Count);
         Assert.Equal("1", tuple.batchResponse.BatchItemFailures[0].ItemIdentifier);
     }
 
@@ -304,13 +333,14 @@ public class LambdaTests
         SimulatedMessage[] messages,
         int maxNumberOfConcurrentMessages = 1,
         bool deleteMessagesWhenCompleted = false,
-        int? visibilityTimeoutForBatchFailures = default)
+        int? visibilityTimeoutForBatchFailures = default,
+        bool isFifoQueue = false)
     {
         var provider = CreateServiceProvider(
             maxNumberOfConcurrentMessages: maxNumberOfConcurrentMessages,
             deleteMessagesWhenCompleted: deleteMessagesWhenCompleted,
-            visibilityTimeoutForBatchFailures: visibilityTimeoutForBatchFailures);
-        var sqsEvent = await CreateLambdaEvent(provider, messages);
+            visibilityTimeoutForBatchFailures: visibilityTimeoutForBatchFailures, isFifoQueue: isFifoQueue);
+        var sqsEvent = await CreateLambdaEvent(provider, messages, isFifoQueue: isFifoQueue);
 
         var logger = new TestLambdaLogger();
         var context = new TestLambdaContext()
