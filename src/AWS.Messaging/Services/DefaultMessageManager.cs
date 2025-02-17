@@ -133,7 +133,7 @@ public class DefaultMessageManager : IMessageManager
             var remaining = messageGroup.Count;
 
             // Sequentially process each message within the group
-            for(var i = 0; i < messageGroup.Count; i += 1)
+            for(var i = 0; i < messageGroup.Count; i++)
             {
                 var message = messageGroup[i];
 

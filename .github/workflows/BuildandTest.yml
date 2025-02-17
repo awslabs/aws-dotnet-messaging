@@ -15,6 +15,10 @@ jobs:
       uses: actions/setup-dotnet@4d6c8fcf3c8f7a60068d26b594648e99df24cee3 # pinning V4
       with:
         dotnet-version: 6.0.x
+    - name: Setup .NET Core 8.0
+      uses: actions/setup-dotnet@4d6c8fcf3c8f7a60068d26b594648e99df24cee3 # pinning V4
+      with:
+        dotnet-version: 8.0.x
     - name: Restore dependencies
       run: dotnet restore
     - name: Build
