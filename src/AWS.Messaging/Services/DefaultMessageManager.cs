@@ -133,12 +133,19 @@ public class DefaultMessageManager : IMessageManager
             var remaining = messageGroup.Count;
 
             // Sequentially process each message within the group
-            foreach (var message in messageGroup)
+            for(var i = 0; i < messageGroup.Count; i++)
             {
+                var message = messageGroup[i];
+
                 var isSuccessful = await InvokeHandler(message.Envelope, message.Mapping, token);
                 if (!isSuccessful)
                 {
-                    // If the handler invocation fails for any message, skip processing subsequent messages in the group.
+                    // If the handler invocation fails for any message, report failure for the rest in the group so they are reported back to Lambda
+                    // as not failure that should be retried. Otherwise Lambda will think the messages were successfully processed and delete the messages.
+                    for (var unprocessedIndex = i + 1; unprocessedIndex < messageGroup.Count; unprocessedIndex++)
+                    {
+                        await _sqsMessageCommunication.ReportMessageFailureAsync(messageGroup[unprocessedIndex].Envelope, token);
+                    }
                     _logger.LogError("Handler invocation failed for a message belonging to message group '{GroupdId}' having message ID '{MessageID}'. Skipping processing of {Remaining} messages from the same group.", groupId, message.Envelope.Id, remaining);
                     break;
                 }
