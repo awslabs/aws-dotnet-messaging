@@ -1,3 +1,8 @@
+## Release 2025-02-20
+
+### AWS.Messaging (0.9.4)
+* Avoid logging error during shutdown
+
 ## Release 2025-01-13
 
 ### AWS.Messaging (0.9.3)
