@@ -165,6 +165,13 @@ public class MessageBusBuilder : IMessageBusBuilder
     }
 
     /// <inheritdoc/>
+    public IMessageBusBuilder ConfigurePollingControlToken(PollingControlToken pollingControlToken)
+    {
+        _messageConfiguration.PollingControlToken = pollingControlToken;
+        return this;
+    }
+
+    /// <inheritdoc/>
     [RequiresDynamicCode("This method requires loading types dynamically as defined in the configuration system.")]
     [RequiresUnreferencedCode("This method requires loading types dynamically as defined in the configuration system.")]
     public IMessageBusBuilder LoadConfigurationFromSettings(IConfiguration configuration)
@@ -327,6 +334,7 @@ public class MessageBusBuilder : IMessageBusBuilder
         _serviceCollection.TryAdd(ServiceDescriptor.Singleton<ILoggerFactory, NullLoggerFactory>());
         _serviceCollection.TryAdd(ServiceDescriptor.Singleton(typeof(ILogger<>), typeof(NullLogger<>)));
 
+		_serviceCollection.TryAddSingleton(_messageConfiguration.PollingControlToken);
         _serviceCollection.TryAddSingleton<IMessageConfiguration>(_messageConfiguration);
         _serviceCollection.TryAddSingleton<IMessageSerializer, MessageSerializer>();
         _serviceCollection.TryAddSingleton<IEnvelopeSerializer, EnvelopeSerializer>();

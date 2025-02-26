@@ -65,4 +65,7 @@ public class MessageConfiguration : IMessageConfiguration
 
     /// <inheritdoc/>
     public CappedExponentialBackoffOptions CappedExponentialBackoffOptions { get; set; } = new();
+
+    /// <inheritdoc/>
+    public PollingControlToken PollingControlToken { get; set; } = new();
 }
