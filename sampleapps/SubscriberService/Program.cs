@@ -51,7 +51,7 @@ await Host.CreateDefaultBuilder(args)
             });
 
             // Optional: Configure a PollingControlToken, you can call Start()/Stop() to start and stop message processing, by default it will be started
-            builder.ConfigurePollingControlToken(new PollingControlToken()
+            builder.ConfigurePollingControlToken(new PollingControlToken
             {
                 // Optional: Set how frequently it will check for changes to the state of the PollingControlToken
                 PollingWaitTime = TimeSpan.FromMilliseconds(200)
