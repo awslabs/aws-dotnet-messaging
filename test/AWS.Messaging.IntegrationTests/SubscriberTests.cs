@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Amazon.SQS;
 using Amazon.SQS.Model;
+using AWS.Messaging.Configuration;
 using AWS.Messaging.IntegrationTests.Handlers;
 using AWS.Messaging.IntegrationTests.Models;
 using AWS.Messaging.Tests.Common.Services;
@@ -136,6 +137,77 @@ public class SubscriberTests : IAsyncLifetime
         Assert.Empty(inMemoryLogger.Logs.Where(x => x.Exception is AmazonSQSException ex && ex.ErrorCode.Equals("AWS.SimpleQueueService.TooManyEntriesInBatchRequest")));
         Assert.Equal(numberOfMessages, tempStorage.Messages.Count);
         for (int i = 0; i < numberOfMessages; i++)
+        {
+            var message = tempStorage.Messages.FirstOrDefault(x => x.Message.MessageDescription.Equals($"Test{i + 1}"));
+            Assert.NotNull(message);
+            Assert.False(string.IsNullOrEmpty(message.Id));
+            Assert.Equal("/aws/messaging", message.Source.ToString());
+            Assert.True(message.TimeStamp > publishStartTime);
+            Assert.True(message.TimeStamp < publishEndTime);
+        }
+    }
+
+    [Fact]
+    public async Task ReceiveMultipleMessagesOnlyWhenPollingControlTokenStarted()
+    {
+        var pollingControlToken = new PollingControlToken();
+        _serviceCollection.AddSingleton<TempStorage<ChatMessage>>();
+        _serviceCollection.AddAWSMessageBus(builder =>
+        {
+            builder.ConfigurePollingControlToken(pollingControlToken);
+            builder.AddSQSPublisher<ChatMessage>(_sqsQueueUrl);
+            builder.AddSQSPoller(_sqsQueueUrl, options =>
+            {
+                options.VisibilityTimeoutExtensionThreshold = 3; // and a message is eligible for extension after it's been processing at least 3 seconds
+                options.MaxNumberOfConcurrentMessages = 10;
+            });
+            builder.AddMessageHandler<ChatMessageHandler, ChatMessage>();
+            builder.AddMessageSource("/aws/messaging");
+        });
+        var serviceProvider = _serviceCollection.BuildServiceProvider();
+
+        var publishStartTime = DateTime.UtcNow;
+        var publisher = serviceProvider.GetRequiredService<IMessagePublisher>();
+        for (int i = 0; i < 5; i++)
+        {
+            await publisher.PublishAsync(new ChatMessage
+            {
+                MessageDescription = $"Test{i + 1}"
+            });
+        }
+        var publishEndTime = DateTime.UtcNow;
+
+        var pump = serviceProvider.GetRequiredService<IHostedService>() as MessagePumpService;
+        Assert.NotNull(pump);
+        var source = new CancellationTokenSource();
+
+        await pump.StartAsync(source.Token);
+
+        // Wait for the pump to shut down after processing the expected number of messages,
+        // with some padding to ensure messages aren't being processed more than once
+        source.CancelAfter(3000);
+
+        // Stop polling and wait for the polling cycle to complete with a buffer
+        pollingControlToken.StopPolling();
+        await Task.Delay(pollingControlToken.PollingWaitTime * 2);
+
+        // Publish the next 5 messages that should not be received due to stopping polling
+        for (int i = 5; i < 10; i++)
+        {
+            await publisher.PublishAsync(new ChatMessage
+            {
+                MessageDescription = $"Test{i + 1}"
+            });
+        }
+
+        while (!source.IsCancellationRequested) { }
+
+        var inMemoryLogger = serviceProvider.GetRequiredService<InMemoryLogger>();
+        var tempStorage = serviceProvider.GetRequiredService<TempStorage<ChatMessage>>();
+
+        Assert.Empty(inMemoryLogger.Logs.Where(x => x.Exception is AmazonSQSException ex && ex.ErrorCode.Equals("AWS.SimpleQueueService.TooManyEntriesInBatchRequest")));
+        Assert.Equal(5, tempStorage.Messages.Count);
+        for (int i = 0; i < 5; i++)
         {
             var message = tempStorage.Messages.FirstOrDefault(x => x.Message.MessageDescription.Equals($"Test{i + 1}"));
             Assert.NotNull(message);
