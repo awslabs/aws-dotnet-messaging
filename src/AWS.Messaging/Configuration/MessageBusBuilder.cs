@@ -173,6 +173,13 @@ public class MessageBusBuilder : IMessageBusBuilder
     }
 
     /// <inheritdoc/>
+    public IMessageBusBuilder ConfigurePollingControlToken(PollingControlToken pollingControlToken)
+    {
+        _messageConfiguration.PollingControlToken = pollingControlToken;
+        return this;
+    }
+
+    /// <inheritdoc/>
     public IMessageBusBuilder LoadConfigurationFromSettings(IConfiguration configuration)
     {
         // This call needs to happen in this function so that the calling assembly is the customer's assembly.
@@ -316,6 +323,7 @@ public class MessageBusBuilder : IMessageBusBuilder
         _serviceCollection.TryAdd(ServiceDescriptor.Singleton<ILoggerFactory, NullLoggerFactory>());
         _serviceCollection.TryAdd(ServiceDescriptor.Singleton(typeof(ILogger<>), typeof(NullLogger<>)));
 
+		_serviceCollection.TryAddSingleton(_messageConfiguration.PollingControlToken);
         _serviceCollection.TryAddSingleton<IMessageConfiguration>(_messageConfiguration);
         _serviceCollection.TryAddSingleton<IMessageSerializer, MessageSerializer>();
         _serviceCollection.TryAddSingleton<IEnvelopeSerializer, EnvelopeSerializer>();
