@@ -6,8 +6,10 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using Amazon.SQS;
+using Amazon.SQS.Model;
 using AWS.Messaging.Configuration;
 using AWS.Messaging.Publishers;
 using AWS.Messaging.Publishers.SQS;
@@ -34,6 +36,7 @@ public class OpenTelemetryTests
     private readonly MessageRoutingPublisher _publisher;
     private readonly HandlerInvoker _handler;
     private readonly SubscriberMapping _subscriberMapping;
+    private readonly Mock<IAmazonSQS> _amazonSqsClient;
 
     /// <summary>
     /// Initializes all the services needed to publish and handle
@@ -57,8 +60,13 @@ public class OpenTelemetryTests
         messageConfiguration.Setup(x => x.GetPublisherMapping(typeof(ChatMessage))).Returns(publisherMapping);
         messageConfiguration.Setup(x => x.GetSubscriberMapping(typeof(ChatMessage))).Returns(_subscriberMapping);
 
+        _amazonSqsClient = new Mock<IAmazonSQS>();
+        _amazonSqsClient.Setup(clnt => clnt.SendMessageAsync(It.IsAny<SendMessageRequest>(), It.IsAny<CancellationToken>())).ReturnsAsync(new SendMessageResponse
+        {
+            MessageId = "MessageId"
+        });
         var services = new ServiceCollection();
-        services.AddSingleton(new Mock<IAmazonSQS>().Object);
+        services.AddSingleton(_amazonSqsClient.Object);
         services.AddSingleton(messagePublisherLogger.Object);
         services.AddSingleton(sqsPublisherLogger.Object);
         services.AddSingleton(messageConfiguration.Object);
@@ -89,6 +97,7 @@ public class OpenTelemetryTests
     public async Task OpenTelemetry_Publisher_ExpectedTracesAndTags()
     {
         var activities = new List<Activity>();
+
 
         using (var tracerProvider = Sdk.CreateTracerProviderBuilder()
             .AddSource(Constants.SourceName)

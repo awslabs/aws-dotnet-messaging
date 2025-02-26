@@ -29,6 +29,13 @@ public class LambdaMessagingOptions
     public bool DeleteMessagesWhenCompleted { get; set; } = false;
 
     /// <summary>
+    /// How many seconds to set the VisibilityTimeout value to on partial batch failures.
+    ///
+    /// Only applies for to Lambda functions that are configured for partial failure and return an <see cref="Amazon.Lambda.SQSEvents.SQSEvent"/>.
+    /// </summary>
+    public int? VisibilityTimeoutForBatchFailures { get; set; }
+
+    /// <summary>
     /// Validates that the options are valid against the message framework's and/or SQS limits
     /// </summary>
     /// <exception cref="InvalidLambdaMessagingOptionsException">Thrown when one or more invalid options are found</exception>

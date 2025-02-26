@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Amazon.Lambda.Core;
 using AWS.Messaging.UnitTests.Models;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -23,6 +24,22 @@ public class AddressInfoHandler : IMessageHandler<AddressInfo>
 {
     public Task<MessageProcessStatus> HandleAsync(MessageEnvelope<AddressInfo> messageEnvelope, CancellationToken token = default)
     {
+        return Task.FromResult(MessageProcessStatus.Success());
+    }
+}
+
+public class ChatMessageHandlerWithDependencies : IMessageHandler<ChatMessage>
+{
+    private readonly IDependentThing _thingDoer;
+
+    public ChatMessageHandlerWithDependencies(IDependentThing thingDoer)
+    {
+        _thingDoer = thingDoer;
+    }
+
+    public Task<MessageProcessStatus> HandleAsync(MessageEnvelope<ChatMessage> messageEnvelope, CancellationToken token = default)
+    {
+        _thingDoer.DoThingWithThing();
         return Task.FromResult(MessageProcessStatus.Success());
     }
 }

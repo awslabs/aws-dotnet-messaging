@@ -32,6 +32,7 @@ To send us a pull request, please:
 1. Fork the repository.
 2. Modify the source; please focus on the specific change you are contributing. If you also reformat all the code, it will be hard for us to focus on your change.
 3. Ensure local tests pass.
+4. Add a `change file` to your branch that contains a changelog message and the type of increment. More details [here](#adding-a-change-file-to-your-contribution-branch).
 4. Commit to your fork using clear commit messages.
 5. Send us a pull request to the `dev` branch, answering any default questions in the pull request interface.
 6. Pay attention to any automated CI failures reported in the pull request, and stay involved in the conversation.
@@ -39,6 +40,51 @@ To send us a pull request, please:
 GitHub provides additional document on [forking a repository](https://help.github.com/articles/fork-a-repo/) and
 [creating a pull request](https://help.github.com/articles/creating-a-pull-request/).
 
+## Adding a `change file` to your contribution branch
+
+Each contribution branch should include a `change file` that contains a changelog message for each project that has been updated, as well as the type of increment to perform for those changes when versioning the project.
+
+A `change file` looks like the following example:
+```json
+{
+  "Projects": [
+    {
+      "Name": "AWS.Messaging",
+      "Type": "Patch",
+      "ChangelogMessages": [
+        "Fixed an issue causing a failure somewhere"
+      ]
+    }
+  ]
+}
+```
+The `change file` lists all the modified projects, the changelog message for each project as well as the increment type. 
+
+These files are located in the repo at .autover/changes/
+
+You can use the `AutoVer` tool to create the change file. You can install it using the following command:
+```
+dotnet tool install -g AutoVer
+```
+
+You can create the `change file` using the following command:
+```
+autover change --project-name "AWS.Messaging" -m "Fixed an issue causing a failure somewhere
+```
+Note: Make sure to run the command from the root of the repository.
+
+You can update the command to specify which project you are updating.
+The available projects are:
+* AWS.Messaging
+* AWS.Messaging.Lambda
+* AWS.Messaging.Telemetry.OpenTelemetry
+
+The possible increment types are:
+* Patch
+* Minor
+* Major
+
+Note: You do not need to create a new `change file` for every changelog message or project within your branch. You can create one `change file` that contains all the modified projects and the changelog messages.
 
 ## Finding contributions to work on
 Looking at the existing issues is a great way to find something to contribute on. As our projects, by default, use the default GitHub issue labels (enhancement/bug/duplicate/help wanted/invalid/question/wontfix), looking at any 'help wanted' issues is a great place to start.

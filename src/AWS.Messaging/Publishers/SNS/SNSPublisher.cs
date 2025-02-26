@@ -46,11 +46,12 @@ internal class SNSPublisher : IMessagePublisher, ISNSPublisher
     /// </summary>
     /// <param name="message">The application message that will be serialized and sent to an SNS topic</param>
     /// <param name="token">The cancellation token used to cancel the request.</param>
+    /// <exception cref="FailedToPublishException">If the message failed to publish.</exception>
     /// <exception cref="InvalidMessageException">If the message is null or invalid.</exception>
     /// <exception cref="MissingMessageTypeConfigurationException">If cannot find the publisher configuration for the message type.</exception>
-    public async Task PublishAsync<T>(T message, CancellationToken token = default)
+    public async Task<IPublishResponse> PublishAsync<T>(T message, CancellationToken token = default)
     {
-       await PublishAsync(message, null, token);
+       return await PublishAsync(message, null, token);
     }
 
     /// <summary>
@@ -59,9 +60,10 @@ internal class SNSPublisher : IMessagePublisher, ISNSPublisher
     /// <param name="message">The application message that will be serialized and sent to an SNS topic</param>
     /// <param name="snsOptions">Contains additional parameters that can be set while sending a message to an SNS topic</param>
     /// <param name="token">The cancellation token used to cancel the request.</param>
+    /// <exception cref="FailedToPublishException">If the message failed to publish.</exception>
     /// <exception cref="InvalidMessageException">If the message is null or invalid.</exception>
     /// <exception cref="MissingMessageTypeConfigurationException">If cannot find the publisher configuration for the message type.</exception>
-    public async Task PublishAsync<T>(T message, SNSOptions? snsOptions, CancellationToken token = default)
+    public async Task<SNSPublishResponse> PublishAsync<T>(T message, SNSOptions? snsOptions, CancellationToken token = default)
     {
         using (var trace = _telemetryFactory.Trace("Publish to AWS SNS"))
         {
@@ -105,12 +107,18 @@ internal class SNSPublisher : IMessagePublisher, ISNSPublisher
 
                 _logger.LogDebug("Sending the message of type '{MessageType}' to SNS. Publisher Endpoint: {Endpoint}", typeof(T), topicArn);
                 var request = CreatePublishRequest(topicArn, messageBody, snsOptions);
-                await client.PublishAsync(request, token);
+                var publishResponse =await client.PublishAsync(request, token);
                 _logger.LogDebug("The message of type '{MessageType}' has been pushed to SNS.", typeof(T));
+                return new SNSPublishResponse
+                {
+                    MessageId = publishResponse.MessageId
+                };
             }
             catch (Exception ex)
             {
                 trace.AddException(ex);
+                if (ex is AmazonSimpleNotificationServiceException) // if the exception inherits from the AmazonSimpleNotificationServiceException
+                    throw new FailedToPublishException("Message failed to publish.", ex);
                 throw;
             }
         }
