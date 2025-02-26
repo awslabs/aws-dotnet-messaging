@@ -25,6 +25,7 @@ namespace AWS.Messaging.Configuration;
 /// </summary>
 public class MessageBusBuilder : IMessageBusBuilder
 {
+    private static readonly Dictionary<IServiceCollection, MessageConfiguration> _messageConfigurations = new();
     private readonly MessageConfiguration _messageConfiguration;
     private readonly IList<ServiceDescriptor> _additionalServices = new List<ServiceDescriptor>();
     private readonly IServiceCollection _serviceCollection;
@@ -35,7 +36,15 @@ public class MessageBusBuilder : IMessageBusBuilder
     public MessageBusBuilder(IServiceCollection services)
     {
         _serviceCollection = services;
-        _messageConfiguration = new MessageConfiguration();
+        if (_messageConfigurations.TryGetValue(services, out var config))
+        {
+            _messageConfiguration = config;
+        }
+        else
+        {
+            _messageConfiguration = new MessageConfiguration();
+            _messageConfigurations[services] = _messageConfiguration;
+        }
     }
 
     /// <inheritdoc/>
@@ -129,7 +138,6 @@ public class MessageBusBuilder : IMessageBusBuilder
             VisibilityTimeoutExtensionHeartbeatInterval = sqsMessagePollerOptions.VisibilityTimeoutExtensionHeartbeatInterval,
             WaitTimeSeconds = sqsMessagePollerOptions.WaitTimeSeconds,
             IsExceptionFatal = sqsMessagePollerOptions.IsExceptionFatal
-
         };
 
         _messageConfiguration.MessagePollerConfigurations.Add(sqsMessagePollerConfiguration);
@@ -315,8 +323,9 @@ public class MessageBusBuilder : IMessageBusBuilder
         _serviceCollection.TryAdd(ServiceDescriptor.Singleton<ILoggerFactory, NullLoggerFactory>());
         _serviceCollection.TryAdd(ServiceDescriptor.Singleton(typeof(ILogger<>), typeof(NullLogger<>)));
 
-		_serviceCollection.TryAddSingleton(_messageConfiguration.PollingControlToken);
-        _serviceCollection.AddSingleton<IMessageConfiguration>(_messageConfiguration);
+		    _serviceCollection.TryAddSingleton(_messageConfiguration.PollingControlToken);
+        _serviceCollection.TryAddSingleton<IMessageConfiguration>(_messageConfiguration);
+
         _serviceCollection.TryAddSingleton<IMessageSerializer, MessageSerializer>();
         _serviceCollection.TryAddSingleton<IEnvelopeSerializer, EnvelopeSerializer>();
         _serviceCollection.TryAddSingleton<IDateTimeHandler, DateTimeHandler>();
@@ -334,18 +343,20 @@ public class MessageBusBuilder : IMessageBusBuilder
 
         if (_messageConfiguration.PublisherMappings.Any())
         {
-            _serviceCollection.AddSingleton<IMessagePublisher, MessageRoutingPublisher>();
+            _serviceCollection.TryAddSingleton<IMessagePublisher, MessageRoutingPublisher>();
 
             if (_messageConfiguration.PublisherMappings.Any(x => x.PublishTargetType == PublisherTargetType.SQS_PUBLISHER))
             {
                 _serviceCollection.TryAddAWSService<Amazon.SQS.IAmazonSQS>();
                 _serviceCollection.TryAddSingleton<ISQSPublisher, SQSPublisher>();
             }
+
             if (_messageConfiguration.PublisherMappings.Any(x => x.PublishTargetType == PublisherTargetType.SNS_PUBLISHER))
             {
                 _serviceCollection.TryAddAWSService<Amazon.SimpleNotificationService.IAmazonSimpleNotificationService>();
                 _serviceCollection.TryAddSingleton<ISNSPublisher, SNSPublisher>();
             }
+
             if (_messageConfiguration.PublisherMappings.Any(x => x.PublishTargetType == PublisherTargetType.EVENTBRIDGE_PUBLISHER))
             {
                 _serviceCollection.TryAddAWSService<Amazon.EventBridge.IAmazonEventBridge>();
@@ -359,7 +370,7 @@ public class MessageBusBuilder : IMessageBusBuilder
 
             foreach (var subscriberMapping in _messageConfiguration.SubscriberMappings)
             {
-                _serviceCollection.AddScoped(subscriberMapping.HandlerType);
+                _serviceCollection.TryAddScoped(subscriberMapping.HandlerType);
             }
         }
 
@@ -395,7 +406,7 @@ public class MessageBusBuilder : IMessageBusBuilder
 
         foreach (var service in _additionalServices)
         {
-            _serviceCollection.Add(service);
+            _serviceCollection.TryAdd(service);
         }
     }
 

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using AWS.Messaging.Configuration;
+using AWS.Messaging.Publishers.EventBridge;
 using AWS.Messaging.Serialization;
 using Microsoft.Extensions.Configuration;
 
@@ -115,6 +116,17 @@ public class FailedToSerializeApplicationMessageException : AWSMessagingExceptio
     /// Creates an instance of <see cref="FailedToSerializeApplicationMessageException"/>.
     /// </summary>
     public FailedToSerializeApplicationMessageException(string message, Exception? innerException = null) : base(message, innerException) { }
+}
+
+/// <summary>
+/// Thrown if an exception occurs while publishing the message.
+/// </summary>
+public class FailedToPublishException : AWSMessagingException
+{
+    /// <summary>
+    /// Creates an instance of <see cref="FailedToPublishException"/>.
+    /// </summary>
+    public FailedToPublishException(string message, Exception? innerException = null) : base(message, innerException) { }
 }
 
 /// <summary>
@@ -260,3 +272,23 @@ public class InvalidFifoPublishingRequestException : AWSMessagingException
     /// </summary>
     public InvalidFifoPublishingRequestException(string message, Exception? innerException = null) : base(message, innerException) { }
 }
+
+/// <summary>
+/// Thrown if the <see cref="EventBridgePublishResponse"/> contains a message with an error code
+/// </summary>
+public class EventBridgePutEventsException : AWSMessagingException
+{
+    /// <summary>
+    /// The error code from the EventBridge SDK
+    /// </summary>
+    public string ErrorCode { get; }
+
+    /// <summary>
+    /// Creates an instance of <see cref="EventBridgePutEventsException"/>.
+    /// </summary>
+    public EventBridgePutEventsException(string message, string errorCode) : base(message)
+    {
+        ErrorCode = errorCode;
+    }
+}
+

@@ -125,8 +125,16 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
                 {
                     _logger.LogTrace("Retrieving up to {NumberOfMessagesToRead} messages from {QueueUrl}",
                         receiveMessageRequest.MaxNumberOfMessages, receiveMessageRequest.QueueUrl);
-
-                    var receiveMessageResponse = await _sqsClient.ReceiveMessageAsync(receiveMessageRequest, token);
+                    ReceiveMessageResponse receiveMessageResponse;
+                    try
+                    {
+                        receiveMessageResponse = await _sqsClient.ReceiveMessageAsync(receiveMessageRequest, token);
+                    }
+                    catch (TaskCanceledException)
+                    {
+                        _logger.LogTrace("Cancellation requested while receiving messages, probably due to shutdown. Returning empty list of messages");
+                        return new List<Message>();
+                    }
 
                     _logger.LogTrace("Retrieved {MessagesCount} messages from {QueueUrl} via request ID {RequestId}",
                         receiveMessageResponse.Messages.Count, receiveMessageRequest.QueueUrl, receiveMessageResponse.ResponseMetadata.RequestId);

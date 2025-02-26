@@ -76,7 +76,7 @@ internal class DefaultLambdaMessageProcessor : ILambdaMessageProcessor, ISQSMess
                 var sqsEvent = _configuration.SQSEvent;
 
                 trace.AddMetadata(TelemetryKeys.QueueUrl, _configuration.SubscriberEndpoint);
-                
+
                 if (sqsEvent is null || !sqsEvent.Records.Any())
                 {
                     return _sqsBatchResponse;
@@ -115,6 +115,8 @@ internal class DefaultLambdaMessageProcessor : ILambdaMessageProcessor, ISQSMess
                 {
                     throw new LambdaInvocationFailureException($"Lambda invocation failed because {_sqsBatchResponse.BatchItemFailures.Count} message reported failures during handling");
                 }
+
+                await ResetVisibilityTimeoutForFailures();
 
                 return _configuration.UseBatchResponse ? _sqsBatchResponse : null;
             }
@@ -216,7 +218,7 @@ internal class DefaultLambdaMessageProcessor : ILambdaMessageProcessor, ISQSMess
         if(!messages.Any())
         {
             return;
-        }    
+        }
 
         var request = new DeleteMessageBatchRequest
         {
@@ -254,6 +256,52 @@ internal class DefaultLambdaMessageProcessor : ILambdaMessageProcessor, ISQSMess
             _logger.LogError("Failed to delete message {FailedMessageId} from queue {SubscriberEndpoint}: {FailedMessage}",
                 failedMessage.Id, _configuration.SubscriberEndpoint, failedMessage.Message);
         }
+    }
+
+    /// <summary>
+    /// If configured for <see cref="AWS.Messaging.Lambda.Services.LambdaMessageProcessorConfiguration.VisibilityTimeoutForBatchFailures"/>
+    /// then change the visibility timeout on the failed items in the batch response.
+    /// </summary>
+    private async Task ResetVisibilityTimeoutForFailures()
+    {
+        if (_configuration.SQSEvent == null || !_configuration.UseBatchResponse || !_configuration.VisibilityTimeoutForBatchFailures.HasValue)
+        {
+            return;
+        }
+        var failureCount = _sqsBatchResponse.BatchItemFailures?.Count ?? 0;
+        if (failureCount == 0)
+        {
+            return;
+        }
+
+        var lookup = _configuration.SQSEvent.Records.ToDictionary(x => x.MessageId);
+        var visibilityTimeout = _configuration.VisibilityTimeoutForBatchFailures.Value;
+
+        if (failureCount == 1)
+        {
+            _logger.LogInformation("ChangeMessageVisibility to {VisibilityTimeout}", visibilityTimeout);
+            await _sqsClient.ChangeMessageVisibilityAsync(new ChangeMessageVisibilityRequest
+            {
+                QueueUrl = _configuration.SubscriberEndpoint,
+                ReceiptHandle = lookup[_sqsBatchResponse!.BatchItemFailures![0].ItemIdentifier].ReceiptHandle,
+                VisibilityTimeout = visibilityTimeout
+            });
+            return;
+        }
+
+        _logger.LogInformation("ChangeMessageVisibilityBatch on {FailureCount} to {VisibilityTimeout}", failureCount, visibilityTimeout);
+        await _sqsClient.ChangeMessageVisibilityBatchAsync(new ChangeMessageVisibilityBatchRequest
+        {
+            QueueUrl = _configuration.SubscriberEndpoint,
+            Entries = _sqsBatchResponse!.BatchItemFailures!
+                .Select(x => new ChangeMessageVisibilityBatchRequestEntry
+                {
+                    Id = x.ItemIdentifier,
+                    ReceiptHandle = lookup[x.ItemIdentifier].ReceiptHandle,
+                    VisibilityTimeout = visibilityTimeout
+                })
+                .ToList()
+        });
     }
 
     /// <inheritdoc/>

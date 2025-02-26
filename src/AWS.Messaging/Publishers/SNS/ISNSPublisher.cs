@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using Amazon.SimpleNotificationService.Model;
 using AWS.Messaging.Services;
 
 namespace AWS.Messaging.Publishers.SNS
@@ -18,6 +19,6 @@ namespace AWS.Messaging.Publishers.SNS
         /// <param name="message">The application message that will be serialized and sent to an SNS topic</param>
         /// <param name="snsOptions">Contains additional parameters that can be set while sending a message to an SNS topic</param>
         /// <param name="token">The cancellation token used to cancel the request.</param>
-        Task PublishAsync<T>(T message, SNSOptions? snsOptions, CancellationToken token = default);
+        Task<SNSPublishResponse> PublishAsync<T>(T message, SNSOptions? snsOptions, CancellationToken token = default);
     }
 }
