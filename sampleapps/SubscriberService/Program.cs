@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Text.Json;
+using AWS.Messaging.Configuration;
 using AWS.Messaging.Telemetry.OpenTelemetry;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -47,6 +48,13 @@ await Host.CreateDefaultBuilder(args)
                 {
                     x.CapBackoffTime = 60;
                 });
+            });
+
+            // Optional: Configure a PollingControlToken, you can call Start()/Stop() to start and stop message processing, by default it will be started
+            builder.ConfigurePollingControlToken(new PollingControlToken()
+            {
+                // Optional: Set how frequently it will check for changes to the state of the PollingControlToken
+                PollingWaitTime = TimeSpan.FromMilliseconds(200)
             });
 
             // Logging data messages is disabled by default to protect sensitive user data. If you want this enabled, uncomment the line below.
