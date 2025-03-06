@@ -4,7 +4,7 @@
       "Name": "AWS.Messaging",
       "Type": "Patch",
       "ChangelogMessages": [
-        "Update error message for handling scenario where subscribermapping does not exist."
+        "Update error message for handling scenario where subscriber mapping is not valid."
       ]
     }
   ]
