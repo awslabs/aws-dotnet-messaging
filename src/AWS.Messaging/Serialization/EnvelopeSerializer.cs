@@ -144,8 +144,15 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             var subscriberMapping = _messageConfiguration.GetSubscriberMapping(messageTypeIdentifier);
             if (subscriberMapping is null)
             {
-                _logger.LogError("{MessageConfiguration} does not have a valid subscriber mapping for message ID '{MessageTypeIdentifier}'", nameof(_messageConfiguration), messageTypeIdentifier);
-                throw new InvalidDataException($"{nameof(_messageConfiguration)} does not have a valid subscriber mapping for {nameof(messageTypeIdentifier)} '{messageTypeIdentifier}'");
+                var availableMappings = string.Join(", ", _messageConfiguration.SubscriberMappings.Select(m => m.MessageTypeIdentifier));
+                _logger.LogError("'{MessageTypeIdentifier}' is not a valid subscriber mapping for message ID '{MessageId}'. Available mappings: {AvailableMappings}",
+                    messageTypeIdentifier,
+                    intermediateEnvelope.Id,
+                    string.IsNullOrEmpty(availableMappings) ? "none" : availableMappings);
+
+                throw new InvalidDataException(
+                    $"'{messageTypeIdentifier}' is not a valid subscriber mapping for message ID {intermediateEnvelope.Id}. " +
+                    $"Available mappings: {(string.IsNullOrEmpty(availableMappings) ? "none" : availableMappings)}");
             }
 
             var messageType = subscriberMapping.MessageType;
