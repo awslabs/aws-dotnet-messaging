@@ -4,6 +4,7 @@
 using AWS.Messaging.SQS;
 using AWS.Messaging.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace AWS.Messaging.Services;
 
@@ -40,6 +41,13 @@ internal class DefaultMessageManagerFactory : IMessageManagerFactory
     /// <inheritdoc/>
     public IMessageManager CreateMessageManager(ISQSMessageCommunication sqsMessageCommunication, MessageManagerConfiguration configuration)
     {
-        return ActivatorUtilities.CreateInstance<DefaultMessageManager>(_serviceProvider, sqsMessageCommunication, configuration);
+        var manager = new DefaultMessageManager(
+                sqsMessageCommunication,
+                _serviceProvider.GetRequiredService<IHandlerInvoker>(),
+                _serviceProvider.GetRequiredService<ILoggerFactory>().CreateLogger<DefaultMessageManager>(),
+                configuration
+            );
+
+        return manager;
     }
 }

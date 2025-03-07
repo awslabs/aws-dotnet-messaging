@@ -13,14 +13,14 @@ public class ConfigurationTests
     [Fact]
     public void SubscriberMappingNoMessageIdentifier()
     {
-        var mapping = new SubscriberMapping(typeof(PurchaseOrderHandler), typeof(PurchaseOrder));
+        var mapping = SubscriberMapping.Create<PurchaseOrderHandler, PurchaseOrder>();
         Assert.Equal("AWS.Messaging.UnitTests.ConfigurationTests+PurchaseOrder", mapping.MessageTypeIdentifier);
     }
 
     [Fact]
     public void SubscriberMappingWithMessageIdentifier()
     {
-        var mapping = new SubscriberMapping(typeof(PurchaseOrderHandler), typeof(PurchaseOrder), "PO");
+        var mapping = SubscriberMapping.Create<PurchaseOrderHandler, PurchaseOrder>("PO");
         Assert.Equal("PO", mapping.MessageTypeIdentifier);
     }
 

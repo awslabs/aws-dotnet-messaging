@@ -42,7 +42,7 @@ public class HandlerInvokerTests
             new DefaultTelemetryFactory(serviceProvider));
 
         var envelope = new MessageEnvelope<ChatMessage>();
-        var subscriberMapping = new SubscriberMapping(typeof(ChatMessageHandler), typeof(ChatMessage));
+        var subscriberMapping = SubscriberMapping.Create<ChatMessageHandler, ChatMessage>();
         var messageProcessStatus = await handlerInvoker.InvokeAsync(envelope, subscriberMapping);
 
         Assert.Equal(MessageProcessStatus.Success(), messageProcessStatus);
@@ -71,14 +71,14 @@ public class HandlerInvokerTests
 
         // Assert that ChatMessage is routed to the right handler method, which always succeeds
         var chatEnvelope = new MessageEnvelope<ChatMessage>();
-        var chatSubscriberMapping = new SubscriberMapping(typeof(DualHandler), typeof(ChatMessage));
+        var chatSubscriberMapping = SubscriberMapping.Create<DualHandler, ChatMessage>();
         var chatMessageProcessStatus = await handlerInvoker.InvokeAsync(chatEnvelope, chatSubscriberMapping);
 
         Assert.True(chatMessageProcessStatus.IsSuccess);
 
         // Assert that AddressInfo is routed to the right handler method, which always fails
         var addressEnvelope = new MessageEnvelope<AddressInfo>();
-        var addressSubscriberMapping = new SubscriberMapping(typeof(DualHandler), typeof(AddressInfo));
+        var addressSubscriberMapping = SubscriberMapping.Create<DualHandler, AddressInfo>();
         var addressMessageProcessStatus = await handlerInvoker.InvokeAsync(addressEnvelope, addressSubscriberMapping);
 
         Assert.True(addressMessageProcessStatus.IsFailed);
@@ -110,7 +110,7 @@ public class HandlerInvokerTests
         {
             Id = "123"
         };
-        var subscriberMapping = new SubscriberMapping(typeof(ChatExceptionHandler), typeof(ChatMessage));
+        var subscriberMapping = SubscriberMapping.Create<ChatExceptionHandler, ChatMessage>();
 
         await handlerInvoker.InvokeAsync(envelope, subscriberMapping);
 
@@ -141,7 +141,7 @@ public class HandlerInvokerTests
 
         // ACT and ASSERT - Invoke the GreetingHandler multiple times and verify that a new instance of IGreeter is created each time.
         var envelope = new MessageEnvelope<string>();
-        var subscriberMapping = new SubscriberMapping(typeof(GreetingHandler), typeof(string));
+        var subscriberMapping = SubscriberMapping.Create<GreetingHandler, string>();
 
         await handlerInvoker.InvokeAsync(envelope, subscriberMapping);
         await handlerInvoker.InvokeAsync(envelope, subscriberMapping);
@@ -177,7 +177,7 @@ public class HandlerInvokerTests
             new DefaultTelemetryFactory(serviceProvider));
 
         var envelope = new MessageEnvelope<ChatMessage>();
-        var subscriberMapping = new SubscriberMapping(typeof(ChatMessageHandlerWithDependencies), typeof(ChatMessage));
+        var subscriberMapping = SubscriberMapping.Create<ChatMessageHandlerWithDependencies, ChatMessage>();
         await Assert.ThrowsAsync<InvalidMessageHandlerSignatureException>(async () =>
         {
             await handlerInvoker.InvokeAsync(envelope, subscriberMapping);

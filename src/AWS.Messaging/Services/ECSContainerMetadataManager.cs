@@ -2,9 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using Amazon;
 using AWS.Messaging.Configuration.Internal;
+using AWS.Messaging.Internal;
 using Microsoft.Extensions.Logging;
 
 namespace AWS.Messaging.Services;
@@ -53,7 +55,7 @@ internal class ECSContainerMetadataManager : IECSContainerMetadataManager
             }
 
             var taskMetadataJson = await response.Content.ReadAsStringAsync();
-            var taskMetadata = JsonSerializer.Deserialize<TaskMetadataResponse>(taskMetadataJson);
+            var taskMetadata = JsonSerializer.Deserialize<TaskMetadataResponse>(taskMetadataJson, MessagingJsonSerializerContext.Default.TaskMetadataResponse);
             if (ValidateContainerTaskMetadata(taskMetadata))
             {
                 return taskMetadata;
@@ -106,4 +108,6 @@ internal class ECSContainerMetadataManager : IECSContainerMetadataManager
 
         return true;
     }
+
+
 }

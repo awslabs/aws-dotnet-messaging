@@ -3,6 +3,7 @@
 
 using System.Diagnostics;
 using System.Text.Json;
+using AWS.Messaging.Internal;
 using OpenTelemetry;
 using OpenTelemetry.Context.Propagation;
 using OpenTelemetry.Trace;
@@ -74,7 +75,7 @@ public class OpenTelemetryTrace : ITelemetryTrace
     /// <param name="value">Context value</param>
     private void InjectTraceContextIntoEnvelope(MessageEnvelope envelope, string key, string value)
     {
-        envelope.Metadata[key] = JsonSerializer.SerializeToElement(value);
+        envelope.Metadata[key] = JsonSerializer.SerializeToElement(value, typeof(string), MessagingJsonSerializerContext.Default);
     }
 
     private bool _disposed;

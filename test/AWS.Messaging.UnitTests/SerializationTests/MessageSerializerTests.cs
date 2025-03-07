@@ -2,9 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using AWS.Messaging.Configuration;
 using AWS.Messaging.Serialization;
+using AWS.Messaging.Services;
 using AWS.Messaging.UnitTests.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -23,11 +26,12 @@ public class MessageSerializerTests
         _logger = new Mock<ILogger<MessageSerializer>>();
     }
 
-    [Fact]
-    public void Serialize()
+    [Theory]
+    [ClassData(typeof(JsonSerializerContextClassData))]
+    public void Serialize(IMessageJsonSerializerContextContainer messageJsonSerializerContextFactory)
     {
         // ARRANGE
-        IMessageSerializer serializer = new MessageSerializer(new NullLogger<MessageSerializer>(), new MessageConfiguration());
+        IMessageSerializer serializer = new MessageSerializer(new NullLogger<MessageSerializer>(), new MessageConfiguration(), messageJsonSerializerContextFactory);
         var person = new PersonInfo
         {
             FirstName= "Bob",
@@ -50,11 +54,12 @@ public class MessageSerializerTests
         Assert.Equal(expectedString, jsonString);
     }
 
-    [Fact]
-    public void Serialize_NoDataMessageLogging_NoError()
+    [Theory]
+    [ClassData(typeof(JsonSerializerContextClassData))]
+    public void Serialize_NoDataMessageLogging_NoError(IMessageJsonSerializerContextContainer messageJsonSerializerContextFactory)
     {
         var messageConfiguration = new MessageConfiguration();
-        IMessageSerializer serializer = new MessageSerializer(_logger.Object, messageConfiguration);
+        IMessageSerializer serializer = new MessageSerializer(_logger.Object, messageConfiguration, messageJsonSerializerContextFactory);
 
         var person = new PersonInfo
         {
@@ -81,11 +86,12 @@ public class MessageSerializerTests
             Times.Once);
     }
 
-    [Fact]
-    public void Serialize_DataMessageLogging_NoError()
+    [Theory]
+    [ClassData(typeof(JsonSerializerContextClassData))]
+    public void Serialize_DataMessageLogging_NoError(IMessageJsonSerializerContextContainer messageJsonSerializerContextFactory)
     {
         var messageConfiguration = new MessageConfiguration{ LogMessageContent = true };
-        IMessageSerializer serializer = new MessageSerializer(_logger.Object, messageConfiguration);
+        IMessageSerializer serializer = new MessageSerializer(_logger.Object, messageConfiguration, messageJsonSerializerContextFactory);
 
         var person = new PersonInfo
         {
@@ -114,7 +120,7 @@ public class MessageSerializerTests
             Times.Once);
     }
 
-    private class UnsupportedType
+    public class UnsupportedType
     {
         public string? Name { get; set; }
         public UnsupportedType? Type { get; set; }
@@ -124,7 +130,10 @@ public class MessageSerializerTests
     public void Serialize_NoDataMessageLogging_WithError()
     {
         var messageConfiguration = new MessageConfiguration();
-        IMessageSerializer serializer = new MessageSerializer(_logger.Object, messageConfiguration);
+
+        // This test doesn't use the JsonSerializationContext version because System.Text.Json
+        // doesn't detect circular references like the reflection version.
+        IMessageSerializer serializer = new MessageSerializer(_logger.Object, messageConfiguration, new NullMessageJsonSerializerContextContainer());
 
         // Creating an object with circular dependency to force an exception in the JsonSerializer.Serialize method.
         var unsupportedType1 = new UnsupportedType { Name = "type1" };
@@ -138,11 +147,12 @@ public class MessageSerializerTests
         Assert.Null(exception.InnerException);
     }
 
-    [Fact]
-    public void Serialize_DataMessageLogging_WithError()
+    [Theory]
+    [ClassData(typeof(JsonSerializerContextClassData))]
+    public void Serialize_DataMessageLogging_WithError(IMessageJsonSerializerContextContainer messageJsonSerializerContextFactory)
     {
         var messageConfiguration = new MessageConfiguration{ LogMessageContent = true };
-        IMessageSerializer serializer = new MessageSerializer(_logger.Object, messageConfiguration);
+        IMessageSerializer serializer = new MessageSerializer(_logger.Object, messageConfiguration, messageJsonSerializerContextFactory);
 
         // Creating an object with circular dependency to force an exception in the JsonSerializer.Serialize method.
         var unsupportedType1 = new UnsupportedType { Name = "type1" };
@@ -156,11 +166,12 @@ public class MessageSerializerTests
         Assert.NotNull(exception.InnerException);
     }
 
-    [Fact]
-    public void Deserialize()
+    [Theory]
+    [ClassData(typeof(JsonSerializerContextClassData))]
+    public void Deserialize(IMessageJsonSerializerContextContainer messageJsonSerializerContextFactory)
     {
         // ARRANGE
-        IMessageSerializer serializer = new MessageSerializer(new NullLogger<MessageSerializer>(), new MessageConfiguration());
+        IMessageSerializer serializer = new MessageSerializer(new NullLogger<MessageSerializer>(), new MessageConfiguration(), messageJsonSerializerContextFactory);
         var jsonString =
             @"{
                    ""FirstName"":""Bob"",
@@ -187,11 +198,12 @@ public class MessageSerializerTests
         Assert.Equal("00001", message.Address?.ZipCode);
     }
 
-    [Fact]
-    public void Deserialize_NoDataMessageLogging_NoError()
+    [Theory]
+    [ClassData(typeof(JsonSerializerContextClassData))]
+    public void Deserialize_NoDataMessageLogging_NoError(IMessageJsonSerializerContextContainer messageJsonSerializerContextFactory)
     {
         var messageConfiguration = new MessageConfiguration();
-        IMessageSerializer serializer = new MessageSerializer(_logger.Object, messageConfiguration);
+        IMessageSerializer serializer = new MessageSerializer(_logger.Object, messageConfiguration, messageJsonSerializerContextFactory);
 
         var jsonString =
             @"{
@@ -217,11 +229,12 @@ public class MessageSerializerTests
             Times.Once);
     }
 
-    [Fact]
-    public void Deserialize_DataMessageLogging_NoError()
+    [Theory]
+    [ClassData(typeof(JsonSerializerContextClassData))]
+    public void Deserialize_DataMessageLogging_NoError(IMessageJsonSerializerContextContainer messageJsonSerializerContextFactory)
     {
         var messageConfiguration = new MessageConfiguration{ LogMessageContent = true };
-        IMessageSerializer serializer = new MessageSerializer(_logger.Object, messageConfiguration);
+        IMessageSerializer serializer = new MessageSerializer(_logger.Object, messageConfiguration, messageJsonSerializerContextFactory);
 
         var jsonString =
             @"{""FirstName"":""Bob""}";
@@ -238,11 +251,12 @@ public class MessageSerializerTests
             Times.Once);
     }
 
-    [Fact]
-    public void Deserialize_NoDataMessageLogging_WithError()
+    [Theory]
+    [ClassData(typeof(JsonSerializerContextClassData))]
+    public void Deserialize_NoDataMessageLogging_WithError(IMessageJsonSerializerContextContainer messageJsonSerializerContextFactory)
     {
         var messageConfiguration = new MessageConfiguration();
-        IMessageSerializer serializer = new MessageSerializer(_logger.Object, messageConfiguration);
+        IMessageSerializer serializer = new MessageSerializer(_logger.Object, messageConfiguration, messageJsonSerializerContextFactory);
 
         var jsonString = "{'FirstName':'Bob'}";
 
@@ -252,11 +266,12 @@ public class MessageSerializerTests
         Assert.Null(exception.InnerException);
     }
 
-    [Fact]
-    public void Deserialize_DataMessageLogging_WithError()
+    [Theory]
+    [ClassData(typeof(JsonSerializerContextClassData))]
+    public void Deserialize_DataMessageLogging_WithError(IMessageJsonSerializerContextContainer messageJsonSerializerContextFactory)
     {
         var messageConfiguration = new MessageConfiguration{ LogMessageContent = true };
-        IMessageSerializer serializer = new MessageSerializer(_logger.Object, messageConfiguration);
+        IMessageSerializer serializer = new MessageSerializer(_logger.Object, messageConfiguration, messageJsonSerializerContextFactory);
 
         var jsonString = "{'FirstName':'Bob'}";
 
@@ -265,4 +280,22 @@ public class MessageSerializerTests
         Assert.Equal("Failed to deserialize application message into an instance of AWS.Messaging.UnitTests.Models.PersonInfo.", exception.Message);
         Assert.NotNull(exception.InnerException);
     }
+}
+
+[JsonSerializable(typeof(PersonInfo))]
+[JsonSerializable(typeof(MessageSerializerTests.UnsupportedType))]
+[JsonSourceGenerationOptions(UseStringEnumConverter = true)]
+public partial class UnitTestsSerializerContext : JsonSerializerContext
+{
+}
+
+public class JsonSerializerContextClassData : IEnumerable<object[]>
+{
+    public IEnumerator<object[]> GetEnumerator()
+    {
+        yield return new object[] { new NullMessageJsonSerializerContextContainer() };
+        yield return new object[] { new DefaultMessageJsonSerializerContextContainer(UnitTestsSerializerContext.Default) };
+    }
+
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }

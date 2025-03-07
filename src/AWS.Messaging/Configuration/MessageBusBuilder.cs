@@ -1,22 +1,23 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using AWS.Messaging.Configuration.Internal;
+using AWS.Messaging.Publishers;
+using AWS.Messaging.Publishers.EventBridge;
+using AWS.Messaging.Publishers.SNS;
+using AWS.Messaging.Publishers.SQS;
 using AWS.Messaging.Serialization;
 using AWS.Messaging.Services;
-using AWS.Messaging.Publishers;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using AWS.Messaging.Publishers.SQS;
-using AWS.Messaging.Publishers.SNS;
-using AWS.Messaging.Publishers.EventBridge;
-using Microsoft.Extensions.Configuration;
-using AWS.Messaging.Configuration.Internal;
-using System.Reflection;
 using AWS.Messaging.Services.Backoff;
 using AWS.Messaging.Services.Backoff.Policies;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Logging;
 using AWS.Messaging.Telemetry;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
+using System.Diagnostics.CodeAnalysis;
+using System.Reflection;
 
 namespace AWS.Messaging.Configuration;
 
@@ -48,36 +49,36 @@ public class MessageBusBuilder : IMessageBusBuilder
     }
 
     /// <inheritdoc/>
-    public IMessageBusBuilder AddSQSPublisher<TMessage>(string? queueUrl, string? messageTypeIdentifier = null)
+    public IMessageBusBuilder AddSQSPublisher<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TMessage>(string? queueUrl, string? messageTypeIdentifier = null)
     {
         return AddSQSPublisher(typeof(TMessage), queueUrl, messageTypeIdentifier);
     }
 
-    private IMessageBusBuilder AddSQSPublisher(Type messageType, string? queueUrl, string? messageTypeIdentifier = null)
+    private IMessageBusBuilder AddSQSPublisher([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type messageType, string? queueUrl, string? messageTypeIdentifier = null)
     {
         var sqsPublisherConfiguration = new SQSPublisherConfiguration(queueUrl);
         return AddPublisher(messageType, sqsPublisherConfiguration, PublisherTargetType.SQS_PUBLISHER, messageTypeIdentifier);
     }
 
     /// <inheritdoc/>
-    public IMessageBusBuilder AddSNSPublisher<TMessage>(string? topicUrl, string? messageTypeIdentifier = null)
+    public IMessageBusBuilder AddSNSPublisher<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TMessage>(string? topicUrl, string? messageTypeIdentifier = null)
     {
         return AddSNSPublisher(typeof(TMessage), topicUrl, messageTypeIdentifier);
     }
 
-    private IMessageBusBuilder AddSNSPublisher(Type messageType, string? topicUrl, string? messageTypeIdentifier = null)
+    private IMessageBusBuilder AddSNSPublisher([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type messageType, string? topicUrl, string? messageTypeIdentifier = null)
     {
         var snsPublisherConfiguration = new SNSPublisherConfiguration(topicUrl);
         return AddPublisher(messageType, snsPublisherConfiguration, PublisherTargetType.SNS_PUBLISHER, messageTypeIdentifier);
     }
 
     /// <inheritdoc/>
-    public IMessageBusBuilder AddEventBridgePublisher<TMessage>(string? eventBusName, string? messageTypeIdentifier = null, EventBridgePublishOptions? options = null)
+    public IMessageBusBuilder AddEventBridgePublisher<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TMessage>(string? eventBusName, string? messageTypeIdentifier = null, EventBridgePublishOptions? options = null)
     {
         return AddEventBridgePublisher(typeof(TMessage), eventBusName, messageTypeIdentifier, options);
     }
 
-    private IMessageBusBuilder AddEventBridgePublisher(Type messageType, string? eventBusName, string? messageTypeIdentifier = null, EventBridgePublishOptions? options = null)
+    private IMessageBusBuilder AddEventBridgePublisher([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type messageType, string? eventBusName, string? messageTypeIdentifier = null, EventBridgePublishOptions? options = null)
     {
         var eventBridgePublisherConfiguration = new EventBridgePublisherConfiguration(eventBusName)
         {
@@ -86,12 +87,7 @@ public class MessageBusBuilder : IMessageBusBuilder
         return AddPublisher(messageType, eventBridgePublisherConfiguration, PublisherTargetType.EVENTBRIDGE_PUBLISHER, messageTypeIdentifier);
     }
 
-    private IMessageBusBuilder AddPublisher<TMessage>(IMessagePublisherConfiguration publisherConfiguration, string publisherType, string? messageTypeIdentifier = null)
-    {
-        return AddPublisher(typeof(TMessage), publisherConfiguration, publisherType, messageTypeIdentifier);
-    }
-
-    private IMessageBusBuilder AddPublisher(Type messageType, IMessagePublisherConfiguration publisherConfiguration, string publisherType, string? messageTypeIdentifier = null)
+    private IMessageBusBuilder AddPublisher([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type messageType, IMessagePublisherConfiguration publisherConfiguration, string publisherType, string? messageTypeIdentifier = null)
     {
         var publisherMapping = new PublisherMapping(messageType, publisherConfiguration, publisherType, messageTypeIdentifier);
         _messageConfiguration.PublisherMappings.Add(publisherMapping);
@@ -99,19 +95,15 @@ public class MessageBusBuilder : IMessageBusBuilder
     }
 
     /// <inheritdoc/>
-    public IMessageBusBuilder AddMessageHandler<THandler, TMessage>(string? messageTypeIdentifier = null)
+    public IMessageBusBuilder AddMessageHandler<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] THandler, TMessage>(string? messageTypeIdentifier = null)
         where THandler : IMessageHandler<TMessage>
     {
-        return AddMessageHandler(typeof(THandler), typeof(TMessage), messageTypeIdentifier);
+        return AddMessageHandler(typeof(THandler), typeof(TMessage), () => new MessageEnvelope<TMessage>(), messageTypeIdentifier);
     }
 
-    private IMessageBusBuilder AddMessageHandler(Type handlerType, Type messageType, string? messageTypeIdentifier = null)
+    private IMessageBusBuilder AddMessageHandler([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type handlerType, Type messageType, Func<MessageEnvelope> envelopeFactory, string? messageTypeIdentifier = null)
     {
-        Type genericMessageHandler = typeof(IMessageHandler<>).MakeGenericType(messageType);
-        if (!handlerType.GetInterfaces().Any(x => x.Equals(genericMessageHandler)))
-            throw new InvalidMessageHandlerTypeException("The handler type should implement 'IMessageHandler<messageType>'.");
-
-        var subscriberMapping = new SubscriberMapping(handlerType, messageType, messageTypeIdentifier);
+        var subscriberMapping = new SubscriberMapping(handlerType, messageType, envelopeFactory, messageTypeIdentifier);
         _messageConfiguration.SubscriberMappings.Add(subscriberMapping);
         return this;
     }
@@ -173,6 +165,8 @@ public class MessageBusBuilder : IMessageBusBuilder
     }
 
     /// <inheritdoc/>
+    [RequiresDynamicCode("This method requires loading types dynamically as defined in the configuration system.")]
+    [RequiresUnreferencedCode("This method requires loading types dynamically as defined in the configuration system.")]
     public IMessageBusBuilder LoadConfigurationFromSettings(IConfiguration configuration)
     {
         // This call needs to happen in this function so that the calling assembly is the customer's assembly.
@@ -225,7 +219,23 @@ public class MessageBusBuilder : IMessageBusBuilder
                 var handlerType = GetTypeFromAssemblies(callingAssembly, messageHandler.HandlerType);
                 if (handlerType is null)
                     throw new InvalidAppSettingsConfigurationException($"Unable to find the provided message handler type '{messageHandler.HandlerType}'.");
-                AddMessageHandler(handlerType, messageType, messageHandler.MessageTypeIdentifier);
+
+                // This func is not Native AOT compatible but the method in general is marked
+                // as not being Native AOT compatible due to loading dynamic types. So this
+                // func not being Native AOT compatible is okay.
+                var envelopeFactory = () =>
+                {
+                    var messageEnvelopeType = typeof(MessageEnvelope<>).MakeGenericType(messageType);
+                    var envelope = Activator.CreateInstance(messageEnvelopeType);
+                    if (envelope == null || envelope is not MessageEnvelope)
+                    {
+                        throw new InvalidOperationException($"Failed to create a {nameof(MessageEnvelope)} of type '{messageEnvelopeType.FullName}'");
+
+                    }
+                    return (MessageEnvelope)envelope;
+                };
+
+                AddMessageHandler(handlerType, messageType, envelopeFactory, messageHandler.MessageTypeIdentifier);
             }
         }
 
@@ -272,6 +282,7 @@ public class MessageBusBuilder : IMessageBusBuilder
         return this;
     }
 
+    [RequiresUnreferencedCode("This method requires loading types dynamically as defined in the configuration system.")]
     private Type? GetTypeFromAssemblies(Assembly callingAssembly, string typeValue)
     {
         if (typeValue.Contains(','))
