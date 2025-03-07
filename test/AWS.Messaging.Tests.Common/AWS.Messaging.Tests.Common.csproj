@@ -9,12 +9,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="AWSSDK.CloudWatchLogs" Version="4.0.0-preview.9" />
-    <PackageReference Include="AWSSDK.IdentityManagement" Version="4.0.0-preview.9" />
-    <PackageReference Include="AWSSDK.Lambda" Version="4.0.0-preview.9" />
-    <PackageReference Include="AWSSDK.S3" Version="4.0.0-preview.9" />
-    <PackageReference Include="AWSSDK.SecurityToken" Version="4.0.0-preview.9" />
-    <PackageReference Include="AWSSDK.SQS" Version="4.0.0-preview.9" />
+    <PackageReference Include="AWSSDK.CloudWatchLogs" Version="4.0.0-preview.10" />
+    <PackageReference Include="AWSSDK.IdentityManagement" Version="4.0.0-preview.10" />
+    <PackageReference Include="AWSSDK.Lambda" Version="4.0.0-preview.10" />
+    <PackageReference Include="AWSSDK.S3" Version="4.0.0-preview.10" />
+    <PackageReference Include="AWSSDK.SecurityToken" Version="4.0.0-preview.10" />
+    <PackageReference Include="AWSSDK.SQS" Version="4.0.0-preview.10" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.*" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.*" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="6.0.*" />
