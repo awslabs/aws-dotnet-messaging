@@ -1,7 +1,7 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <IsPackable>true</IsPackable>
     <Product>AWS Message Processing Framework</Product>
     <Authors>Amazon Web Services</Authors>
@@ -15,6 +15,7 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
     <WarningsAsErrors>CA1727</WarningsAsErrors>
+    <NoWarn>CS1591</NoWarn>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\..\public.snk</AssemblyOriginatorKeyFile>
     <Version>0.9.4</Version>
@@ -22,13 +23,14 @@
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <IsTrimmable>true</IsTrimmable>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="AWSSDK.EventBridge" Version="3.7.302.40" />
-    <PackageReference Include="AWSSDK.Extensions.NETCore.Setup" Version="3.7.300" />
-    <PackageReference Include="AWSSDK.SimpleNotificationService" Version="3.7.301.22" />
-    <PackageReference Include="AWSSDK.SQS" Version="3.7.300.74" />
+    <PackageReference Include="AWSSDK.EventBridge" Version="4.0.0-preview.9" />
+    <PackageReference Include="AWSSDK.Extensions.NETCore.Setup" Version="4.0.0-preview.9" />
+    <PackageReference Include="AWSSDK.SimpleNotificationService" Version="4.0.0-preview.9" />
+    <PackageReference Include="AWSSDK.SQS" Version="4.0.0-preview.9" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.*" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="6.0.*" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="6.0.*" />

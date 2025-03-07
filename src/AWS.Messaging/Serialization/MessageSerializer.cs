@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using AWS.Messaging.Configuration;
+using AWS.Messaging.Services;
 using Microsoft.Extensions.Logging;
 
 namespace AWS.Messaging.Serialization;
@@ -15,15 +17,21 @@ internal class MessageSerializer : IMessageSerializer
 {
     private readonly ILogger<MessageSerializer> _logger;
     private readonly IMessageConfiguration _messageConfiguration;
+    private readonly JsonSerializerContext? _jsonSerializerContext;
 
-    public MessageSerializer(ILogger<MessageSerializer> logger, IMessageConfiguration messageConfiguration)
+    public MessageSerializer(ILogger<MessageSerializer> logger, IMessageConfiguration messageConfiguration, IMessageJsonSerializerContextContainer jsonContextContainer)
     {
         _logger = logger;
         _messageConfiguration= messageConfiguration;
+        _jsonSerializerContext = jsonContextContainer.GetJsonSerializerContext();
     }
 
     /// <inheritdoc/>
     /// <exception cref="FailedToDeserializeApplicationMessageException"></exception>
+    [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026",
+        Justification = "Consumers relying on trimming would have been required to call the AddAWSMessageBus overload that takes in JsonSerializerContext that will be used here to avoid the call that requires unreferenced code.")]
+    [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("ReflectionAnalysis", "IL3050",
+        Justification = "Consumers relying on trimming would have been required to call the AddAWSMessageBus overload that takes in JsonSerializerContext that will be used here to avoid the call that requires unreferenced code.")]
     public object Deserialize(string message, Type deserializedType)
     {
         try
@@ -38,7 +46,14 @@ internal class MessageSerializer : IMessageSerializer
                 _logger.LogTrace("Deserializing the following message into type '{DeserializedType}'", deserializedType);
             }
 
-            return JsonSerializer.Deserialize(message, deserializedType, jsonSerializerOptions) ?? throw new JsonException("The deserialized application message is null.");
+            if (_jsonSerializerContext != null)
+            {
+                return JsonSerializer.Deserialize(message, deserializedType, _jsonSerializerContext) ?? throw new JsonException("The deserialized application message is null.");
+            }
+            else
+            {
+                return JsonSerializer.Deserialize(message, deserializedType, jsonSerializerOptions) ?? throw new JsonException("The deserialized application message is null.");
+            }
         }
         catch (JsonException) when (!_messageConfiguration.LogMessageContent)
         {
@@ -54,12 +69,28 @@ internal class MessageSerializer : IMessageSerializer
 
     /// <inheritdoc/>
     /// <exception cref="FailedToSerializeApplicationMessageException"></exception>
+    [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026",
+        Justification = "Consumers relying on trimming would have been required to call the AddAWSMessageBus overload that takes in JsonSerializerContext that will be used here to avoid the call that requires unreferenced code.")]
+    [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("ReflectionAnalysis", "IL3050",
+        Justification = "Consumers relying on trimming would have been required to call the AddAWSMessageBus overload that takes in JsonSerializerContext that will be used here to avoid the call that requires unreferenced code.")]
     public string Serialize(object message)
     {
         try
         {
             var jsonSerializerOptions = _messageConfiguration.SerializationOptions.SystemTextJsonOptions;
-            var jsonString = JsonSerializer.Serialize(message, jsonSerializerOptions);
+
+            string jsonString;
+            Type messageType = message.GetType();
+
+            if (_jsonSerializerContext != null)
+            {
+                jsonString = JsonSerializer.Serialize(message, messageType, _jsonSerializerContext);
+            }
+            else
+            {
+                jsonString = JsonSerializer.Serialize(message, jsonSerializerOptions);
+            }
+
             if (_messageConfiguration.LogMessageContent)
             {
                 _logger.LogTrace("Serialized the message object as the following raw string:\n{JsonString}", jsonString);
