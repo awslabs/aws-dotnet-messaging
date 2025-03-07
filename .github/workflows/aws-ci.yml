@@ -1,32 +1,26 @@
 name: AWS CI
 
 on:
+  workflow_dispatch:
   pull_request:
     branches:
-      - main
-      - dev
+      - v4sdk-release # Change to `master` when V4 is GA
+      - v4sdk-development # Change to `dev` when V4 is GA
+      - 'feature/**'
 
 permissions:
   id-token: write
 
 jobs:
-  build:
+  run-ci:
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 #v4
         with:
           role-to-assume: ${{ secrets.CI_MAIN_TESTING_ACCOUNT_ROLE_ARN }}
           role-duration-seconds: 7200
           aws-region: us-west-2
-      - name: Setup .NET Core 6.0
-        uses: actions/setup-dotnet@4d6c8fcf3c8f7a60068d26b594648e99df24cee3 # pinning V4
-        with:
-          dotnet-version: 6.0.x
-      - name: Setup .NET Core 8.0
-        uses: actions/setup-dotnet@4d6c8fcf3c8f7a60068d26b594648e99df24cee3
-        with:
-          dotnet-version: 8.x
       - name: Invoke Load Balancer Lambda
         id: lambda
         shell: pwsh
@@ -35,7 +29,7 @@ jobs:
           $roleArn=$(cat ./response.json)
           "roleArn=$($roleArn -replace '"', '')" >> $env:GITHUB_OUTPUT
       - name: Configure Test Runner Credentials
-        uses: aws-actions/configure-aws-credentials@v2
+        uses: aws-actions/configure-aws-credentials@e3dd6a429d7300a6a4c196c26e071d42e0343502 #v4
         with:
           role-to-assume: ${{ steps.lambda.outputs.roleArn }}
           role-duration-seconds: 7200

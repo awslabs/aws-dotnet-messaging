@@ -774,9 +774,10 @@ public class MessagePublisherTests
                     It.IsAny<CancellationToken>()),
             Times.Exactly(1));
 
-        Assert.Equal("Message failed to publish.", publishResponse.Result.Message);
-        Assert.Equal("ErrorMessage", publishResponse.Result.InnerException.Message);
-        Assert.Equal("ErrorCode", ((EventBridgePutEventsException)publishResponse.Result.InnerException).ErrorCode);
+        var publishResponseResult = await publishResponse;
+        Assert.Equal("Message failed to publish.", publishResponseResult.Message);
+        Assert.Equal("ErrorMessage", publishResponseResult.InnerException!.Message);
+        Assert.Equal("ErrorCode", ((EventBridgePutEventsException)publishResponseResult.InnerException).ErrorCode);
     }
 
     [Fact]
