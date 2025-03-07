@@ -1,3 +1,21 @@
+## Release 2025-02-20
+
+### AWS.Messaging (0.9.4)
+* Fix issue with fifo when a message is failed to process the later messages are not retried
+* Update User-Agent string
+* Avoid logging error during shutdown
+### AWS.Messaging.Lambda (0.10.1)
+* Update AWS.Messaging dependency
+* Update project dependencies
+### AWS.Messaging.Telemetry.OpenTelemetry (0.9.2)
+* Update project dependencies
+
+## Release 2025-01-13
+
+### AWS.Messaging (0.9.3)
+* Removes references to SNS in the EventBridge publisher documentation
+* Update logic to make DefaultMessageManager fail on InvalidMessageHandlerSignatureException
+
 ## Release 2024-08-15
 
 ### AWS.Messaging (0.9.2)
