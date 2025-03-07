@@ -3,6 +3,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -564,6 +565,50 @@ public class EnvelopeSerializerTests
             Assert.Null(exception.InnerException);
         }
     }
+
+    [Fact]
+    public async Task ConvertToEnvelope_NullSubscriberMapping_ThrowsException()
+    {
+        // ARRANGE
+        var serviceProvider = _serviceCollection.BuildServiceProvider();
+        var envelopeSerializer = serviceProvider.GetRequiredService<IEnvelopeSerializer>();
+        var messageEnvelope = new MessageEnvelope<AddressInfo>
+        {
+            Id = "66659d05-e4ff-462f-81c4-09e560e66a5c",
+            Source = new Uri("/aws/messaging", UriKind.Relative),
+            Version = "1.0",
+            MessageTypeIdentifier = "unknownMessageType", // Using an unknown message type
+            TimeStamp = _testdate,
+            Message = new AddressInfo
+            {
+                Street = "Prince St",
+                Unit = 123,
+                ZipCode = "00001"
+            }
+        };
+
+        var sqsMessage = new Message
+        {
+            Body = await envelopeSerializer.SerializeAsync(messageEnvelope),
+            ReceiptHandle = "receipt-handle"
+        };
+
+        // ACT & ASSERT
+        var exception = await Assert.ThrowsAsync<FailedToCreateMessageEnvelopeException>(
+            async () => await envelopeSerializer.ConvertToEnvelopeAsync(sqsMessage)
+        );
+
+        // Verify the exception message
+        Assert.Equal("Failed to create MessageEnvelope", exception.Message);
+
+        // Verify the inner exception type and message
+        Assert.IsType<InvalidDataException>(exception.InnerException);
+        var innerException = exception.InnerException as InvalidDataException;
+        Assert.Contains("'unknownMessageType' is not a valid subscriber mapping.", innerException.Message);
+        Assert.Contains("Available mappings:", innerException.Message);
+        Assert.Contains("addressInfo", innerException.Message);
+    }
+
 }
 
 public class MockSerializationCallback : ISerializationCallback
