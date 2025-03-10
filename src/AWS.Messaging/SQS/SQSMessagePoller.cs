@@ -22,6 +22,7 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
     private readonly SQSMessagePollerConfiguration _configuration;
     private readonly IEnvelopeSerializer _envelopeSerializer;
     private readonly IBackoffHandler _backoffHandler;
+    private readonly PollingControlToken _pollingControlToken;
     private readonly bool _isFifoEndpoint;
 
     /// <summary>
@@ -49,19 +50,22 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
     /// <param name="configuration">The SQS message poller configuration.</param>
     /// <param name="envelopeSerializer">Serializer used to deserialize the SQS messages</param>
     /// <param name="backoffHandler">Backoff handler for performing back-offs if exceptions are thrown when polling SQS.</param>
+    /// <param name="pollingControlToken">Control token to start and stop the poller.</param>
     public SQSMessagePoller(
         ILogger<SQSMessagePoller> logger,
         IMessageManagerFactory messageManagerFactory,
         IAWSClientProvider awsClientProvider,
         SQSMessagePollerConfiguration configuration,
         IEnvelopeSerializer envelopeSerializer,
-        IBackoffHandler backoffHandler)
+        IBackoffHandler backoffHandler,
+        PollingControlToken pollingControlToken)
     {
         _logger = logger;
         _sqsClient = awsClientProvider.GetServiceClient<IAmazonSQS>();
         _configuration = configuration;
         _envelopeSerializer = envelopeSerializer;
         _backoffHandler = backoffHandler;
+        _pollingControlToken = pollingControlToken;
         _isFifoEndpoint = configuration.SubscriberEndpoint.EndsWith(".fifo");
 
         _messageManager = messageManagerFactory.CreateMessageManager(this, _configuration.ToMessageManagerConfiguration());
@@ -74,13 +78,18 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
     }
 
     /// <summary>
-    /// Polls SQS indefinitely until cancelled
-    /// </summary>
+    /// Polls SQS indefinitely until cancelled. Message receipt can be stopped and started using <see cref="PollingControlToken"/></summary>
     /// <param name="token">Cancellation token to shutdown the poller.</param>
     private async Task PollQueue(CancellationToken token)
     {
         while (!token.IsCancellationRequested)
         {
+            if (!_pollingControlToken.IsPollingEnabled)
+            {
+                await Task.Delay(_pollingControlToken.PollingWaitTime, token);
+                continue;
+            }
+
             var numberOfMessagesToRead = _configuration.MaxNumberOfConcurrentMessages - _messageManager.ActiveMessageCount;
 
             // If already processing the maximum number of messages, wait for at least one to complete and then try again
