@@ -212,11 +212,8 @@ public class LambdaEventTests : IAsyncLifetime
         var publishTimestamp = DateTime.UtcNow;
         await _publisher!.PublishAsync(message);
 
-        await Task.Delay(TimeSpan.FromSeconds(10));
+        var logsWithHandler = await AWSUtilities.PollForLogWithMessage(_cloudWatchLogsClient, LambdaIntegrationTestFixture.FunctionPackageName, "Processed message with Id: ", publishTimestamp);
 
-        // Assert that the message was processed and logged successfully
-        var logs = await AWSUtilities.GetMostRecentLambdaLogs(_cloudWatchLogsClient, LambdaIntegrationTestFixture.FunctionPackageName, publishTimestamp);
-        var logsWithHandler = logs.Where(logEvent => logEvent.Message.Contains("Processed message with Id: "));
         Assert.Single(logsWithHandler);
         Assert.Contains($"Processed message with Id: {message.TransactionId}", logsWithHandler.First().Message);
     }
@@ -318,11 +315,8 @@ public class LambdaBatchTests : IAsyncLifetime
         var publishTimestamp = DateTime.UtcNow;
         await _publisher!.PublishAsync(message);
 
-        await Task.Delay(TimeSpan.FromSeconds(10));
+        var logsWithHandler = await AWSUtilities.PollForLogWithMessage(_cloudWatchLogsClient, LambdaIntegrationTestFixture.FunctionPackageName, "Processed message with Id: ", publishTimestamp);
 
-        // Assert that the message was processed and logged successfully
-        var logs = await AWSUtilities.GetMostRecentLambdaLogs(_cloudWatchLogsClient, LambdaIntegrationTestFixture.FunctionPackageName, publishTimestamp);
-        var logsWithHandler = logs.Where(logEvent => logEvent.Message.Contains("Processed message with Id: "));
         Assert.Single(logsWithHandler);
         Assert.Contains($"Processed message with Id: {message.TransactionId}", logsWithHandler.First().Message);
     }
