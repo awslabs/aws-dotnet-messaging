@@ -7,6 +7,7 @@ using System.Text.Json.Nodes;
 using Amazon.SQS.Model;
 using AWS.Messaging.Configuration;
 using AWS.Messaging.Services;
+using FileSignatures;
 using Microsoft.Extensions.Logging;
 
 namespace AWS.Messaging.Serialization;
@@ -25,6 +26,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
     private readonly IMessageIdGenerator _messageIdGenerator;
     private readonly IMessageSourceHandler _messageSourceHandler;
     private readonly ILogger<EnvelopeSerializer> _logger;
+    private readonly IFileFormatInspector _fileFormatInspector;
 
     public EnvelopeSerializer(
         ILogger<EnvelopeSerializer> logger,
@@ -40,6 +42,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
         _dateTimeHandler = dateTimeHandler;
         _messageIdGenerator = messageIdGenerator;
         _messageSourceHandler = messageSourceHandler;
+        _fileFormatInspector = new FileFormatInspector();
     }
 
     /// <inheritdoc/>
@@ -91,9 +94,19 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
                 ["source"] = envelope.Source?.ToString(),
                 ["specversion"] = envelope.Version,
                 ["type"] = envelope.MessageTypeIdentifier,
-                ["time"] = envelope.TimeStamp,
-                ["data"] = _messageSerializer.Serialize(message)
+                ["time"] = envelope.TimeStamp
             };
+
+            // See https://github.com/cloudevents/spec/blob/v1.0.2/cloudevents/formats/json-format.md#31-handling-of-data for more details.
+            // First determine the runtime data type - if its binary or non binary
+            if (IsBinaryData(message))
+            {
+                SerializeBinaryData(message, blob);
+            }
+            else
+            {
+                SerializeNonBinaryData(message, blob);
+            }
 
             // Write any Metadata as top-level keys
             // This may be useful for any extensions defined in
@@ -107,17 +120,17 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             }
 
             var jsonString = blob.ToJsonString();
-            var serializedMessage = await InvokePostSerializationCallback(jsonString);
+            var finalSerializedMessage  = await InvokePostSerializationCallback(jsonString);
 
             if (_messageConfiguration.LogMessageContent)
             {
-                _logger.LogTrace("Serialized the MessageEnvelope object as the following raw string:\n{SerializedMessage}", serializedMessage);
+                _logger.LogTrace("Serialized the MessageEnvelope object as the following raw string:\n{SerializedMessage}", finalSerializedMessage );
             }
             else
             {
                 _logger.LogTrace("Serialized the MessageEnvelope object to a raw string");
             }
-            return serializedMessage;
+            return finalSerializedMessage ;
         }
         catch (JsonException) when (!_messageConfiguration.LogMessageContent)
         {
@@ -190,6 +203,168 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
         {
             _logger.LogError(ex, "Failed to create a {MessageEnvelopeName}", nameof(MessageEnvelope));
             throw new FailedToCreateMessageEnvelopeException($"Failed to create {nameof(MessageEnvelope)}", ex);
+        }
+    }
+
+    private bool IsBinaryData<T>(T data)
+    {
+        return data switch
+        {
+            byte[] => true,
+            Stream => true,
+            Memory<byte> => true,
+            ReadOnlyMemory<byte> => true,
+            _ => false
+        };
+    }
+
+
+    private static string ConvertStreamToBase64(Stream stream)
+    {
+        using var memoryStream = new MemoryStream();
+        stream.CopyTo(memoryStream);
+        return Convert.ToBase64String(memoryStream.ToArray());
+    }
+
+    private string? DetermineContentType<T>(T data)
+    {
+        switch (data)
+        {
+            case byte[] bytes:
+                {
+                    using var memoryStream = new MemoryStream(bytes);
+                    var format = _fileFormatInspector.DetermineFileFormat(memoryStream);
+                    return format?.MediaType;
+                }
+            case Stream inputStream:
+                {
+                    var format = _fileFormatInspector.DetermineFileFormat(inputStream);
+                    return format?.MediaType;
+                }
+            case Memory<byte> memoryBytes:
+                {
+                    using var memoryStream = new MemoryStream(memoryBytes.ToArray());
+                    var format = _fileFormatInspector.DetermineFileFormat(memoryStream);
+                    return format?.MediaType;
+                }
+            case ReadOnlyMemory<byte> readOnlyMemoryBytes:
+                {
+                    using var memoryStream = new MemoryStream(readOnlyMemoryBytes.ToArray());
+                    var format = _fileFormatInspector.DetermineFileFormat(memoryStream);
+                    return format?.MediaType;
+                }
+            default:
+                return null;
+        }
+    }
+
+    private void SerializeBinaryData<T>(T data, JsonObject blob)
+    {
+        if (data is null)
+        {
+            throw new ArgumentNullException(nameof(data), "Binary data cannot be null");
+        }
+
+        string base64Data = data switch
+        {
+            byte[] bytes => Convert.ToBase64String(bytes),
+            Stream stream => ConvertStreamToBase64(stream),
+            Memory<byte> memory => Convert.ToBase64String(memory.Span),
+            ReadOnlyMemory<byte> memory => Convert.ToBase64String(memory.Span),
+            _ => throw new ArgumentException($"Unsupported binary data type: {data.GetType().FullName ?? "Unknown Type"}")
+        };
+
+        // For binary data, we use data_base64 instead of data
+        blob["data_base64"] = base64Data;
+
+        string? determinedContentType = DetermineContentType(data);
+
+        // If a content type was explicitly specified in the configuration
+        if (_messageConfiguration.SerializationOptions.DataContentType != null)
+        {
+            // If we detected a specific content type (not the generic application/octet-stream)
+            // and it doesn't match what was specified in the configuration
+            if (determinedContentType != null &&
+                determinedContentType != _messageConfiguration.SerializationOptions.DataContentType)
+            {
+                // Warn the user about the mismatch between specified and detected types
+                // For example: specified "image/png" but detected "image/jpeg"
+                _logger.LogWarning("Specified datacontenttype '{SpecifiedType}' does not match the detected binary data format '{DeterminedType}'",
+                    _messageConfiguration.SerializationOptions.DataContentType, determinedContentType);
+            }
+            // Use the specified content type, even if it differs from what we detected
+            // This respects the user's explicit configuration while still warning about potential mismatches
+            blob["datacontenttype"] = _messageConfiguration.SerializationOptions.DataContentType;
+        }
+    }
+
+    private void SerializeNonBinaryData<T>(T message, JsonObject blob)
+    {
+        if (message == null)
+        {
+            throw new ArgumentNullException("The underlying application message cannot be null");
+        }
+
+        // Serialize the message
+        var serializedMessage = _messageSerializer.Serialize(message);
+
+        // Determine if the serialized message is valid JSON
+        // Wed do this because _messageSerializer is injected and there is no guarantee that it serializes to json.
+        bool isJson = IsValidJson(serializedMessage);
+
+        // If datacontenttype is not specified, default to application/json
+        string dataContentType = _messageConfiguration.SerializationOptions.DataContentType ?? "application/json";
+        blob["datacontenttype"] = dataContentType;
+
+        if (IsJsonContentType(dataContentType))
+        {
+            if (isJson)
+            {
+                // If it's valid JSON, parse it to maintain structure
+                blob["data"] = JsonNode.Parse(serializedMessage);
+            }
+            else
+            {
+                // If it's not valid JSON but content type indicates JSON,
+                // log warning and store as string
+                _logger.LogWarning("Data was serialized as non-JSON, but datacontenttype indicates JSON format. Storing as string.");
+                blob["data"] = serializedMessage;
+            }
+        }
+        else
+        {
+            // For non-JSON content types, store as string
+            blob["data"] = serializedMessage;
+        }
+    }
+
+    private bool IsJsonContentType(string? contentType)
+    {
+        if (string.IsNullOrEmpty(contentType))
+        {
+            // If datacontenttype is unspecified, treat as application/json
+            return true;
+        }
+
+        // Strip any parameters (anything after ';')
+        var mediaType = contentType.Split(';')[0].Trim().ToLowerInvariant();
+
+        return mediaType.EndsWith("/json") || // Matches */json
+               (mediaType.Contains('/') && mediaType.EndsWith("+json")); // Matches */*+json
+    }
+
+    private bool IsValidJson(string strInput)
+    {
+        if (string.IsNullOrWhiteSpace(strInput)) return false;
+
+        try
+        {
+            JsonDocument.Parse(strInput);
+            return true;
+        }
+        catch (JsonException)
+        {
+            return false;
         }
     }
 

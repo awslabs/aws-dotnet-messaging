@@ -24,4 +24,10 @@ public class SerializationOptions
     {
         Converters = { new JsonStringEnumConverter() }
     };
+
+    /// <summary>
+    ///
+    /// </summary>
+    public string? DataContentType { get; set; }
+
 }

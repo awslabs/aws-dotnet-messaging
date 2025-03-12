@@ -17,7 +17,7 @@
     <WarningsAsErrors>CA1727</WarningsAsErrors>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\..\public.snk</AssemblyOriginatorKeyFile>
-    <Version>0.9.4</Version>
+    <Version>0.9.6</Version>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <IncludeSymbols>true</IncludeSymbols>
@@ -29,6 +29,7 @@
     <PackageReference Include="AWSSDK.Extensions.NETCore.Setup" Version="3.7.300" />
     <PackageReference Include="AWSSDK.SimpleNotificationService" Version="3.7.301.22" />
     <PackageReference Include="AWSSDK.SQS" Version="3.7.300.74" />
+    <PackageReference Include="FileSignatures" Version="5.1.1" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.*" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="6.0.*" />
     <PackageReference Include="Microsoft.Extensions.Http" Version="6.0.*" />
