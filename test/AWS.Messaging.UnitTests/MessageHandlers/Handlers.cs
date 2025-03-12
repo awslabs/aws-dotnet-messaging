@@ -28,6 +28,14 @@ public class AddressInfoHandler : IMessageHandler<AddressInfo>
     }
 }
 
+public class PlainTextHandler : IMessageHandler<string>
+{
+    public Task<MessageProcessStatus> HandleAsync(MessageEnvelope<string> messageEnvelope, CancellationToken token = default)
+    {
+        return Task.FromResult(MessageProcessStatus.Success());
+    }
+}
+
 public class ChatMessageHandlerWithDependencies : IMessageHandler<ChatMessage>
 {
     private readonly IDependentThing _thingDoer;

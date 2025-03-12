@@ -67,7 +67,8 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             Version = CLOUD_EVENT_SPEC_VERSION,
             MessageTypeIdentifier = publisherMapping.MessageTypeIdentifier,
             TimeStamp = timeStamp,
-            Message = message
+            Message = message,
+            // DataContentType = "" // TODO
         };
     }
 
@@ -91,9 +92,11 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
                 ["source"] = envelope.Source?.ToString(),
                 ["specversion"] = envelope.Version,
                 ["type"] = envelope.MessageTypeIdentifier,
-                ["time"] = envelope.TimeStamp,
-                ["data"] = _messageSerializer.Serialize(message)
+                ["time"] = envelope.TimeStamp
             };
+
+            // See https://github.com/cloudevents/spec/blob/v1.0.2/cloudevents/formats/json-format.md#31-handling-of-data for more details.
+            SerializeData(message, blob, envelope.DataContentType);
 
             // Write any Metadata as top-level keys
             // This may be useful for any extensions defined in
@@ -107,17 +110,17 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             }
 
             var jsonString = blob.ToJsonString();
-            var serializedMessage = await InvokePostSerializationCallback(jsonString);
+            var finalSerializedMessage  = await InvokePostSerializationCallback(jsonString);
 
             if (_messageConfiguration.LogMessageContent)
             {
-                _logger.LogTrace("Serialized the MessageEnvelope object as the following raw string:\n{SerializedMessage}", serializedMessage);
+                _logger.LogTrace("Serialized the MessageEnvelope object as the following raw string:\n{SerializedMessage}", finalSerializedMessage );
             }
             else
             {
                 _logger.LogTrace("Serialized the MessageEnvelope object to a raw string");
             }
-            return serializedMessage;
+            return finalSerializedMessage ;
         }
         catch (JsonException) when (!_messageConfiguration.LogMessageContent)
         {
@@ -129,6 +132,16 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             _logger.LogError(ex, "Failed to serialize the MessageEnvelope into a raw string");
             throw new FailedToSerializeMessageEnvelopeException("Failed to serialize the MessageEnvelope into a raw string", ex);
         }
+    }
+
+    private string ExtractDataContent(JsonElement dataElement, string? dataContentType)
+    {
+        return IsJsonContentType(dataContentType)
+            ? dataElement.ValueKind == JsonValueKind.String
+                ? dataElement.GetString()!
+                : dataElement.GetRawText()
+            : dataElement.GetString()
+              ?? throw new InvalidDataException("Data must be a string for non-JSON content type");
     }
 
     /// <inheritdoc/>
@@ -143,6 +156,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             var subscriberMapping = GetAndValidateSubscriberMapping(parsedResult.Envelope.MessageTypeIdentifier);
             var deserializedMessage = DeserializeDataContent(
                 parsedResult.Envelope.Message!,
+                parsedResult.Envelope.DataContentType,
                 subscriberMapping.MessageType);
 
             // Create and populate final envelope
@@ -174,11 +188,35 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
     private async Task<ParsedEnvelopeResult> ParseMessageEnvelope(Message sqsMessage)
     {
         sqsMessage.Body = await InvokePreDeserializationCallback(sqsMessage.Body);
-        var messageEnvelopeConfiguration = GetMessageEnvelopeConfiguration(sqsMessage);
-        var intermediateEnvelope = JsonSerializer.Deserialize<MessageEnvelope<string>>(messageEnvelopeConfiguration.MessageEnvelopeBody!)!;
+        var config = GetMessageEnvelopeConfiguration(sqsMessage);
+
+        using var document = JsonDocument.Parse(config.MessageEnvelopeBody!);
+        var root = document.RootElement;
+
+        if (!root.TryGetProperty("data", out var dataElement))
+        {
+            throw new InvalidDataException("Message envelope is missing required 'data' field");
+        }
+
+        string? dataContentType = root.TryGetProperty("datacontenttype", out var contentTypeElement)
+            ? contentTypeElement.GetString()
+            : "application/json";
+
+        string dataContent = ExtractDataContent(dataElement, dataContentType);
+
+        // Create intermediate envelope with all properties
+        var envelopeJson = new JsonObject();
+        foreach (var property in root.EnumerateObject())
+        {
+            envelopeJson[property.Name] = property.Name == "data"
+                ? JsonValue.Create(dataContent)
+                : JsonNode.Parse(property.Value.GetRawText());
+        }
+
+        var intermediateEnvelope = JsonSerializer.Deserialize<MessageEnvelope<string>>(envelopeJson.ToJsonString())!;
         ValidateMessageEnvelope(intermediateEnvelope);
 
-        return new ParsedEnvelopeResult(intermediateEnvelope, messageEnvelopeConfiguration);
+        return new ParsedEnvelopeResult(intermediateEnvelope, config);
     }
 
     private MessageEnvelope CreateFinalEnvelope(
@@ -204,6 +242,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
         finalEnvelope.MessageTypeIdentifier = intermediateEnvelope.MessageTypeIdentifier;
         finalEnvelope.TimeStamp = intermediateEnvelope.TimeStamp;
         finalEnvelope.Metadata = intermediateEnvelope.Metadata;
+        finalEnvelope.DataContentType = intermediateEnvelope.DataContentType;
         finalEnvelope.SQSMetadata = config.SQSMetadata;
         finalEnvelope.SNSMetadata = config.SNSMetadata;
         finalEnvelope.EventBridgeMetadata = config.EventBridgeMetadata;
@@ -232,9 +271,87 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
         return subscriberMapping;
     }
 
-    private object DeserializeDataContent(string dataContent, Type messageType)
+    private object DeserializeDataContent(string dataContent, string? dataContentType, Type messageType)
     {
-        return _messageSerializer.Deserialize(dataContent, messageType);
+        if (IsJsonContentType(dataContentType))
+        {
+            return _messageSerializer.Deserialize(dataContent, messageType);
+        }
+
+        if (messageType == typeof(string))
+        {
+            return dataContent;
+        }
+
+        throw new InvalidOperationException(
+            $"Cannot deserialize non-JSON content type {dataContentType} to type {messageType}");
+    }
+
+    private void SerializeData<T>(T message, JsonObject blob, string? dataContentType)
+    {
+        if (message == null)
+        {
+            throw new ArgumentNullException("The underlying application message cannot be null");
+        }
+
+        // Serialize the message
+        var serializedMessage = _messageSerializer.Serialize(message);
+
+        // Determine if the serialized message is valid JSON
+        // Wed do this because _messageSerializer is injected and there is no guarantee that it serializes to json.
+        bool isJson = IsValidJson(serializedMessage);
+        blob["datacontenttype"] = dataContentType;
+
+        if (IsJsonContentType(dataContentType))
+        {
+            if (isJson)
+            {
+                // If it's valid JSON, parse it to maintain structure
+                blob["data"] = JsonNode.Parse(serializedMessage);
+            }
+            else
+            {
+                // If it's not valid JSON but content type indicates JSON,
+                // log warning and store as string
+                _logger.LogWarning("Data was serialized as non-JSON, but datacontenttype indicates JSON format. Storing as string.");
+                blob["data"] = serializedMessage;
+            }
+        }
+        else
+        {
+            // For non-JSON content types, store as string
+            blob["data"] = serializedMessage;
+        }
+    }
+
+    private bool IsJsonContentType(string? contentType)
+    {
+        if (string.IsNullOrEmpty(contentType))
+        {
+            // If datacontenttype is unspecified, treat as application/json
+            return true;
+        }
+
+        // Strip any parameters (anything after ';')
+        var mediaType = contentType.Split(';')[0].Trim().ToLowerInvariant();
+
+        return mediaType.EndsWith("/json") || // Matches */json
+               (mediaType.Contains('/') && mediaType.EndsWith("+json")); // Matches */*+json
+    }
+
+    private bool IsValidJson(string strInput)
+    {
+        if (string.IsNullOrWhiteSpace(strInput)) return false;
+
+        try
+        {
+            JsonDocument.Parse(strInput);
+            return true;
+        }
+        catch (JsonException)
+        {
+            return false;
+        }
     }
 
     private void ValidateMessageEnvelope<T>(MessageEnvelope<T>? messageEnvelope)
