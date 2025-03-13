@@ -334,7 +334,7 @@ public class MessageBusBuilder : IMessageBusBuilder
         _serviceCollection.TryAdd(ServiceDescriptor.Singleton<ILoggerFactory, NullLoggerFactory>());
         _serviceCollection.TryAdd(ServiceDescriptor.Singleton(typeof(ILogger<>), typeof(NullLogger<>)));
 
-		_serviceCollection.TryAddSingleton(_messageConfiguration.PollingControlToken);
+        _serviceCollection.TryAddSingleton(_messageConfiguration.PollingControlToken);
         _serviceCollection.TryAddSingleton<IMessageConfiguration>(_messageConfiguration);
         _serviceCollection.TryAddSingleton<IMessageSerializer, MessageSerializer>();
         _serviceCollection.TryAddSingleton<IEnvelopeSerializer, EnvelopeSerializer>();
