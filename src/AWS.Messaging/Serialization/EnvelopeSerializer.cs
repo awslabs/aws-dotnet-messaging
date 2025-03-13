@@ -131,54 +131,31 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
         }
     }
 
-    /// <inheritdoc/>
     public async ValueTask<ConvertToEnvelopeResult> ConvertToEnvelopeAsync(Message sqsMessage)
     {
         try
         {
-            sqsMessage.Body = await InvokePreDeserializationCallback(sqsMessage.Body);
-            var messageEnvelopeConfiguration = GetMessageEnvelopeConfiguration(sqsMessage);
-            var intermediateEnvelope = JsonSerializer.Deserialize<MessageEnvelope<string>>(messageEnvelopeConfiguration.MessageEnvelopeBody!)!;
-            ValidateMessageEnvelope(intermediateEnvelope);
-            var messageTypeIdentifier = intermediateEnvelope.MessageTypeIdentifier;
-            var subscriberMapping = _messageConfiguration.GetSubscriberMapping(messageTypeIdentifier);
-            if (subscriberMapping is null)
-            {
-                var availableMappings = string.Join(", ", _messageConfiguration.SubscriberMappings.Select(m => m.MessageTypeIdentifier));
-                _logger.LogError("'{MessageTypeIdentifier}' is not a valid subscriber mapping. Available mappings: {AvailableMappings}",
-                    messageTypeIdentifier,
-                    string.IsNullOrEmpty(availableMappings) ? "none" : availableMappings);
+            // Parse and validate the message envelope
+            var parsedResult = await ParseMessageEnvelope(sqsMessage);
 
-                throw new InvalidDataException(
-                    $"'{messageTypeIdentifier}' is not a valid subscriber mapping. " +
-                    $"Available mappings: {(string.IsNullOrEmpty(availableMappings) ? "none" : availableMappings)}");
-            }
+            // Get subscriber mapping and deserialize message
+            var subscriberMapping = GetAndValidateSubscriberMapping(parsedResult.Envelope.MessageTypeIdentifier);
+            var deserializedMessage = DeserializeDataContent(
+                parsedResult.Envelope.Message!,
+                subscriberMapping.MessageType);
 
-            var messageType = subscriberMapping.MessageType;
-            var message = _messageSerializer.Deserialize(intermediateEnvelope.Message, messageType);
-            var messageEnvelopeType = typeof(MessageEnvelope<>).MakeGenericType(messageType);
+            // Create and populate final envelope
+            var finalEnvelope = CreateFinalEnvelope(
+                parsedResult.Envelope,
+                parsedResult.Configuration,
+                subscriberMapping.MessageType,
+                deserializedMessage);
 
-            if (Activator.CreateInstance(messageEnvelopeType) is not MessageEnvelope finalMessageEnvelope)
-            {
-                _logger.LogError($"Failed to create a {nameof(MessageEnvelope)} of type '{{MessageEnvelopeType}}'", messageEnvelopeType.FullName);
-                throw new InvalidOperationException($"Failed to create a {nameof(MessageEnvelope)} of type '{messageEnvelopeType.FullName}'");
-            }
+            await InvokePostDeserializationCallback(finalEnvelope);
+            var result = new ConvertToEnvelopeResult(finalEnvelope, subscriberMapping);
 
-            finalMessageEnvelope.Id = intermediateEnvelope.Id;
-            finalMessageEnvelope.Source = intermediateEnvelope.Source;
-            finalMessageEnvelope.Version = intermediateEnvelope.Version;
-            finalMessageEnvelope.MessageTypeIdentifier = intermediateEnvelope.MessageTypeIdentifier;
-            finalMessageEnvelope.TimeStamp = intermediateEnvelope.TimeStamp;
-            finalMessageEnvelope.Metadata = intermediateEnvelope.Metadata;
-            finalMessageEnvelope.SQSMetadata = messageEnvelopeConfiguration.SQSMetadata;
-            finalMessageEnvelope.SNSMetadata = messageEnvelopeConfiguration.SNSMetadata;
-            finalMessageEnvelope.EventBridgeMetadata = messageEnvelopeConfiguration.EventBridgeMetadata;
-            finalMessageEnvelope.SetMessage(message);
-
-            await InvokePostDeserializationCallback(finalMessageEnvelope);
-            var result = new ConvertToEnvelopeResult(finalMessageEnvelope, subscriberMapping);
-
-            _logger.LogTrace("Created a generic {MessageEnvelopeName} of type '{MessageEnvelopeType}'", nameof(MessageEnvelope), result.Envelope.GetType());
+            _logger.LogTrace("Created a generic {MessageEnvelopeName} of type '{MessageEnvelopeType}'",
+                nameof(MessageEnvelope), result.Envelope.GetType());
             return result;
         }
         catch (JsonException) when (!_messageConfiguration.LogMessageContent)
@@ -191,6 +168,72 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             _logger.LogError(ex, "Failed to create a {MessageEnvelopeName}", nameof(MessageEnvelope));
             throw new FailedToCreateMessageEnvelopeException($"Failed to create {nameof(MessageEnvelope)}", ex);
         }
+    }
+
+    private async Task<ParsedEnvelopeResult> ParseMessageEnvelope(Message sqsMessage)
+    {
+        sqsMessage.Body = await InvokePreDeserializationCallback(sqsMessage.Body);
+        var messageEnvelopeConfiguration = GetMessageEnvelopeConfiguration(sqsMessage);
+        var intermediateEnvelope = JsonSerializer.Deserialize<MessageEnvelope<string>>(messageEnvelopeConfiguration.MessageEnvelopeBody!)!;
+        ValidateMessageEnvelope(intermediateEnvelope);
+
+        return new ParsedEnvelopeResult(intermediateEnvelope, messageEnvelopeConfiguration);
+    }
+
+    private MessageEnvelope CreateFinalEnvelope(
+        MessageEnvelope<string> intermediateEnvelope,
+        MessageEnvelopeConfiguration config,
+        Type messageType,
+        object deserializedMessage)
+    {
+        var messageEnvelopeType = typeof(MessageEnvelope<>).MakeGenericType(messageType);
+
+        if (Activator.CreateInstance(messageEnvelopeType) is not MessageEnvelope finalEnvelope)
+        {
+            _logger.LogError(
+                $"Failed to create a {nameof(MessageEnvelope)} of type '{{MessageEnvelopeType}}'",
+                messageEnvelopeType.FullName);
+            throw new InvalidOperationException(
+                $"Failed to create a {nameof(MessageEnvelope)} of type '{messageEnvelopeType.FullName}'");
+        }
+
+        finalEnvelope.Id = intermediateEnvelope.Id;
+        finalEnvelope.Source = intermediateEnvelope.Source;
+        finalEnvelope.Version = intermediateEnvelope.Version;
+        finalEnvelope.MessageTypeIdentifier = intermediateEnvelope.MessageTypeIdentifier;
+        finalEnvelope.TimeStamp = intermediateEnvelope.TimeStamp;
+        finalEnvelope.Metadata = intermediateEnvelope.Metadata;
+        finalEnvelope.SQSMetadata = config.SQSMetadata;
+        finalEnvelope.SNSMetadata = config.SNSMetadata;
+        finalEnvelope.EventBridgeMetadata = config.EventBridgeMetadata;
+        finalEnvelope.SetMessage(deserializedMessage);
+
+        return finalEnvelope;
+    }
+
+    private SubscriberMapping GetAndValidateSubscriberMapping(string messageTypeIdentifier)
+    {
+        var subscriberMapping = _messageConfiguration.GetSubscriberMapping(messageTypeIdentifier);
+        if (subscriberMapping is null)
+        {
+            var availableMappings = string.Join(", ",
+                _messageConfiguration.SubscriberMappings.Select(m => m.MessageTypeIdentifier));
+
+            _logger.LogError(
+                "'{MessageTypeIdentifier}' is not a valid subscriber mapping. Available mappings: {AvailableMappings}",
+                messageTypeIdentifier,
+                string.IsNullOrEmpty(availableMappings) ? "none" : availableMappings);
+
+            throw new InvalidDataException(
+                $"'{messageTypeIdentifier}' is not a valid subscriber mapping. " +
+                $"Available mappings: {(string.IsNullOrEmpty(availableMappings) ? "none" : availableMappings)}");
+        }
+        return subscriberMapping;
+    }
+
+    private object DeserializeDataContent(string dataContent, Type messageType)
+    {
+        return _messageSerializer.Deserialize(dataContent, messageType);
     }
 
     private void ValidateMessageEnvelope<T>(MessageEnvelope<T>? messageEnvelope)
@@ -268,6 +311,20 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
 
         SetSQSMetadata(envelopeConfiguration, sqsMessage);
         return envelopeConfiguration;
+    }
+
+    private class ParsedEnvelopeResult
+    {
+        public MessageEnvelope<string> Envelope { get; }
+        public MessageEnvelopeConfiguration Configuration { get; }
+
+        public ParsedEnvelopeResult(
+            MessageEnvelope<string> envelope,
+            MessageEnvelopeConfiguration configuration)
+        {
+            Envelope = envelope;
+            Configuration = configuration;
+        }
     }
 
     private void SetSQSMetadata(MessageEnvelopeConfiguration envelopeConfiguration, Message sqsMessage)
