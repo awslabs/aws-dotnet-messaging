@@ -131,6 +131,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
         }
     }
 
+    /// <inheritdoc/>
     public async ValueTask<ConvertToEnvelopeResult> ConvertToEnvelopeAsync(Message sqsMessage)
     {
         try
