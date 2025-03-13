@@ -134,6 +134,43 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
         }
     }
 
+    private void SerializeData<T>(T message, JsonObject blob, string? dataContentType)
+    {
+        if (message == null)
+        {
+            throw new ArgumentNullException("The underlying application message cannot be null");
+        }
+
+        // Serialize the message
+        var serializedMessage = _messageSerializer.Serialize(message);
+
+        // Determine if the serialized message is valid JSON
+        // Wed do this because _messageSerializer is injected and there is no guarantee that it serializes to json.
+        bool isJson = IsValidJson(serializedMessage);
+        blob["datacontenttype"] = dataContentType;
+
+        if (IsJsonContentType(dataContentType))
+        {
+            if (isJson)
+            {
+                // If it's valid JSON, parse it to maintain structure
+                blob["data"] = JsonNode.Parse(serializedMessage);
+            }
+            else
+            {
+                // If it's not valid JSON but content type indicates JSON,
+                // log warning and store as string
+                _logger.LogWarning("Data was serialized as non-JSON, but datacontenttype indicates JSON format. Storing as string.");
+                blob["data"] = serializedMessage;
+            }
+        }
+        else
+        {
+            // For non-JSON content types, store as string
+            blob["data"] = serializedMessage;
+        }
+    }
+
     private string ExtractDataContent(JsonElement dataElement, string? dataContentType)
     {
         return IsJsonContentType(dataContentType)
@@ -285,43 +322,6 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
 
         throw new InvalidOperationException(
             $"Cannot deserialize non-JSON content type {dataContentType} to type {messageType}");
-    }
-
-    private void SerializeData<T>(T message, JsonObject blob, string? dataContentType)
-    {
-        if (message == null)
-        {
-            throw new ArgumentNullException("The underlying application message cannot be null");
-        }
-
-        // Serialize the message
-        var serializedMessage = _messageSerializer.Serialize(message);
-
-        // Determine if the serialized message is valid JSON
-        // Wed do this because _messageSerializer is injected and there is no guarantee that it serializes to json.
-        bool isJson = IsValidJson(serializedMessage);
-        blob["datacontenttype"] = dataContentType;
-
-        if (IsJsonContentType(dataContentType))
-        {
-            if (isJson)
-            {
-                // If it's valid JSON, parse it to maintain structure
-                blob["data"] = JsonNode.Parse(serializedMessage);
-            }
-            else
-            {
-                // If it's not valid JSON but content type indicates JSON,
-                // log warning and store as string
-                _logger.LogWarning("Data was serialized as non-JSON, but datacontenttype indicates JSON format. Storing as string.");
-                blob["data"] = serializedMessage;
-            }
-        }
-        else
-        {
-            // For non-JSON content types, store as string
-            blob["data"] = serializedMessage;
-        }
     }
 
     private bool IsJsonContentType(string? contentType)

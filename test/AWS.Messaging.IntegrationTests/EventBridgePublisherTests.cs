@@ -9,6 +9,7 @@ using System.Text.Json;
 using Amazon.EventBridge;
 using Amazon.EventBridge.Model;
 using System.Collections.Generic;
+using System.Text.Json.Nodes;
 using Amazon.SQS.Model;
 using Amazon.SecurityToken;
 using Amazon.SecurityToken.Model;
@@ -120,28 +121,20 @@ public class EventBridgePublisherTests : IAsyncLifetime
         });
         var publishEndTime = DateTime.UtcNow;
 
-        // Wait to allow the published message to propagate through the system
         await Task.Delay(5000);
 
         var receiveMessageResponse = await _sqsClient.ReceiveMessageAsync(_sqsQueueUrl);
         var message = Assert.Single(receiveMessageResponse.Messages);
 
-        // EventBridge adds an external envelope which we need to strip away
-        var eventBridgeEnvelope = JsonSerializer.Deserialize<EventBridgeEnvelope>(message.Body);
-        Assert.NotNull(eventBridgeEnvelope);
+        var (envelope, deserializedMessage) = MessageEnvelopeHelper.DeserializeNestedMessage(message.Body, "EventBridge");
 
-        Assert.NotNull(eventBridgeEnvelope.Detail);
-        var envelope = eventBridgeEnvelope.Detail;
+        var chatMessage = Assert.IsType<ChatMessage>(deserializedMessage);
+
+        Assert.NotNull(envelope);
         Assert.False(string.IsNullOrEmpty(envelope.Id));
         Assert.Equal("/aws/messaging", envelope.Source.ToString());
         Assert.True(envelope.TimeStamp > publishStartTime);
         Assert.True(envelope.TimeStamp < publishEndTime);
-
-        var messageType = Type.GetType(eventBridgeEnvelope.Detail.MessageTypeIdentifier);
-        Assert.NotNull(messageType);
-
-        var chatMessageObject = JsonSerializer.Deserialize(eventBridgeEnvelope.Detail.Message, messageType);
-        var chatMessage = Assert.IsType<ChatMessage>(chatMessageObject);
         Assert.Equal("Test1", chatMessage.MessageDescription);
     }
 

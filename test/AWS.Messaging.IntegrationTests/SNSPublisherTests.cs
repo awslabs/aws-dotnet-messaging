@@ -60,28 +60,20 @@ public class SNSPublisherTests : IAsyncLifetime
         });
         var publishEndTime = DateTime.UtcNow;
 
-        // Wait to allow the published message to propagate through the system
         await Task.Delay(5000);
 
         var receiveMessageResponse = await _sqsClient.ReceiveMessageAsync(_sqsQueueUrl);
         var message = Assert.Single(receiveMessageResponse.Messages);
 
-        // SNS adds an external envelope which we need to strip away
-        var snsEnvelope = JsonSerializer.Deserialize<SNSEnvelope>(message.Body);
-        Assert.NotNull(snsEnvelope);
+        var (envelope, deserializedMessage) = MessageEnvelopeHelper.DeserializeNestedMessage(message.Body, "SNS");
 
-        var envelope = JsonSerializer.Deserialize<MessageEnvelope<string>>(snsEnvelope.Message);
+        var chatMessage = Assert.IsType<ChatMessage>(deserializedMessage);
+
         Assert.NotNull(envelope);
         Assert.False(string.IsNullOrEmpty(envelope.Id));
         Assert.Equal("/aws/messaging", envelope.Source.ToString());
         Assert.True(envelope.TimeStamp > publishStartTime);
         Assert.True(envelope.TimeStamp < publishEndTime);
-
-        var messageType = Type.GetType(envelope.MessageTypeIdentifier);
-        Assert.NotNull(messageType);
-
-        var chatMessageObject = JsonSerializer.Deserialize(envelope.Message, messageType);
-        var chatMessage = Assert.IsType<ChatMessage>(chatMessageObject);
         Assert.Equal("Test1", chatMessage.MessageDescription);
     }
 

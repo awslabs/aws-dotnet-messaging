@@ -54,16 +54,17 @@ public class SQSPublisherTests : IAsyncLifetime
         var receiveMessageResponse = await _sqsClient.ReceiveMessageAsync(_sqsQueueUrl);
         var message = Assert.Single(receiveMessageResponse.Messages);
 
-        var envelope = JsonSerializer.Deserialize<MessageEnvelope<string>>(message.Body);
+        var (envelope, deserializedMessage) = MessageEnvelopeHelper.DeserializeNestedMessage(
+            message.Body,
+            "sqs");
+
+        var chatMessage = Assert.IsType<ChatMessage>(deserializedMessage);
+
         Assert.NotNull(envelope);
         Assert.False(string.IsNullOrEmpty(envelope.Id));
         Assert.Equal("/aws/messaging", envelope.Source.ToString());
-        Assert.True(envelope.TimeStamp >  publishStartTime);
+        Assert.True(envelope.TimeStamp > publishStartTime);
         Assert.True(envelope.TimeStamp < publishEndTime);
-        var messageType = Type.GetType(envelope.MessageTypeIdentifier);
-        Assert.NotNull(messageType);
-        var chatMessageObject = JsonSerializer.Deserialize(envelope.Message, messageType);
-        var chatMessage = Assert.IsType<ChatMessage>(chatMessageObject);
         Assert.Equal("Test1", chatMessage.MessageDescription);
     }
 
