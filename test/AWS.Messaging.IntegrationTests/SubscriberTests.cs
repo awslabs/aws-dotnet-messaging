@@ -181,7 +181,7 @@ public class SubscriberTests : IAsyncLifetime
         Assert.NotNull(pump);
         var source = new CancellationTokenSource();
 
-        await pump.StartAsync(source.Token);
+        await pump.StartAsync(source.Token).ConfigureAwait(true);
 
         // Wait for the pump to shut down after processing the expected number of messages,
         // with some padding to ensure messages aren't being processed more than once
@@ -189,7 +189,7 @@ public class SubscriberTests : IAsyncLifetime
 
         // Stop polling and wait for the polling cycle to complete with a buffer
         pollingControlToken.StopPolling();
-        await Task.Delay(pollingControlToken.PollingWaitTime * 2);
+        await Task.Delay(pollingControlToken.PollingWaitTime * 2, source.Token);
 
         // Publish the next 5 messages that should not be received due to stopping polling
         for (int i = 5; i < 10; i++)
