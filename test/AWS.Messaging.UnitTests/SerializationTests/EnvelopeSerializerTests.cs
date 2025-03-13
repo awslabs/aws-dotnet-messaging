@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -227,7 +228,7 @@ public class EnvelopeSerializerTests
 
         var sqsMessage = new Message
         {
-            Body = JsonSerializer.Serialize(outerMessageEnvelope)
+            Body = JsonSerializer.Serialize(outerMessageEnvelope),
         };
 
         // ACT
@@ -480,42 +481,74 @@ public class EnvelopeSerializerTests
     [InlineData(true)]
     public async Task SerializeAsync_DataMessageLogging_WithError(bool dataMessageLogging)
     {
+        // ARRANGE
         var logger = new Mock<ILogger<EnvelopeSerializer>>();
-        var messageConfiguration = new MessageConfiguration { LogMessageContent = dataMessageLogging };
+        var services = new ServiceCollection();
+        services.AddAWSMessageBus(builder =>
+        {
+            builder.AddSQSPublisher<AddressInfo>("sqsQueueUrl", "addressInfo");
+        });
+        var serviceProvider = services.BuildServiceProvider();
+        var messageConfiguration = serviceProvider.GetRequiredService<IMessageConfiguration>();
+        messageConfiguration.LogMessageContent = dataMessageLogging;
+
         var messageSerializer = new Mock<IMessageSerializer>();
         var dateTimeHandler = new Mock<IDateTimeHandler>();
         var messageIdGenerator = new Mock<IMessageIdGenerator>();
         var messageSourceHandler = new Mock<IMessageSourceHandler>();
-        var envelopeSerializer = new EnvelopeSerializer(logger.Object, messageConfiguration, messageSerializer.Object, dateTimeHandler.Object, messageIdGenerator.Object, messageSourceHandler.Object);
-        var messageEnvelope = new MessageEnvelope<MessageEnvelope>
+        var envelopeSerializer = new EnvelopeSerializer(
+            logger.Object,
+            messageConfiguration,
+            messageSerializer.Object,
+            dateTimeHandler.Object,
+            messageIdGenerator.Object,
+            messageSourceHandler.Object);
+
+        var messageEnvelope = new MessageEnvelope<AddressInfo>
         {
             Id = "123",
             Source = new Uri("/aws/messaging", UriKind.Relative),
             Version = "1.0",
             MessageTypeIdentifier = "addressInfo",
             TimeStamp = _testdate,
-            Message = new MessageEnvelope<MessageEnvelope>
+            Message = new AddressInfo
             {
-                Id = "123",
-                Source = new Uri("/aws/messaging", UriKind.Relative),
-                Version = "1.0",
-                MessageTypeIdentifier = "addressInfo",
-                TimeStamp = _testdate
+                Street = "Prince St",
+                Unit = 123,
+                ZipCode = "00001"
             }
         };
-        messageSerializer.Setup(x => x.Serialize(It.IsAny<object>())).Throws(new JsonException("Test exception"));
 
-        var exception = await Assert.ThrowsAsync<FailedToSerializeMessageEnvelopeException>(async () => await envelopeSerializer.SerializeAsync(messageEnvelope));
+        // Setup the serializer to throw when trying to serialize the message
+        messageSerializer.Setup(x => x.Serialize(It.IsAny<object>()))
+            .Throws(new JsonException("Test exception"));
+
+        // ACT & ASSERT
+        var exception = await Assert.ThrowsAsync<FailedToSerializeMessageEnvelopeException>(
+            async () => await envelopeSerializer.SerializeAsync(messageEnvelope));
 
         Assert.Equal("Failed to serialize the MessageEnvelope into a raw string", exception.Message);
+
         if (dataMessageLogging)
         {
             Assert.NotNull(exception.InnerException);
+            Assert.IsType<JsonException>(exception.InnerException);
+            Assert.Equal("Test exception", exception.InnerException.Message);
         }
         else
         {
             Assert.Null(exception.InnerException);
         }
+
+        // Verify logging behavior
+        logger.Verify(
+            x => x.Log(
+                LogLevel.Error,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => true),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
     }
 
     [Theory]
@@ -523,49 +556,125 @@ public class EnvelopeSerializerTests
     [InlineData(true)]
     public async Task ConvertToEnvelopeAsync_DataMessageLogging_WithError(bool dataMessageLogging)
     {
+        // ARRANGE
         var logger = new Mock<ILogger<EnvelopeSerializer>>();
         var messageConfiguration = new MessageConfiguration { LogMessageContent = dataMessageLogging };
         var messageSerializer = new Mock<IMessageSerializer>();
         var dateTimeHandler = new Mock<IDateTimeHandler>();
         var messageIdGenerator = new Mock<IMessageIdGenerator>();
         var messageSourceHandler = new Mock<IMessageSourceHandler>();
-        var envelopeSerializer = new EnvelopeSerializer(logger.Object, messageConfiguration, messageSerializer.Object, dateTimeHandler.Object, messageIdGenerator.Object, messageSourceHandler.Object);
-        var messageEnvelope = new MessageEnvelope<MessageEnvelope>
-        {
-            Id = "123",
-            Source = new Uri("/aws/messaging", UriKind.Relative),
-            Version = "1.0",
-            MessageTypeIdentifier = "addressInfo",
-            TimeStamp = _testdate,
-            Message = new MessageEnvelope<string>
-            {
-                Id = "123",
-                Source = new Uri("/aws/messaging", UriKind.Relative),
-                Version = "1.0",
-                MessageTypeIdentifier = "addressInfo",
-                TimeStamp = _testdate,
-                Message = "Test"
-            }
-        };
+        var envelopeSerializer = new EnvelopeSerializer(
+            logger.Object,
+            messageConfiguration,
+            messageSerializer.Object,
+            dateTimeHandler.Object,
+            messageIdGenerator.Object,
+            messageSourceHandler.Object);
+
+        // Create an SQS message with invalid JSON that will cause JsonDocument.Parse to fail
         var sqsMessage = new Message
         {
-            Body = JsonSerializer.Serialize(messageEnvelope),
+            Body = "invalid json {",
             ReceiptHandle = "receipt-handle"
         };
-        messageSerializer.Setup(x => x.Serialize(It.IsAny<object>())).Returns(@"{}");
-        messageSerializer.Setup(x => x.Deserialize(It.IsAny<string>(), It.IsAny<Type>())).Throws(new JsonException("Test exception"));
 
-        var exception = await Assert.ThrowsAsync<FailedToCreateMessageEnvelopeException>(async () => await envelopeSerializer.ConvertToEnvelopeAsync(sqsMessage));
+        // ACT & ASSERT
+        var exception = await Assert.ThrowsAsync<FailedToCreateMessageEnvelopeException>(
+            async () => await envelopeSerializer.ConvertToEnvelopeAsync(sqsMessage));
 
         Assert.Equal("Failed to create MessageEnvelope", exception.Message);
+
         if (dataMessageLogging)
         {
             Assert.NotNull(exception.InnerException);
+            Assert.IsAssignableFrom<JsonException>(exception.InnerException); // JsonReaderException is not directly usable so just verify that its a generic json exception for now.
         }
         else
         {
             Assert.Null(exception.InnerException);
         }
+
+        logger.Verify(
+            x => x.Log(
+                LogLevel.Error,
+                It.IsAny<EventId>(),
+                It.Is<It.IsAnyType>((v, t) => true),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task ConvertToEnvelope_WithMetadata_PreservesOnlyExpectedMetadataProperties()
+    {
+        // ARRANGE
+        var serviceProvider = _serviceCollection.BuildServiceProvider();
+        var envelopeSerializer = serviceProvider.GetRequiredService<IEnvelopeSerializer>();
+
+        // Create a JSON string with both standard envelope properties and custom metadata
+        var jsonString = @"{
+            ""id"": ""test-id-123"",
+            ""source"": ""/aws/messaging"",
+            ""specversion"": ""1.0"",
+            ""type"": ""addressInfo"",
+            ""time"": ""2000-12-05T10:30:55+00:00"",
+            ""data"": ""{\""Unit\"":123,\""Street\"":\""Prince St\"",\""ZipCode\"":\""00001\""}"",
+            ""customString"": ""test-value"",
+            ""customNumber"": 42,
+            ""customBoolean"": true,
+            ""customObject"": {""nestedKey"": ""nestedValue""}
+        }";
+
+        var sqsMessage = new Message
+        {
+            Body = jsonString
+        };
+
+        // ACT
+        var result = await envelopeSerializer.ConvertToEnvelopeAsync(sqsMessage);
+        var deserializedEnvelope = (MessageEnvelope<AddressInfo>)result.Envelope;
+
+        // ASSERT
+        Assert.NotNull(deserializedEnvelope);
+        Assert.NotNull(deserializedEnvelope.Metadata);
+
+        // Verify standard envelope properties
+        Assert.Equal("test-id-123", deserializedEnvelope.Id);
+        Assert.Equal("/aws/messaging", deserializedEnvelope.Source.ToString());
+        Assert.Equal("1.0", deserializedEnvelope.Version);
+        Assert.Equal("addressInfo", deserializedEnvelope.MessageTypeIdentifier);
+
+        // Define expected metadata properties
+        var expectedMetadataKeys = new HashSet<string>
+        {
+            "customString",
+            "customNumber",
+            "customBoolean",
+            "customObject"
+        };
+
+        // Verify metadata contains exactly the expected keys
+        Assert.Equal(expectedMetadataKeys, deserializedEnvelope.Metadata.Keys.ToHashSet());
+
+        // Verify each metadata property has the correct value
+        Assert.Equal("test-value", deserializedEnvelope.Metadata["customString"].GetString());
+        Assert.Equal(42, deserializedEnvelope.Metadata["customNumber"].GetInt32());
+        Assert.True(deserializedEnvelope.Metadata["customBoolean"].GetBoolean());
+        Assert.Equal("nestedValue", deserializedEnvelope.Metadata["customObject"].GetProperty("nestedKey").GetString());
+
+        // Verify standard envelope properties are not in metadata
+        Assert.False(deserializedEnvelope.Metadata.ContainsKey("id"));
+        Assert.False(deserializedEnvelope.Metadata.ContainsKey("source"));
+        Assert.False(deserializedEnvelope.Metadata.ContainsKey("specversion"));
+        Assert.False(deserializedEnvelope.Metadata.ContainsKey("type"));
+        Assert.False(deserializedEnvelope.Metadata.ContainsKey("time"));
+        Assert.False(deserializedEnvelope.Metadata.ContainsKey("data"));
+
+        // Verify message content
+        Assert.NotNull(deserializedEnvelope.Message);
+        Assert.Equal("Prince St", deserializedEnvelope.Message.Street);
+        Assert.Equal(123, deserializedEnvelope.Message.Unit);
+        Assert.Equal("00001", deserializedEnvelope.Message.ZipCode);
     }
 
     [Fact]
