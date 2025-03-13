@@ -8,6 +8,7 @@ using Amazon.SQS.Model;
 using AWS.Messaging.Configuration;
 using AWS.Messaging.Services;
 using Microsoft.Extensions.Logging;
+using AWS.Messaging.Serialization.Parsers;
 
 namespace AWS.Messaging.Serialization;
 
@@ -136,50 +137,23 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
     {
         try
         {
-            sqsMessage.Body = await InvokePreDeserializationCallback(sqsMessage.Body);
-            var messageEnvelopeConfiguration = GetMessageEnvelopeConfiguration(sqsMessage);
-            var intermediateEnvelope = JsonSerializer.Deserialize<MessageEnvelope<string>>(messageEnvelopeConfiguration.MessageEnvelopeBody!)!;
-            ValidateMessageEnvelope(intermediateEnvelope);
-            var messageTypeIdentifier = intermediateEnvelope.MessageTypeIdentifier;
-            var subscriberMapping = _messageConfiguration.GetSubscriberMapping(messageTypeIdentifier);
-            if (subscriberMapping is null)
-            {
-                var availableMappings = string.Join(", ", _messageConfiguration.SubscriberMappings.Select(m => m.MessageTypeIdentifier));
-                _logger.LogError("'{MessageTypeIdentifier}' is not a valid subscriber mapping. Available mappings: {AvailableMappings}",
-                    messageTypeIdentifier,
-                    string.IsNullOrEmpty(availableMappings) ? "none" : availableMappings);
+            // Get the raw envelope JSON and metadata from the appropriate wrapper (SNS/EventBridge/SQS)
+            var (envelopeJson, metadata) = await ParseOuterWrapper(sqsMessage);
 
-                throw new InvalidDataException(
-                    $"'{messageTypeIdentifier}' is not a valid subscriber mapping. " +
-                    $"Available mappings: {(string.IsNullOrEmpty(availableMappings) ? "none" : availableMappings)}");
-            }
+            // Parse just the type field first to get the correct mapping
+            var messageType = GetMessageTypeFromEnvelope(envelopeJson);
+            var subscriberMapping = GetAndValidateSubscriberMapping(messageType);
 
-            var messageType = subscriberMapping.MessageType;
-            var message = _messageSerializer.Deserialize(intermediateEnvelope.Message, messageType);
-            var messageEnvelopeType = typeof(MessageEnvelope<>).MakeGenericType(messageType);
+            // Create and populate the envelope with the correct type
+            var envelope = CreateEnvelopeFromJson(envelopeJson, subscriberMapping.MessageType);
 
-            if (Activator.CreateInstance(messageEnvelopeType) is not MessageEnvelope finalMessageEnvelope)
-            {
-                _logger.LogError($"Failed to create a {nameof(MessageEnvelope)} of type '{{MessageEnvelopeType}}'", messageEnvelopeType.FullName);
-                throw new InvalidOperationException($"Failed to create a {nameof(MessageEnvelope)} of type '{messageEnvelopeType.FullName}'");
-            }
+            // Add metadata from outer wrapper
+            envelope.SQSMetadata = metadata.SQSMetadata;
+            envelope.SNSMetadata = metadata.SNSMetadata;
+            envelope.EventBridgeMetadata = metadata.EventBridgeMetadata;
 
-            finalMessageEnvelope.Id = intermediateEnvelope.Id;
-            finalMessageEnvelope.Source = intermediateEnvelope.Source;
-            finalMessageEnvelope.Version = intermediateEnvelope.Version;
-            finalMessageEnvelope.MessageTypeIdentifier = intermediateEnvelope.MessageTypeIdentifier;
-            finalMessageEnvelope.TimeStamp = intermediateEnvelope.TimeStamp;
-            finalMessageEnvelope.Metadata = intermediateEnvelope.Metadata;
-            finalMessageEnvelope.SQSMetadata = messageEnvelopeConfiguration.SQSMetadata;
-            finalMessageEnvelope.SNSMetadata = messageEnvelopeConfiguration.SNSMetadata;
-            finalMessageEnvelope.EventBridgeMetadata = messageEnvelopeConfiguration.EventBridgeMetadata;
-            finalMessageEnvelope.SetMessage(message);
-
-            await InvokePostDeserializationCallback(finalMessageEnvelope);
-            var result = new ConvertToEnvelopeResult(finalMessageEnvelope, subscriberMapping);
-
-            _logger.LogTrace("Created a generic {MessageEnvelopeName} of type '{MessageEnvelopeType}'", nameof(MessageEnvelope), result.Envelope.GetType());
-            return result;
+            await InvokePostDeserializationCallback(envelope);
+            return new ConvertToEnvelopeResult(envelope, subscriberMapping);
         }
         catch (JsonException) when (!_messageConfiguration.LogMessageContent)
         {
@@ -193,164 +167,138 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
         }
     }
 
-    private void ValidateMessageEnvelope<T>(MessageEnvelope<T>? messageEnvelope)
+    private MessageEnvelope CreateEnvelopeFromJson(string json, Type messageType)
     {
-        if (messageEnvelope is null)
+        // Parse the envelope JSON
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+
+        // Create envelope of correct type
+        var envelopeType = typeof(MessageEnvelope<>).MakeGenericType(messageType);
+        var envelope = Activator.CreateInstance(envelopeType) as MessageEnvelope
+            ?? throw new InvalidOperationException($"Failed to create envelope of type {envelopeType}");
+
+        // Set the envelope properties
+        envelope.Id = root.GetProperty("id").GetString()!;
+        envelope.Source = new Uri(root.GetProperty("source").GetString()!, UriKind.RelativeOrAbsolute);
+        envelope.Version = root.GetProperty("specversion").GetString()!;
+        envelope.MessageTypeIdentifier = root.GetProperty("type").GetString()!;
+        envelope.TimeStamp = root.GetProperty("time").GetDateTimeOffset();
+
+        // Handle metadata if present
+        if (root.TryGetProperty("metadata", out var metadataElement))
         {
-            _logger.LogError("{MessageEnvelope} cannot be null", nameof(messageEnvelope));
-            throw new InvalidDataException($"{nameof(messageEnvelope)} cannot be null");
+            envelope.Metadata = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(metadataElement)!;
         }
 
-        var strBuilder = new StringBuilder();
+        // Deserialize the message content using the custom serializer
+        var dataContent = root.GetProperty("data").GetString()!;
+        var message = _messageSerializer.Deserialize(dataContent, messageType);
+        envelope.SetMessage(message);
 
-        if (string.IsNullOrEmpty(messageEnvelope.Id))
-            strBuilder.Append($"{nameof(messageEnvelope.Id)} cannot be null or empty.{Environment.NewLine}");
-
-        if (messageEnvelope.Source is null)
-            strBuilder.Append($"{nameof(messageEnvelope.Source)} cannot be null.{Environment.NewLine}");
-
-        if (string.IsNullOrEmpty(messageEnvelope.Version))
-            strBuilder.Append($"{nameof(messageEnvelope.Version)} cannot be null or empty.{Environment.NewLine}");
-
-        if (string.IsNullOrEmpty(messageEnvelope.MessageTypeIdentifier))
-            strBuilder.Append($"{nameof(messageEnvelope.MessageTypeIdentifier)} cannot be null or empty.{Environment.NewLine}");
-
-        if (messageEnvelope.TimeStamp == DateTimeOffset.MinValue)
-            strBuilder.Append($"{nameof(messageEnvelope.TimeStamp)} is not set.");
-
-        if (messageEnvelope.Message is null)
-            strBuilder.Append($"{nameof(messageEnvelope.Message)} cannot be null.{Environment.NewLine}");
-
-        var validationFailures = strBuilder.ToString();
-        if (!string.IsNullOrEmpty(validationFailures))
-        {
-            _logger.LogError("MessageEnvelope instance is not valid" + Environment.NewLine +"{ValidationFailures}", validationFailures);
-            throw new InvalidDataException($"MessageEnvelope instance is not valid{Environment.NewLine}{validationFailures}");
-        }
+        ValidateMessageEnvelope(envelope);
+        return envelope;
     }
 
-    private MessageEnvelopeConfiguration GetMessageEnvelopeConfiguration(Message sqsMessage)
+    private static string GetMessageTypeFromEnvelope(string json)
     {
-        var envelopeConfiguration = new MessageEnvelopeConfiguration();
-        envelopeConfiguration.MessageEnvelopeBody = sqsMessage.Body;
+        using var doc = JsonDocument.Parse(json);
+        return doc.RootElement.GetProperty("type").GetString()
+            ?? throw new InvalidDataException("Message type identifier not found in envelope");
+    }
 
+    private async Task<(string MessageBody, MessageMetadata Metadata)> ParseOuterWrapper(Message sqsMessage)
+    {
+        sqsMessage.Body = await InvokePreDeserializationCallback(sqsMessage.Body);
+
+        JsonElement rootCopy;
         using (var document = JsonDocument.Parse(sqsMessage.Body))
         {
-            var root = document.RootElement;
-            // Check if the SQS message body contains an outer envelope injected by SNS.
-            if (root.TryGetProperty("Type", out var messageType) && string.Equals("Notification", messageType.GetString()))
+            rootCopy = document.RootElement.Clone();
+        }
+
+        var parsers = new IMessageParser[]
+        {
+            new SNSMessageParser(),
+            new EventBridgeMessageParser(),
+            new SQSMessageParser()
+        };
+
+        string currentMessageBody = sqsMessage.Body;
+        var combinedMetadata = new MessageMetadata();
+
+        // Try all parsers in order
+        foreach (var parser in parsers.Where(p => p.CanParse(rootCopy)))
+        {
+            var (messageBody, metadata) = parser.Parse(rootCopy, sqsMessage);
+
+            // Update the message body if this parser extracted an inner message
+            if (!string.IsNullOrEmpty(messageBody))
             {
-                // Retrieve the inner message envelope.
-                envelopeConfiguration.MessageEnvelopeBody = GetJsonPropertyAsString(root, "Message");
-                if (string.IsNullOrEmpty(envelopeConfiguration.MessageEnvelopeBody))
-                {
-                    _logger.LogError("Failed to create a message envelope configuration because the SNS message envelope does not contain a valid message property.");
-                    throw new FailedToCreateMessageEnvelopeConfigurationException("The SNS message envelope does not contain a valid message property.");
-                }
-                SetSNSMetadata(envelopeConfiguration, root);
+                currentMessageBody = messageBody;
+                // Parse the new message body for the next iteration
+                using var newDoc = JsonDocument.Parse(messageBody);
+                rootCopy = newDoc.RootElement.Clone();
             }
-            // Check if the SQS message body contains an outer envelope injected by EventBridge.
-            else if (root.TryGetProperty("detail", out var _)
-                && root.TryGetProperty("id", out var _)
-                && root.TryGetProperty("version", out var _)
-                && root.TryGetProperty("region", out var _))
-            {
-                // Retrieve the inner message envelope.
-                envelopeConfiguration.MessageEnvelopeBody = GetJsonPropertyAsString(root, "detail");
-                if (string.IsNullOrEmpty(envelopeConfiguration.MessageEnvelopeBody))
-                {
-                    _logger.LogError("Failed to create a message envelope configuration because the EventBridge message envelope does not contain a valid 'detail' property.");
-                    throw new FailedToCreateMessageEnvelopeConfigurationException("The EventBridge message envelope does not contain a valid 'detail' property.");
-                }
-                SetEventBridgeMetadata(envelopeConfiguration, root);
-            }
+
+            // Combine metadata
+            if (metadata.SQSMetadata != null) combinedMetadata.SQSMetadata = metadata.SQSMetadata;
+            if (metadata.SNSMetadata != null) combinedMetadata.SNSMetadata = metadata.SNSMetadata;
+            if (metadata.EventBridgeMetadata != null) combinedMetadata.EventBridgeMetadata = metadata.EventBridgeMetadata;
         }
 
-        SetSQSMetadata(envelopeConfiguration, sqsMessage);
-        return envelopeConfiguration;
+        return (currentMessageBody, combinedMetadata);
     }
 
-    private void SetSQSMetadata(MessageEnvelopeConfiguration envelopeConfiguration, Message sqsMessage)
+    private void ValidateMessageEnvelope(MessageEnvelope? messageEnvelope)
     {
-        envelopeConfiguration.SQSMetadata = new SQSMetadata
+        if (messageEnvelope is null)
+            throw new InvalidDataException($"{nameof(messageEnvelope)} cannot be null");
+
+        var messageProperty = messageEnvelope.GetType().GetProperty("Message");
+        var messageValue = messageProperty?.GetValue(messageEnvelope);
+
+        var validations = new[]
         {
-            MessageID = sqsMessage.MessageId,
-            MessageAttributes = sqsMessage.MessageAttributes,
-            ReceiptHandle = sqsMessage.ReceiptHandle
+            (string.IsNullOrEmpty(messageEnvelope.Id), $"{nameof(messageEnvelope.Id)} cannot be null or empty."),
+            (messageEnvelope.Source is null, $"{nameof(messageEnvelope.Source)} cannot be null."),
+            (string.IsNullOrEmpty(messageEnvelope.Version), $"{nameof(messageEnvelope.Version)} cannot be null or empty."),
+            (string.IsNullOrEmpty(messageEnvelope.MessageTypeIdentifier), $"{nameof(messageEnvelope.MessageTypeIdentifier)} cannot be null or empty."),
+            (messageEnvelope.TimeStamp == DateTimeOffset.MinValue, $"{nameof(messageEnvelope.TimeStamp)} is not set."),
+            (messageValue is null, "Message cannot be null.")
         };
-        if (sqsMessage.Attributes.TryGetValue("MessageGroupId", out var attribute))
+
+        var failures = validations
+            .Where(v => v.Item1)
+            .Select(v => v.Item2)
+            .ToList();
+
+        if (failures.Any())
         {
-            envelopeConfiguration.SQSMetadata.MessageGroupId = attribute;
-        }
-        if (sqsMessage.Attributes.TryGetValue("MessageDeduplicationId", out var messageAttribute))
-        {
-            envelopeConfiguration.SQSMetadata.MessageDeduplicationId = messageAttribute;
+            var message = string.Join(Environment.NewLine, failures);
+            _logger.LogError("MessageEnvelope instance is not valid\n{ValidationFailures}", message);
+            throw new InvalidDataException($"MessageEnvelope instance is not valid{Environment.NewLine}{message}");
         }
     }
 
-    private void SetSNSMetadata(MessageEnvelopeConfiguration envelopeConfiguration, JsonElement root)
+    private SubscriberMapping GetAndValidateSubscriberMapping(string messageTypeIdentifier)
     {
-        envelopeConfiguration.SNSMetadata = new SNSMetadata
+        var subscriberMapping = _messageConfiguration.GetSubscriberMapping(messageTypeIdentifier);
+        if (subscriberMapping is null)
         {
-            MessageId = GetJsonPropertyAsString(root, "MessageId"),
-            TopicArn = GetJsonPropertyAsString(root, "TopicArn"),
-            Subject = GetJsonPropertyAsString(root, "Subject"),
-            UnsubscribeURL = GetJsonPropertyAsString(root, "UnsubscribeURL"),
-            Timestamp = GetJsonPropertyAsDateTimeOffset(root, "Timestamp")
-        };
-        if (root.TryGetProperty("MessageAttributes", out var messageAttributes))
-        {
-            envelopeConfiguration.SNSMetadata.MessageAttributes = messageAttributes.Deserialize<Dictionary<string, Amazon.SimpleNotificationService.Model.MessageAttributeValue>>();
-        }
-    }
+            var availableMappings = string.Join(", ",
+                _messageConfiguration.SubscriberMappings.Select(m => m.MessageTypeIdentifier));
 
-    private void SetEventBridgeMetadata(MessageEnvelopeConfiguration envelopeConfiguration, JsonElement root)
-    {
-        envelopeConfiguration.EventBridgeMetadata = new EventBridgeMetadata
-        {
-            EventId = GetJsonPropertyAsString(root, "id"),
-            Source = GetJsonPropertyAsString(root, "source"),
-            DetailType = GetJsonPropertyAsString(root, "detail-type"),
-            Time = GetJsonPropertyAsDateTimeOffset(root, "time"),
-            AWSAccount = GetJsonPropertyAsString(root, "account"),
-            AWSRegion = GetJsonPropertyAsString(root, "region"),
-            Resources = GetJsonPropertyAsList<string>(root, "resources")
-        };
-    }
+            _logger.LogError(
+                "'{MessageTypeIdentifier}' is not a valid subscriber mapping. Available mappings: {AvailableMappings}",
+                messageTypeIdentifier,
+                string.IsNullOrEmpty(availableMappings) ? "none" : availableMappings);
 
-    private string? GetJsonPropertyAsString(JsonElement node, string propertyName)
-    {
-        if (node.TryGetProperty(propertyName, out var propertyValue))
-        {
-            return propertyValue.ValueKind switch
-            {
-                JsonValueKind.Object => propertyValue.GetRawText(),
-                JsonValueKind.String => propertyValue.GetString(),
-                JsonValueKind.Number => propertyValue.ToString(),
-                JsonValueKind.True => propertyValue.ToString(),
-                JsonValueKind.False => propertyValue.ToString(),
-                _ => throw new InvalidDataException($"{propertyValue.ValueKind} cannot be converted to a string value"),
-            };
+            throw new InvalidDataException(
+                $"'{messageTypeIdentifier}' is not a valid subscriber mapping. " +
+                $"Available mappings: {(string.IsNullOrEmpty(availableMappings) ? "none" : availableMappings)}");
         }
-        return null;
-    }
-
-    private DateTimeOffset GetJsonPropertyAsDateTimeOffset(JsonElement node, string propertyName)
-    {
-        if (node.TryGetProperty(propertyName, out var propertyValue))
-        {
-            return JsonSerializer.Deserialize<DateTimeOffset>(propertyValue);
-        }
-        return DateTimeOffset.MinValue;
-    }
-
-    private List<T>? GetJsonPropertyAsList<T>(JsonElement node, string propertyName)
-    {
-        if (node.TryGetProperty(propertyName, out var propertyValue))
-        {
-            return JsonSerializer.Deserialize<List<T>>(propertyValue);
-        }
-        return null;
+        return subscriberMapping;
     }
 
     private async ValueTask InvokePreSerializationCallback(MessageEnvelope messageEnvelope)
