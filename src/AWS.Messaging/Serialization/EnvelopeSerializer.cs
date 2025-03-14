@@ -137,24 +137,66 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
     {
         try
         {
-            // Parse and validate the message envelope
-            var parsedResult = await ParseMessageEnvelope(sqsMessage);
+            // Parse and validate the message envelope configuration first
+            sqsMessage.Body = await InvokePreDeserializationCallback(sqsMessage.Body);
+            var messageEnvelopeConfiguration = GetMessageEnvelopeConfiguration(sqsMessage);
 
-            // Get subscriber mapping and deserialize message
-            var subscriberMapping = GetAndValidateSubscriberMapping(parsedResult.Envelope.MessageTypeIdentifier);
-            var deserializedMessage = DeserializeDataContent(
-                parsedResult.Envelope.Message!,
-                subscriberMapping.MessageType);
+            // Parse the JSON to get the message type identifier
+            JsonNode jsonNode = JsonNode.Parse(messageEnvelopeConfiguration.MessageEnvelopeBody!)!;
+            var messageTypeIdentifier = jsonNode["type"]?.GetValue<string>();
+            
+            if (string.IsNullOrEmpty(messageTypeIdentifier))
+            {
+                throw new InvalidDataException("Message type identifier is missing from the envelope");
+            }
 
-            // Create and populate final envelope
-            var finalEnvelope = CreateFinalEnvelope(
-                parsedResult.Envelope,
-                parsedResult.Configuration,
-                subscriberMapping.MessageType,
-                deserializedMessage);
+            // Get subscriber mapping to determine the message type
+            var subscriberMapping = GetAndValidateSubscriberMapping(messageTypeIdentifier);
+            
+            // Create the envelope of the correct type
+            var messageEnvelopeType = typeof(MessageEnvelope<>).MakeGenericType(subscriberMapping.MessageType);
+            if (Activator.CreateInstance(messageEnvelopeType) is not MessageEnvelope envelope)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to create a {nameof(MessageEnvelope)} of type '{messageEnvelopeType.FullName}'");
+            }
 
-            await InvokePostDeserializationCallback(finalEnvelope);
-            var result = new ConvertToEnvelopeResult(finalEnvelope, subscriberMapping);
+            // Populate the envelope from JSON
+            envelope.Id = jsonNode["id"]?.GetValue<string>();
+            envelope.Source = jsonNode["source"]?.GetValue<string>() != null ? new Uri(jsonNode["source"]!.GetValue<string>()) : null;
+            envelope.Version = jsonNode["specversion"]?.GetValue<string>();
+            envelope.MessageTypeIdentifier = messageTypeIdentifier;
+            envelope.TimeStamp = jsonNode["time"]?.GetValue<DateTimeOffset>() ?? DateTimeOffset.MinValue;
+            
+            // Handle metadata fields
+            var metadata = new Dictionary<string, object>();
+            foreach (var prop in jsonNode.AsObject())
+            {
+                // Skip known CloudEvents fields
+                if (prop.Key is "id" or "source" or "specversion" or "type" or "time" or "data" or "data_base64" or "datacontenttype")
+                    continue;
+
+                metadata[prop.Key] = prop.Value?.GetValue<object>() ?? new object();
+            }
+            envelope.Metadata = metadata;
+
+            // Add AWS specific metadata
+            envelope.SQSMetadata = messageEnvelopeConfiguration.SQSMetadata;
+            envelope.SNSMetadata = messageEnvelopeConfiguration.SNSMetadata;
+            envelope.EventBridgeMetadata = messageEnvelopeConfiguration.EventBridgeMetadata;
+
+            // Deserialize the message content
+            var data = jsonNode["data"];
+            if (data != null)
+            {
+                var deserializedMessage = _messageSerializer.Deserialize(data.ToJsonString(), subscriberMapping.MessageType);
+                envelope.SetMessage(deserializedMessage);
+            }
+
+            ValidateMessageEnvelope(envelope);
+            await InvokePostDeserializationCallback(envelope);
+
+            var result = new ConvertToEnvelopeResult(envelope, subscriberMapping);
 
             _logger.LogTrace("Created a generic {MessageEnvelopeName} of type '{MessageEnvelopeType}'",
                 nameof(MessageEnvelope), result.Envelope.GetType());
@@ -172,25 +214,10 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
         }
     }
 
-    private async Task<ParsedEnvelopeResult> ParseMessageEnvelope(Message sqsMessage)
-    {
-        sqsMessage.Body = await InvokePreDeserializationCallback(sqsMessage.Body);
-        var messageEnvelopeConfiguration = GetMessageEnvelopeConfiguration(sqsMessage);
-
-        var envelopeSerializer = new CloudEventEnvelopeSerializer(_messageSerializer);
-
-        JsonNode jsonNode = JsonNode.Parse(messageEnvelopeConfiguration.MessageEnvelopeBody!)!;
-        var intermediateEnvelope = envelopeSerializer.Deserialize<string>(jsonNode!);
-        ValidateMessageEnvelope(intermediateEnvelope);
-
-        return new ParsedEnvelopeResult(intermediateEnvelope, messageEnvelopeConfiguration);
-    }
-
     private MessageEnvelope CreateFinalEnvelope(
-        MessageEnvelope<string> intermediateEnvelope,
+        MessageEnvelope intermediateEnvelope,
         MessageEnvelopeConfiguration config,
-        Type messageType,
-        object deserializedMessage)
+        Type messageType)
     {
         var messageEnvelopeType = typeof(MessageEnvelope<>).MakeGenericType(messageType);
 
@@ -212,7 +239,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
         finalEnvelope.SQSMetadata = config.SQSMetadata;
         finalEnvelope.SNSMetadata = config.SNSMetadata;
         finalEnvelope.EventBridgeMetadata = config.EventBridgeMetadata;
-        finalEnvelope.SetMessage(deserializedMessage);
+        finalEnvelope.SetMessage(intermediateEnvelope.Message);
 
         return finalEnvelope;
     }
@@ -237,12 +264,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
         return subscriberMapping;
     }
 
-    private object DeserializeDataContent(string dataContent, Type messageType)
-    {
-        return _messageSerializer.Deserialize(dataContent, messageType);
-    }
-
-    private void ValidateMessageEnvelope<T>(MessageEnvelope<T>? messageEnvelope)
+    private void ValidateMessageEnvelope(MessageEnvelope messageEnvelope)
     {
         if (messageEnvelope is null)
         {
@@ -319,18 +341,39 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
         return envelopeConfiguration;
     }
 
-    private class ParsedEnvelopeResult
+    private string? GetJsonPropertyAsString(JsonElement node, string propertyName)
     {
-        public MessageEnvelope<string> Envelope { get; }
-        public MessageEnvelopeConfiguration Configuration { get; }
-
-        public ParsedEnvelopeResult(
-            MessageEnvelope<string> envelope,
-            MessageEnvelopeConfiguration configuration)
+        if (node.TryGetProperty(propertyName, out var propertyValue))
         {
-            Envelope = envelope;
-            Configuration = configuration;
+            return propertyValue.ValueKind switch
+            {
+                JsonValueKind.Object => propertyValue.GetRawText(),
+                JsonValueKind.String => propertyValue.GetString(),
+                JsonValueKind.Number => propertyValue.ToString(),
+                JsonValueKind.True => propertyValue.ToString(),
+                JsonValueKind.False => propertyValue.ToString(),
+                _ => throw new InvalidDataException($"{propertyValue.ValueKind} cannot be converted to a string value"),
+            };
         }
+        return null;
+    }
+
+    private DateTimeOffset GetJsonPropertyAsDateTimeOffset(JsonElement node, string propertyName)
+    {
+        if (node.TryGetProperty(propertyName, out var propertyValue))
+        {
+            return JsonSerializer.Deserialize<DateTimeOffset>(propertyValue);
+        }
+        return DateTimeOffset.MinValue;
+    }
+
+    private List<T>? GetJsonPropertyAsList<T>(JsonElement node, string propertyName)
+    {
+        if (node.TryGetProperty(propertyName, out var propertyValue))
+        {
+            return JsonSerializer.Deserialize<List<T>>(propertyValue);
+        }
+        return null;
     }
 
     private void SetSQSMetadata(MessageEnvelopeConfiguration envelopeConfiguration, Message sqsMessage)
@@ -379,41 +422,6 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             AWSRegion = GetJsonPropertyAsString(root, "region"),
             Resources = GetJsonPropertyAsList<string>(root, "resources")
         };
-    }
-
-    private string? GetJsonPropertyAsString(JsonElement node, string propertyName)
-    {
-        if (node.TryGetProperty(propertyName, out var propertyValue))
-        {
-            return propertyValue.ValueKind switch
-            {
-                JsonValueKind.Object => propertyValue.GetRawText(),
-                JsonValueKind.String => propertyValue.GetString(),
-                JsonValueKind.Number => propertyValue.ToString(),
-                JsonValueKind.True => propertyValue.ToString(),
-                JsonValueKind.False => propertyValue.ToString(),
-                _ => throw new InvalidDataException($"{propertyValue.ValueKind} cannot be converted to a string value"),
-            };
-        }
-        return null;
-    }
-
-    private DateTimeOffset GetJsonPropertyAsDateTimeOffset(JsonElement node, string propertyName)
-    {
-        if (node.TryGetProperty(propertyName, out var propertyValue))
-        {
-            return JsonSerializer.Deserialize<DateTimeOffset>(propertyValue);
-        }
-        return DateTimeOffset.MinValue;
-    }
-
-    private List<T>? GetJsonPropertyAsList<T>(JsonElement node, string propertyName)
-    {
-        if (node.TryGetProperty(propertyName, out var propertyValue))
-        {
-            return JsonSerializer.Deserialize<List<T>>(propertyValue);
-        }
-        return null;
     }
 
     private async ValueTask InvokePreSerializationCallback(MessageEnvelope messageEnvelope)
