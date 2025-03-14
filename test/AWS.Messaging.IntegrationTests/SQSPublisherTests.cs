@@ -6,6 +6,8 @@ using Amazon.SQS;
 using Microsoft.Extensions.DependencyInjection;
 using AWS.Messaging.IntegrationTests.Models;
 using System.Text.Json;
+using AWS.Messaging.IntegrationTests.Handlers;
+using AWS.Messaging.Serialization;
 
 namespace AWS.Messaging.IntegrationTests;
 
@@ -33,6 +35,8 @@ public class SQSPublisherTests : IAsyncLifetime
         {
             builder.AddSQSPublisher<ChatMessage>(_sqsQueueUrl);
             builder.AddMessageSource("/aws/messaging");
+            builder.AddMessageHandler<ChatMessageHandler, ChatMessage>();
+
         });
         _serviceProvider = serviceCollection.BuildServiceProvider();
     }
@@ -54,18 +58,26 @@ public class SQSPublisherTests : IAsyncLifetime
         var receiveMessageResponse = await _sqsClient.ReceiveMessageAsync(_sqsQueueUrl);
         var message = Assert.Single(receiveMessageResponse.Messages);
 
-        var envelope = JsonSerializer.Deserialize<MessageEnvelope<string>>(message.Body);
+        // Get the EnvelopeSerializer from the service provider
+        var envelopeSerializer = _serviceProvider.GetRequiredService<IEnvelopeSerializer>();
+
+        // Use the EnvelopeSerializer to convert the message
+        var result = await envelopeSerializer.ConvertToEnvelopeAsync(message);
+        var envelope = result.Envelope as MessageEnvelope<ChatMessage>;
+
         Assert.NotNull(envelope);
         Assert.False(string.IsNullOrEmpty(envelope.Id));
         Assert.Equal("/aws/messaging", envelope.Source.ToString());
-        Assert.True(envelope.TimeStamp >  publishStartTime);
+        Assert.True(envelope.TimeStamp > publishStartTime);
         Assert.True(envelope.TimeStamp < publishEndTime);
-        var messageType = Type.GetType(envelope.MessageTypeIdentifier);
-        Assert.NotNull(messageType);
-        var chatMessageObject = JsonSerializer.Deserialize(envelope.Message, messageType);
-        var chatMessage = Assert.IsType<ChatMessage>(chatMessageObject);
+        Assert.Equal(typeof(ChatMessage).ToString(), envelope.MessageTypeIdentifier);
+
+        var chatMessage = envelope.Message;
+        Assert.NotNull(chatMessage);
+        Assert.IsType<ChatMessage>(chatMessage);
         Assert.Equal("Test1", chatMessage.MessageDescription);
     }
+
 
     public async Task DisposeAsync()
     {

@@ -3,9 +3,8 @@
 
 using System.Text.Json;
 using Amazon.SQS.Model;
-using AWS.Messaging.Internal;
 using AWS.Messaging.Serialization.Helpers;
-using MessageAttributeValue = Amazon.SimpleNotificationService.Model.MessageAttributeValue;
+using AWS.Messaging.Internal;
 
 namespace AWS.Messaging.Serialization.Handlers;
 
@@ -56,7 +55,6 @@ internal static class MessageMetadataHandler
         if (root.TryGetProperty("MessageAttributes", out var messageAttributes))
         {
             metadata.MessageAttributes = messageAttributes.Deserialize(MessagingJsonSerializerContext.Default.DictionarySNSMessageAttributeValue);
-
         }
 
         return metadata;
