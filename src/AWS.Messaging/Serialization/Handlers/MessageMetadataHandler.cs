@@ -26,17 +26,10 @@ internal static class MessageMetadataHandler
             MessageAttributes = message.MessageAttributes,
         };
 
-        // Get FIFO queue attributes from message.Attributes
         if (message.Attributes != null)
         {
-            if (message.Attributes.TryGetValue("MessageGroupId", out var groupId))
-            {
-                metadata.MessageGroupId = groupId;
-            }
-            if (message.Attributes.TryGetValue("MessageDeduplicationId", out var deduplicationId))
-            {
-                metadata.MessageDeduplicationId = deduplicationId;
-            }
+            metadata.MessageGroupId = GetAttributeValue(message.Attributes, "MessageGroupId");
+            metadata.MessageDeduplicationId = GetAttributeValue(message.Attributes, "MessageDeduplicationId");
         }
 
         return metadata;
@@ -51,16 +44,12 @@ internal static class MessageMetadataHandler
     {
         var metadata = new SNSMetadata
         {
-            MessageId = root.GetProperty("MessageId").GetString(),
-            TopicArn = root.GetProperty("TopicArn").GetString(),
-            Timestamp = root.GetProperty("Timestamp").GetDateTimeOffset(),
-            UnsubscribeURL = root.GetProperty("UnsubscribeURL").GetString(),
+            MessageId = GetStringProperty(root, "MessageId"),
+            TopicArn = GetStringProperty(root, "TopicArn"),
+            Timestamp = GetDateTimeOffsetProperty(root, "Timestamp") ?? default,
+            UnsubscribeURL = GetStringProperty(root, "UnsubscribeURL"),
+            Subject = GetStringProperty(root, "Subject")
         };
-
-        if (root.TryGetProperty("Subject", out var subject))
-        {
-            metadata.Subject = subject.GetString();
-        }
 
         if (root.TryGetProperty("MessageAttributes", out var messageAttributes))
         {
@@ -77,18 +66,40 @@ internal static class MessageMetadataHandler
     /// <returns>An EventBridgeMetadata object containing the extracted metadata.</returns>
     public static EventBridgeMetadata CreateEventBridgeMetadata(JsonElement root)
     {
-        return new EventBridgeMetadata
+        var metadata = new EventBridgeMetadata
         {
-            EventId = root.GetProperty("id").GetString(),
-            DetailType = root.GetProperty("detail-type").GetString(),
-            Source = root.GetProperty("source").GetString(),
-            AWSAccount = root.GetProperty("account").GetString(),
-            Time = root.GetProperty("time").GetDateTimeOffset(),
-            AWSRegion = root.GetProperty("region").GetString(),
-            Resources = root.GetProperty("resources").EnumerateArray()
+            EventId = GetStringProperty(root, "id"),
+            DetailType = GetStringProperty(root, "detail-type"),
+            Source = GetStringProperty(root, "source"),
+            AWSAccount = GetStringProperty(root, "account"),
+            Time = GetDateTimeOffsetProperty(root, "time") ?? default,
+            AWSRegion = GetStringProperty(root, "region"),
+        };
+
+        if (root.TryGetProperty("resources", out var resources))
+        {
+            metadata.Resources = resources.EnumerateArray()
                 .Select(x => x.GetString())
                 .Where(x => x != null)
-                .ToList()!
-        };
+                .ToList()!;
+        }
+
+        return metadata;
+    }
+
+    private static T? GetPropertyValue<T>(JsonElement root, string propertyName, Func<JsonElement, T> getValue)
+    {
+        return root.TryGetProperty(propertyName, out var property) ? getValue(property) : default;
+    }
+
+    private static string? GetStringProperty(JsonElement root, string propertyName)
+        => GetPropertyValue(root, propertyName, element => element.GetString());
+
+    private static DateTimeOffset? GetDateTimeOffsetProperty(JsonElement root, string propertyName)
+        => GetPropertyValue(root, propertyName, element => element.GetDateTimeOffset());
+
+    private static string? GetAttributeValue(Dictionary<string, string> attributes, string key)
+    {
+        return attributes.TryGetValue(key, out var value) ? value : null;
     }
 }
