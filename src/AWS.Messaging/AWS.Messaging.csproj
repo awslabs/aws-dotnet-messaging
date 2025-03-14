@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <IsPackable>true</IsPackable>
     <Product>AWS Message Processing Framework</Product>
     <Authors>Amazon Web Services</Authors>
@@ -15,6 +15,7 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <EnforceCodeStyleInBuild>True</EnforceCodeStyleInBuild>
     <WarningsAsErrors>CA1727</WarningsAsErrors>
+    <NoWarn>CS1591</NoWarn>
     <SignAssembly>true</SignAssembly>
     <AssemblyOriginatorKeyFile>..\..\public.snk</AssemblyOriginatorKeyFile>
     <Version>2.0.0-preview.1</Version>
@@ -22,18 +23,19 @@
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <IsTrimmable>true</IsTrimmable>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="AWSSDK.EventBridge" Version="4.0.0-preview.4" />
-    <PackageReference Include="AWSSDK.Extensions.NETCore.Setup" Version="4.0.0-preview.4" />
-    <PackageReference Include="AWSSDK.SimpleNotificationService" Version="4.0.0-preview.4" />
-    <PackageReference Include="AWSSDK.SQS" Version="4.0.0-preview.4" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.*" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="6.0.*" />
-    <PackageReference Include="Microsoft.Extensions.Http" Version="6.0.*" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.*" />
-    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="6.0.*" />
+    <PackageReference Include="AWSSDK.EventBridge" Version="4.0.0-preview.10" />
+    <PackageReference Include="AWSSDK.Extensions.NETCore.Setup" Version="4.0.0-preview.10" />
+    <PackageReference Include="AWSSDK.SimpleNotificationService" Version="4.0.0-preview.10" />
+    <PackageReference Include="AWSSDK.SQS" Version="4.0.0-preview.10" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.*" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
   </ItemGroup>
 

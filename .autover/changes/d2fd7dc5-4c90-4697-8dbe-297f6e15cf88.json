@@ -1,0 +1,29 @@
+{
+  "Projects": [
+    {
+      "Name": "AWS.Messaging",
+      "Type": "Minor",
+      "ChangelogMessages": [
+        "Update .NET target to .NET 8",	  
+        "Add trimming support for Native AOT compatiblity"
+      ]
+    },
+    {
+      "Name": "AWS.Messaging.Lambda",
+      "Type": "Minor",
+      "ChangelogMessages": [
+        "Update .NET target to .NET 8",	  
+        "Add trimming support for Native AOT compatiblity"
+      ]
+    },
+    {
+      "Name": "AWS.Messaging.Telemetry.OpenTelemetry",
+      "Type": "Minor",
+      "ChangelogMessages": [
+        "Update .NET target to .NET 8",	  
+        "Add trimming support for Native AOT compatiblity"
+      ]
+    }
+	
+  ]
+}

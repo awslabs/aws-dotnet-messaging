@@ -35,7 +35,7 @@ namespace AWS.Messaging.UnitTests
             var manager = new DefaultMessageManager(mockSQSMessageCommunication.Object, mockHandlerInvoker.Object, new NullLogger<DefaultMessageManager>(), new MessageManagerConfiguration());
 
             var messsageEnvelope = new MessageEnvelope<ChatMessage> { Id = "1" };
-            var subscriberMapping = new SubscriberMapping(typeof(ChatMessageHandler), typeof(ChatMessage));
+            var subscriberMapping = SubscriberMapping.Create<ChatMessageHandler, ChatMessage>();
 
             await manager.ProcessMessageAsync(messsageEnvelope, subscriberMapping);
 
@@ -68,7 +68,7 @@ namespace AWS.Messaging.UnitTests
             var manager = new DefaultMessageManager(mockSQSMessageCommunication.Object, mockHandlerInvoker.Object, new NullLogger<DefaultMessageManager>(), new MessageManagerConfiguration());
 
             var messsageEnvelope = new MessageEnvelope<ChatMessage> { Id = "1" };
-            var subscriberMapping = new SubscriberMapping(typeof(ChatMessageHandler), typeof(ChatMessage));
+            var subscriberMapping = SubscriberMapping.Create<ChatMessageHandler, ChatMessage>();
 
             await manager.ProcessMessageAsync(messsageEnvelope, subscriberMapping);
 
@@ -108,7 +108,7 @@ namespace AWS.Messaging.UnitTests
                 VisibilityTimeoutExtensionHeartbeatInterval = 1
             });
 
-            var subscriberMapping = new SubscriberMapping(typeof(ChatMessageHandler), typeof(ChatMessage));
+            var subscriberMapping = SubscriberMapping.Create<ChatMessageHandler, ChatMessage>();
 
             // Start handling two messages at roughly the same time
             var message1 = new MessageEnvelope<ChatMessage>() { Id = "1" };
@@ -161,7 +161,7 @@ namespace AWS.Messaging.UnitTests
                 VisibilityTimeoutExtensionHeartbeatInterval = 1
             });
 
-            var subscriberMapping = new SubscriberMapping(typeof(ChatMessageHandler), typeof(ChatMessage));
+            var subscriberMapping = SubscriberMapping.Create<ChatMessageHandler, ChatMessage>();
 
             // Start handling a single message
             var earlyMessage = new MessageEnvelope<ChatMessage>() { Id = "1" };
@@ -212,7 +212,7 @@ namespace AWS.Messaging.UnitTests
             var mockHandlerInvoker = CreateMockHandlerInvoker(MessageProcessStatus.Success(), TimeSpan.FromSeconds(1));
 
             var manager = new DefaultMessageManager(mockSQSMessageCommunication.Object, mockHandlerInvoker.Object, new NullLogger<DefaultMessageManager>(), new MessageManagerConfiguration());
-            var subscriberMapping = new SubscriberMapping(typeof(ChatMessageHandler), typeof(ChatMessage));
+            var subscriberMapping = SubscriberMapping.Create<ChatMessageHandler, ChatMessage>();
            
             var tasks = new List<Task>();
 
@@ -244,7 +244,7 @@ namespace AWS.Messaging.UnitTests
                 VisibilityTimeoutExtensionHeartbeatInterval = 1
             });
 
-            var subscriberMapping = new SubscriberMapping(typeof(ChatMessageHandler), typeof(ChatMessage));
+            var subscriberMapping = SubscriberMapping.Create<ChatMessageHandler, ChatMessage>();
 
             // Create 2 message groups "A" and "B"
             var message1 = new MessageEnvelope<ChatMessage>() { Id = "1" };
@@ -320,7 +320,7 @@ namespace AWS.Messaging.UnitTests
                 VisibilityTimeoutExtensionHeartbeatInterval = 5
             });
 
-            var subscriberMapping = new SubscriberMapping(typeof(TransactionInfoHandler), typeof(TransactionInfoHandler));
+            var subscriberMapping = SubscriberMapping.Create<TransactionInfoHandler, TransactionInfo>();
 
             var messageGroup = new List<ConvertToEnvelopeResult>
             {
@@ -359,7 +359,7 @@ namespace AWS.Messaging.UnitTests
                 new MessageManagerConfiguration());
 
             var messageEnvelope = new MessageEnvelope<ChatMessage> { Id = "1" };
-            var subscriberMapping = new SubscriberMapping(typeof(ChatMessageHandler), typeof(ChatMessage));
+            var subscriberMapping = SubscriberMapping.Create<ChatMessageHandler, ChatMessage>();
 
             await Assert.ThrowsAsync<InvalidMessageHandlerSignatureException>(() =>
                 manager.ProcessMessageAsync(messageEnvelope, subscriberMapping));

@@ -4,8 +4,10 @@
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
+using System.Text.Json.Serialization.Metadata;
 using Amazon.SQS.Model;
 using AWS.Messaging.Configuration;
+using AWS.Messaging.Internal;
 using AWS.Messaging.Services;
 using Microsoft.Extensions.Logging;
 
@@ -102,7 +104,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             {
                 if (!blob.ContainsKey(key)) // don't overwrite any reserved keys
                 {
-                    blob[key] = JsonSerializer.SerializeToNode(envelope.Metadata[key]);
+                    blob[key] = JsonSerializer.SerializeToNode(envelope.Metadata[key], typeof(JsonElement), MessagingJsonSerializerContext.Default);
                 }
             }
 
@@ -138,7 +140,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
         {
             sqsMessage.Body = await InvokePreDeserializationCallback(sqsMessage.Body);
             var messageEnvelopeConfiguration = GetMessageEnvelopeConfiguration(sqsMessage);
-            var intermediateEnvelope = JsonSerializer.Deserialize<MessageEnvelope<string>>(messageEnvelopeConfiguration.MessageEnvelopeBody!)!;
+            var intermediateEnvelope = JsonSerializer.Deserialize<MessageEnvelope<string>>(messageEnvelopeConfiguration.MessageEnvelopeBody!, MessagingJsonSerializerContext.Default.MessageEnvelopeString)!;
             ValidateMessageEnvelope(intermediateEnvelope);
             var messageTypeIdentifier = intermediateEnvelope.MessageTypeIdentifier;
             var subscriberMapping = _messageConfiguration.GetSubscriberMapping(messageTypeIdentifier);
@@ -150,13 +152,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
 
             var messageType = subscriberMapping.MessageType;
             var message = _messageSerializer.Deserialize(intermediateEnvelope.Message, messageType);
-            var messageEnvelopeType = typeof(MessageEnvelope<>).MakeGenericType(messageType);
-
-            if (Activator.CreateInstance(messageEnvelopeType) is not MessageEnvelope finalMessageEnvelope)
-            {
-                _logger.LogError($"Failed to create a {nameof(MessageEnvelope)} of type '{{MessageEnvelopeType}}'", messageEnvelopeType.FullName);
-                throw new InvalidOperationException($"Failed to create a {nameof(MessageEnvelope)} of type '{messageEnvelopeType.FullName}'");
-            }
+            var finalMessageEnvelope = subscriberMapping.MessageEnvelopeFactory.Invoke();
 
             finalMessageEnvelope.Id = intermediateEnvelope.Id;
             finalMessageEnvelope.Source = intermediateEnvelope.Source;
@@ -272,15 +268,11 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             MessageAttributes = sqsMessage.MessageAttributes,
             ReceiptHandle = sqsMessage.ReceiptHandle
         };
-        if (sqsMessage.Attributes is null || sqsMessage.Attributes.Count == 0)
-        {
-            return;
-        }
-        if (sqsMessage.Attributes.TryGetValue("MessageGroupId", out var attribute))
+        if (sqsMessage.Attributes != null && sqsMessage.Attributes.TryGetValue("MessageGroupId", out var attribute))
         {
             envelopeConfiguration.SQSMetadata.MessageGroupId = attribute;
         }
-        if (sqsMessage.Attributes.TryGetValue("MessageDeduplicationId", out var messageAttribute))
+        if (sqsMessage.Attributes != null && sqsMessage.Attributes.TryGetValue("MessageDeduplicationId", out var messageAttribute))
         {
             envelopeConfiguration.SQSMetadata.MessageDeduplicationId = messageAttribute;
         }
@@ -298,7 +290,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
         };
         if (root.TryGetProperty("MessageAttributes", out var messageAttributes))
         {
-            envelopeConfiguration.SNSMetadata.MessageAttributes = messageAttributes.Deserialize<Dictionary<string, Amazon.SimpleNotificationService.Model.MessageAttributeValue>>();
+            envelopeConfiguration.SNSMetadata.MessageAttributes = messageAttributes.Deserialize(MessagingJsonSerializerContext.Default.DictionarySNSMessageAttributeValue);
         }
     }
 
@@ -337,7 +329,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
     {
         if (node.TryGetProperty(propertyName, out var propertyValue))
         {
-            return JsonSerializer.Deserialize<DateTimeOffset>(propertyValue);
+            return JsonSerializer.Deserialize<DateTimeOffset>(propertyValue, MessagingJsonSerializerContext.Default.DateTimeOffset);
         }
         return DateTimeOffset.MinValue;
     }
@@ -346,7 +338,12 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
     {
         if (node.TryGetProperty(propertyName, out var propertyValue))
         {
-            return JsonSerializer.Deserialize<List<T>>(propertyValue);
+            var jsonTypeInfo = MessagingJsonSerializerContext.Default.GetTypeInfo(typeof(List<T>)) as JsonTypeInfo<List<T>>;
+            if (jsonTypeInfo == null)
+            {
+                throw new InvalidOperationException($"Missing JsonSerializable registeration for type {typeof(List<T>).FullName}");
+            }
+            return JsonSerializer.Deserialize<List<T>>(propertyValue, jsonTypeInfo);
         }
         return null;
     }

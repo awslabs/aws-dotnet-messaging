@@ -13,14 +13,14 @@ public class SubscriberMappingTests
     [Fact]
     public void SubscriberMappingNoMessageIdentifier()
     {
-        var mapping = new SubscriberMapping(typeof(ChatMessageHandler), typeof(ChatMessage));
+        var mapping = SubscriberMapping.Create<ChatMessageHandler, ChatMessage>();
         Assert.Equal("AWS.Messaging.UnitTests.Models.ChatMessage", mapping.MessageTypeIdentifier);
     }
 
     [Fact]
     public void SubscriberMappingWithMessageIdentifier()
     {
-        var mapping = new SubscriberMapping(typeof(ChatMessageHandler), typeof(ChatMessage), "CustomIdentifier");
+        var mapping = SubscriberMapping.Create<ChatMessageHandler, ChatMessage>("CustomIdentifier");
         Assert.Equal("CustomIdentifier", mapping.MessageTypeIdentifier);
     }
 }

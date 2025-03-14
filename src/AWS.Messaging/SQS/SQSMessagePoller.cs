@@ -249,18 +249,21 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
         {
             var response = await _sqsClient.DeleteMessageBatchAsync(request, token);
 
-            var successfulResponses = response.Successful ?? new List<DeleteMessageBatchResultEntry>();
-            var failedResponses = response.Failed ?? new List<BatchResultErrorEntry>();
-
-            foreach (var successMessage in successfulResponses)
+            if (response.Successful != null)
             {
-                _logger.LogTrace("Deleted message {MessageId} from queue {SubscriberEndpoint} successfully", successMessage.Id, _configuration.SubscriberEndpoint);
+                foreach (var successMessage in response.Successful)
+                {
+                    _logger.LogTrace("Deleted message {MessageId} from queue {SubscriberEndpoint} successfully", successMessage.Id, _configuration.SubscriberEndpoint);
+                }
             }
 
-            foreach (var failedMessage in failedResponses)
+            if (response.Failed != null)
             {
-                _logger.LogError("Failed to delete message {FailedMessageId} from queue {SubscriberEndpoint}: {FailedMessage}",
-                    failedMessage.Id, _configuration.SubscriberEndpoint, failedMessage.Message);
+                foreach (var failedMessage in response.Failed)
+                {
+                    _logger.LogError("Failed to delete message {FailedMessageId} from queue {SubscriberEndpoint}: {FailedMessage}",
+                        failedMessage.Id, _configuration.SubscriberEndpoint, failedMessage.Message);
+                }
             }
         }
         catch (AmazonSQSException ex)
@@ -352,29 +355,32 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
             if (!changeMessageVisibilityBatchTask.IsFaulted)
             {
                 var response = changeMessageVisibilityBatchTask.Result;
-                var successFulResonses = response.Successful ?? new List<ChangeMessageVisibilityBatchResultEntry>();
-                var failedResponses = response.Failed ?? new List<BatchResultErrorEntry>();
-
-                foreach (var successMessage in successFulResonses)
+                if (response.Successful != null)
                 {
-                    _logger.LogTrace("Extended the visibility of message {MessageId} on queue {SubscriberEndpoint} successfully", successMessage.Id, _configuration.SubscriberEndpoint);
+                    foreach (var successMessage in response.Successful)
+                    {
+                        _logger.LogTrace("Extended the visibility of message {MessageId} on queue {SubscriberEndpoint} successfully", successMessage.Id, _configuration.SubscriberEndpoint);
+                    }
                 }
 
-                foreach (var failedMessage in failedResponses)
+                if (response.Failed != null)
                 {
-                    // It's possible that the task that is extending the message visibility timeout of in flight messages attempts to extend
-                    // a message whose handler task has just finished and deleted the message. Rather than adding synchronization between the two
-                    // (such as stopping handlers from deleting while the extension task is running), we "downgrade" these errors to trace messages
-                    if (failedMessage.Code.Equals("ReceiptHandleIsInvalid") &&
-                        failedMessage.Message.Equals("Message does not exist or is not available for visibility timeout change", StringComparison.InvariantCultureIgnoreCase))
+                    foreach (var failedMessage in response.Failed)
                     {
-                        _logger.LogTrace("Failed to extend the visibility of message {FailedMessageId} on queue {SubscriberEndpoint} with code {Code}, which was likely deleted: {FailedMessage}",
-                            failedMessage.Id, _configuration.SubscriberEndpoint, failedMessage.Code, failedMessage.Message);
-                    }
-                    else // treat any other failed entries as errors
-                    {
-                        _logger.LogError("Failed to extend the visibility of message {FailedMessageId} on queue {SubscriberEndpoint} with code {Code}: {FailedMessage}",
-                            failedMessage.Id, _configuration.SubscriberEndpoint, failedMessage.Code, failedMessage.Message);
+                        // It's possible that the task that is extending the message visibility timeout of in flight messages attempts to extend
+                        // a message whose handler task has just finished and deleted the message. Rather than adding synchronization between the two
+                        // (such as stopping handlers from deleting while the extension task is running), we "downgrade" these errors to trace messages
+                        if (failedMessage.Code.Equals("ReceiptHandleIsInvalid") &&
+                            failedMessage.Message.Equals("Message does not exist or is not available for visibility timeout change", StringComparison.InvariantCultureIgnoreCase))
+                        {
+                            _logger.LogTrace("Failed to extend the visibility of message {FailedMessageId} on queue {SubscriberEndpoint} with code {Code}, which was likely deleted: {FailedMessage}",
+                                failedMessage.Id, _configuration.SubscriberEndpoint, failedMessage.Code, failedMessage.Message);
+                        }
+                        else // treat any other failed entries as errors
+                        {
+                            _logger.LogError("Failed to extend the visibility of message {FailedMessageId} on queue {SubscriberEndpoint} with code {Code}: {FailedMessage}",
+                                failedMessage.Id, _configuration.SubscriberEndpoint, failedMessage.Code, failedMessage.Message);
+                        }
                     }
                 }
             }

@@ -49,7 +49,7 @@ public class OpenTelemetryTests
         var messagePublisherLogger = new Mock<ILogger<IMessagePublisher>>();
         var sqsPublisherLogger = new Mock<ILogger<ISQSPublisher>>();
         var publisherMapping = new PublisherMapping(typeof(ChatMessage), new SQSPublisherConfiguration("endpoint"), PublisherTargetType.SQS_PUBLISHER);
-        _subscriberMapping = new SubscriberMapping(typeof(ChatMessageHandler), typeof(ChatMessage));
+        _subscriberMapping = SubscriberMapping.Create<ChatMessageHandler, ChatMessage>();
 
         envelopeSerializer.SetReturnsDefault(ValueTask.FromResult(new MessageEnvelope<ChatMessage>()
         {

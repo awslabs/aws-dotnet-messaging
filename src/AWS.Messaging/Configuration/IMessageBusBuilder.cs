@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Diagnostics.CodeAnalysis;
 using AWS.Messaging.Publishers.EventBridge;
 using AWS.Messaging.Publishers.SNS;
 using AWS.Messaging.Publishers.SQS;
@@ -23,7 +24,7 @@ public interface IMessageBusBuilder
     /// <param name="queueUrl">The SQS queue URL to publish the message to. If the queue URL is null, a message-specific queue
     /// URL must be specified on the <see cref="SQSOptions"/> when sending a message.</param>
     /// <param name="messageTypeIdentifier">The language-agnostic message type identifier. If not specified, the .NET type will be used.</param>
-    IMessageBusBuilder AddSQSPublisher<TMessage>(string? queueUrl, string? messageTypeIdentifier = null);
+    IMessageBusBuilder AddSQSPublisher<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TMessage>(string? queueUrl, string? messageTypeIdentifier = null);
 
     /// <summary>
     /// Adds an SNS Publisher to the framework which will handle publishing
@@ -32,7 +33,7 @@ public interface IMessageBusBuilder
     /// <param name="topicUrl">The SNS topic URL to publish the message to. If the topic URL is null, a message-specific
     /// topic URL must be set on the <see cref="SNSOptions"/> when publishing a message.</param>
     /// <param name="messageTypeIdentifier">The language-agnostic message type identifier. If not specified, the .NET type will be used.</param>
-    IMessageBusBuilder AddSNSPublisher<TMessage>(string? topicUrl, string? messageTypeIdentifier = null);
+    IMessageBusBuilder AddSNSPublisher<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TMessage>(string? topicUrl, string? messageTypeIdentifier = null);
 
     /// <summary>
     /// Adds an EventBridge Publisher to the framework which will handle publishing the defined message type to the specified EventBridge event bus name.
@@ -42,14 +43,14 @@ public interface IMessageBusBuilder
     /// a message-specific event bus must be set on the <see cref="EventBridgeOptions"/> when sending an event.</param>
     /// <param name="messageTypeIdentifier">The language-agnostic message type identifier. If not specified, the .NET type will be used.</param>
     /// <param name="options">Contains additional properties that can be set while configuring an EventBridge publisher</param>
-    IMessageBusBuilder AddEventBridgePublisher<TMessage>(string? eventBusName, string? messageTypeIdentifier = null, EventBridgePublishOptions? options = null);
+    IMessageBusBuilder AddEventBridgePublisher<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] TMessage>(string? eventBusName, string? messageTypeIdentifier = null, EventBridgePublishOptions? options = null);
 
     /// <summary>
     /// Add a message handler for a given message type.
     /// The message handler contains the business logic of how to process a given message type.
     /// </summary>
     /// <param name="messageTypeIdentifier">The language-agnostic message type identifier. If not specified, the .NET type will be used.</param>
-    IMessageBusBuilder AddMessageHandler<THandler, TMessage>(string? messageTypeIdentifier = null)
+    IMessageBusBuilder AddMessageHandler<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] THandler, TMessage>(string? messageTypeIdentifier = null)
         where THandler : IMessageHandler<TMessage>;
 
     /// <summary>
@@ -89,6 +90,8 @@ public interface IMessageBusBuilder
     /// and apply the Message bus configuration based on that section.
     /// </summary>
     /// <param name="configuration"><see cref="IConfiguration"/></param>
+    [RequiresDynamicCode("This method requires loading types dynamically as defined in the configuration system.")]
+    [RequiresUnreferencedCode("This method requires loading types dynamically as defined in the configuration system.")]
     IMessageBusBuilder LoadConfigurationFromSettings(IConfiguration configuration);
 
     /// <summary>

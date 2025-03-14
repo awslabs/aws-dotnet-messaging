@@ -21,25 +21,7 @@
           "AWSLambdaSQSQueueExecutionRole"
         ],
         "PackageType": "Zip",
-        "Handler": "LambdaMessaging::LambdaMessaging.Function_FunctionHandler_Generated::FunctionHandler",
-        "Events": {
-          "Messages": {
-            "Type": "SQS",
-            "Properties": {
-              "Enabled": true,
-              "Queue": {
-                "Fn::GetAtt": [
-                  "ChatQueue",
-                  "Arn"
-                ]
-              },
-              "BatchSize": 5,
-              "FunctionResponseTypes": [
-                "ReportBatchItemFailures"
-              ]
-            }
-          }
-        }
+        "Handler": "LambdaMessaging::LambdaMessaging.Function_FunctionHandler_Generated::FunctionHandler"
       }
     }
   }

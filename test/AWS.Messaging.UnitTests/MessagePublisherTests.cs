@@ -977,7 +977,7 @@ public class MessagePublisherTests
                 x.PutEventsAsync(
                     It.Is<PutEventsRequest>(request =>
                         request.Entries[0].EventBusName.Equals("event-bus-123") && string.IsNullOrEmpty(request.EndpointId)
-                                                                                && request.Entries[0].TraceHeader.Equals("trace-header1") && ((DateTime)request.Entries[0].Time!).Year == dateTimeOffset.Year),
+                                                                                && request.Entries[0].TraceHeader.Equals("trace-header1") && request.Entries[0].Time!.Value.Year == dateTimeOffset.Year),
                     It.IsAny<CancellationToken>()),
             Times.Exactly(1));
     }

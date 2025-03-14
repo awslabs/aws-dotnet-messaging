@@ -247,18 +247,21 @@ internal class DefaultLambdaMessageProcessor : ILambdaMessageProcessor, ISQSMess
 
         var response = await _sqsClient.DeleteMessageBatchAsync(request, token);
 
-        var successFulResponse = response.Successful ?? new List<DeleteMessageBatchResultEntry>();
-        var failedResponse = response.Failed ?? new List<BatchResultErrorEntry>();
-
-        foreach (var successMessage in successFulResponse)
+        if (response.Successful != null)
         {
-            _logger.LogTrace("Deleted message {MessageId} from queue {SubscriberEndpoint} successfully", successMessage.Id, _configuration.SubscriberEndpoint);
+            foreach (var successMessage in response.Successful)
+            {
+                _logger.LogTrace("Deleted message {MessageId} from queue {SubscriberEndpoint} successfully", successMessage.Id, _configuration.SubscriberEndpoint);
+            }
         }
 
-        foreach (var failedMessage in failedResponse)
+        if (response.Failed != null)
         {
-            _logger.LogError("Failed to delete message {FailedMessageId} from queue {SubscriberEndpoint}: {FailedMessage}",
-                failedMessage.Id, _configuration.SubscriberEndpoint, failedMessage.Message);
+            foreach (var failedMessage in response.Failed)
+            {
+                _logger.LogError("Failed to delete message {FailedMessageId} from queue {SubscriberEndpoint}: {FailedMessage}",
+                    failedMessage.Id, _configuration.SubscriberEndpoint, failedMessage.Message);
+            }
         }
     }
 

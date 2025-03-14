@@ -39,13 +39,13 @@ public class TestUtilities
     /// <returns></returns>
     public static string GetDeploymentZipPath(string functionName)
     {
-        var testsProjectDirectory = FindParentDirectoryWithName(Environment.CurrentDirectory, "test");
+        var testsProjectDirectory = FindParentDirectoryWithName(Directory.GetParent(typeof(TestUtilities).Assembly.Location)!.FullName, "test");
         if (string.IsNullOrEmpty(testsProjectDirectory))
         {
-            throw new Exception("No deployment package zip found");
+            throw new Exception("No test project directory found");
         }
 
-        var deploymentZipFile = Path.Combine(testsProjectDirectory, $"{functionName}\\bin\\Release\\net6.0\\{functionName}.zip".Replace('\\', Path.DirectorySeparatorChar));
+        var deploymentZipFile = Path.Combine(testsProjectDirectory, $"{functionName}\\bin\\Release\\net8.0\\{functionName}.zip".Replace('\\', Path.DirectorySeparatorChar));
 
         if (!File.Exists(deploymentZipFile))
         {

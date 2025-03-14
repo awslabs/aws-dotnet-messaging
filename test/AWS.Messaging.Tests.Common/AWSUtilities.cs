@@ -184,7 +184,7 @@ public static class AWSUtilities
             Handler = $"{functionName}::{functionName}.Functions::{handlerName}",
             MemorySize = 512,
             Timeout = functionTimeout,
-            Runtime = Runtime.Dotnet6,
+            Runtime = Runtime.Dotnet8,
             Role = executionRoleArn,
         };
 
@@ -373,6 +373,35 @@ public static class AWSUtilities
         await sqsClient.SetQueueAttributesAsync(request);
 
         return (sourceQueueUrl, dlqUrl);
+    }
+
+
+    public static async Task<IList<OutputLogEvent>> PollForLogWithMessage(IAmazonCloudWatchLogs cloudWatchLogsClient, string functionName, string message, DateTime publishTimestamp)
+    {
+        await Task.Delay(TimeSpan.FromSeconds(10));
+
+        IEnumerable<Amazon.CloudWatchLogs.Model.OutputLogEvent>? logsWithHandler = null;
+        var start = DateTime.UtcNow;
+        while (DateTime.UtcNow < start.AddMinutes(1))
+        {
+            // Assert that the message was processed and logged successfully
+            var logs = await GetMostRecentLambdaLogs(cloudWatchLogsClient, functionName, publishTimestamp);
+            if (logs == null)
+                continue;
+
+            logsWithHandler = logs.Where(logEvent => logEvent.Message.Contains(message));
+            if (logsWithHandler != null && logsWithHandler.Count() > 0)
+                break;
+
+            await Task.Delay(1000);
+        }
+
+        if (logsWithHandler == null || logsWithHandler.Count() == 0)
+        {
+            Console.WriteLine("No logs");
+        }
+
+        return logsWithHandler?.ToList() ?? new List<OutputLogEvent>();
     }
 
     /// <summary>
