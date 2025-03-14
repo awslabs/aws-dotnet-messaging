@@ -1,0 +1,11 @@
+{
+  "Projects": [
+    {
+      "Name": "AWS.Messaging",
+      "Type": "Patch",
+      "ChangelogMessages": [
+        "Update MessageSerializer to store data as actual json. Fixes #168"
+      ]
+    }
+  ]
+}
