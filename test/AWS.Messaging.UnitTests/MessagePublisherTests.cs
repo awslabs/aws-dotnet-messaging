@@ -764,7 +764,7 @@ public class MessagePublisherTests
             new DefaultTelemetryFactory(serviceProvider)
         );
 
-        var publishResponse = Assert.ThrowsAsync<FailedToPublishException>(async () => await messagePublisher.PublishAsync(_chatMessage));
+        var publishResponse = await Assert.ThrowsAsync<FailedToPublishException>(async () => await messagePublisher.PublishAsync(_chatMessage));
 
         _eventBridgeClient.Verify(x =>
                 x.PutEventsAsync(
@@ -774,9 +774,9 @@ public class MessagePublisherTests
                     It.IsAny<CancellationToken>()),
             Times.Exactly(1));
 
-        Assert.Equal("Message failed to publish.", publishResponse.Result.Message);
-        Assert.Equal("ErrorMessage", publishResponse.Result.InnerException.Message);
-        Assert.Equal("ErrorCode", ((EventBridgePutEventsException)publishResponse.Result.InnerException).ErrorCode);
+        Assert.Equal("Message failed to publish.", publishResponse.Message);
+        Assert.Equal("ErrorMessage", publishResponse.InnerException.Message);
+        Assert.Equal("ErrorCode", ((EventBridgePutEventsException)publishResponse.InnerException).ErrorCode);
     }
 
     [Fact]
