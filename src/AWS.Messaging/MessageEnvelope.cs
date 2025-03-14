@@ -45,7 +45,7 @@ public abstract class MessageEnvelope
     public DateTimeOffset TimeStamp { get; set; } = DateTimeOffset.MinValue;
 
     /// <summary>
-    /// The version of the CloudEvents specification which the event uses.
+    /// The data content type.
     /// </summary>
     [JsonPropertyName("datacontenttype")]
     public string? DataContentType { get; set; } = null!;
