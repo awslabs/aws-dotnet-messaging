@@ -77,6 +77,11 @@ internal class MessageSerializer : IMessageSerializer
     /// </remarks>
     public dynamic Serialize(object message)
     {
+        if (message == null)
+        {
+            throw new FailedToSerializeApplicationMessageException("Cannot serialize null object");
+        }
+
         try
         {
             var jsonSerializerOptions = _messageConfiguration.SerializationOptions.SystemTextJsonOptions;
