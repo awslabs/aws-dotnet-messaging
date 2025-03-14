@@ -189,7 +189,8 @@ public class SubscriberTests : IAsyncLifetime
 
         // Stop polling and wait for the polling cycle to complete with a buffer
         pollingControlToken.StopPolling();
-        await Task.Delay(pollingControlToken.PollingWaitTime * 2, source.Token);
+
+        SpinWait.SpinUntil(() => false, pollingControlToken.PollingWaitTime * 3);
 
         // Publish the next 5 messages that should not be received due to stopping polling
         for (int i = 5; i < 10; i++)
@@ -200,7 +201,7 @@ public class SubscriberTests : IAsyncLifetime
             });
         }
 
-        while (!source.IsCancellationRequested) { }
+        SpinWait.SpinUntil(() => source.IsCancellationRequested);
 
         var inMemoryLogger = serviceProvider.GetRequiredService<InMemoryLogger>();
         var tempStorage = serviceProvider.GetRequiredService<TempStorage<ChatMessage>>();
