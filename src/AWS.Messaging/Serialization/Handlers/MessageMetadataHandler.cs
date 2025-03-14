@@ -55,8 +55,12 @@ internal static class MessageMetadataHandler
             TopicArn = root.GetProperty("TopicArn").GetString(),
             Timestamp = root.GetProperty("Timestamp").GetDateTimeOffset(),
             UnsubscribeURL = root.GetProperty("UnsubscribeURL").GetString(),
-            Subject = root.GetProperty("Subject").GetString()
         };
+
+        if (root.TryGetProperty("Subject", out var subject))
+        {
+            metadata.Subject = subject.GetString();
+        }
 
         if (root.TryGetProperty("MessageAttributes", out var messageAttributes))
         {
