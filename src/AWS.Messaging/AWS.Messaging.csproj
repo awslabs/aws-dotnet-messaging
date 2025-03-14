@@ -31,11 +31,11 @@
     <PackageReference Include="AWSSDK.Extensions.NETCore.Setup" Version="4.0.0-preview.10" />
     <PackageReference Include="AWSSDK.SimpleNotificationService" Version="4.0.0-preview.10" />
     <PackageReference Include="AWSSDK.SQS" Version="4.0.0-preview.10" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.*" />
-    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="6.0.*" />
-    <PackageReference Include="Microsoft.Extensions.Http" Version="6.0.*" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="6.0.*" />
-    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="6.0.*" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.*" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="8.0.*" />
     <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
   </ItemGroup>
 

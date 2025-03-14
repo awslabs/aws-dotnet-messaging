@@ -31,7 +31,7 @@ public class SubscriberMapping
     /// </summary>
     /// <param name="handlerType">The type that implements <see cref="IMessageHandler{T}"/></param>
     /// <param name="messageType">The type that will be message data will deserialized into</param>
-    /// <param name="envelopeFactory">Func for creating MessageEnvelope&lt;messageType&gt;</param>
+    /// <param name="envelopeFactory">Func for creating <see cref="MessageEnvelope{messageType}"/></param>
     /// <param name="messageTypeIdentifier">Optional message type identifier. If not set the full name of the <see cref="MessageType"/> is used.</param>
 
     internal SubscriberMapping([DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] Type handlerType, Type messageType, Func<MessageEnvelope> envelopeFactory, string? messageTypeIdentifier = null)
@@ -50,7 +50,7 @@ public class SubscriberMapping
     /// Creates a SubscriberMapping from the generic parameters for the handler and message.
     /// </summary>
     /// <typeparam name="THandler">The type that implements <see cref="IMessageHandler{T}"/></typeparam>
-    /// <typeparam name="TMessage">Func for creating MessageEnvelope&lt;messageType&gt;</typeparam>
+    /// <typeparam name="TMessage">Func for creating <see cref="MessageEnvelope{messageType}"/></typeparam>
     /// <param name="messageTypeIdentifier"></param>
     /// <returns></returns>
     public static SubscriberMapping Create<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.All)] THandler, TMessage>(string? messageTypeIdentifier = null)
