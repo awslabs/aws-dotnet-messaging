@@ -119,7 +119,7 @@ public class EnvelopeSerializerTests
 
         // ASSERT
         // The \u0022 corresponds to quotation mark (")
-        var expectedBlob = "{\"id\":\"id-123\",\"source\":\"/backend/service\",\"specversion\":\"1.0\",\"type\":\"addressInfo\",\"time\":\"2000-12-05T10:30:55+00:00\",\"data\":{\"Unit\":123,\"Street\":\"Prince St\",\"ZipCode\":\"00001\"}}";
+        var expectedBlob = "{\"id\":\"id-123\",\"source\":\"/backend/service\",\"specversion\":\"1.0\",\"type\":\"addressInfo\",\"time\":\"2000-12-05T10:30:55+00:00\",\"datacontenttype\":\"application/json\",\"data\":{\"Unit\":123,\"Street\":\"Prince St\",\"ZipCode\":\"00001\"}}";
         Assert.Equal(expectedBlob, jsonBlob);
     }
 
@@ -395,7 +395,7 @@ public class EnvelopeSerializerTests
         var serializedMessage = await envelopeSerializer.SerializeAsync(messageEnvelope);
 
         // ASSERT - Check expected base 64 encoded string
-        var expectedserializedMessage = "eyJpZCI6IjEyMyIsInNvdXJjZSI6Ii9hd3MvbWVzc2FnaW5nIiwic3BlY3ZlcnNpb24iOiIxLjAiLCJ0eXBlIjoiYWRkcmVzc0luZm8iLCJ0aW1lIjoiMjAwMC0xMi0wNVQxMDozMDo1NSswMDowMCIsImRhdGEiOnsiVW5pdCI6MTIzLCJTdHJlZXQiOiJQcmluY2UgU3QiLCJaaXBDb2RlIjoiMDAwMDEifSwiSXMtRGVsaXZlcmVkIjpmYWxzZX0=";
+        var expectedserializedMessage = "eyJpZCI6IjEyMyIsInNvdXJjZSI6Ii9hd3MvbWVzc2FnaW5nIiwic3BlY3ZlcnNpb24iOiIxLjAiLCJ0eXBlIjoiYWRkcmVzc0luZm8iLCJ0aW1lIjoiMjAwMC0xMi0wNVQxMDozMDo1NSswMDowMCIsImRhdGFjb250ZW50dHlwZSI6ImFwcGxpY2F0aW9uL2pzb24iLCJkYXRhIjp7IlVuaXQiOjEyMywiU3RyZWV0IjoiUHJpbmNlIFN0IiwiWmlwQ29kZSI6IjAwMDAxIn0sIklzLURlbGl2ZXJlZCI6ZmFsc2V9";
         Assert.Equal(expectedserializedMessage, serializedMessage);
 
         // ACT - Convert To Envelope from base 64 Encoded Message
@@ -457,7 +457,7 @@ public class EnvelopeSerializerTests
             logger.Verify(log => log.Log(
                     It.Is<LogLevel>(logLevel => logLevel == LogLevel.Trace),
                     It.Is<EventId>(eventId => eventId.Id == 0),
-                    It.Is<It.IsAnyType>((@object, @type) => @object.ToString() == "Serialized the MessageEnvelope object as the following raw string:\n{\"id\":\"123\",\"source\":\"/aws/messaging\",\"specversion\":\"1.0\",\"type\":\"addressInfo\",\"time\":\"2000-12-05T10:30:55+00:00\",\"data\":null}"),
+                    It.Is<It.IsAnyType>((@object, @type) => @object.ToString() == "Serialized the MessageEnvelope object as the following raw string:\n{\"id\":\"123\",\"source\":\"/aws/messaging\",\"specversion\":\"1.0\",\"type\":\"addressInfo\",\"time\":\"2000-12-05T10:30:55+00:00\",\"datacontenttype\":null,\"data\":null}"),
                     null,
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);

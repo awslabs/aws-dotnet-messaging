@@ -26,4 +26,9 @@ public interface IMessageSerializer
     /// <param name="deserializedType">The target .NET type for deserialization.</param>
     /// <returns>An instance of the specified type containing the deserialized data.</returns>
     object Deserialize(JsonElement message, Type deserializedType);
+
+    /// <summary>
+    /// Gets the content type of the serialized data.
+    /// </summary>
+    string DataContentType { get; }
 }

@@ -45,6 +45,12 @@ public abstract class MessageEnvelope
     public DateTimeOffset TimeStamp { get; set; } = DateTimeOffset.MinValue;
 
     /// <summary>
+    /// The version of the CloudEvents specification which the event uses.
+    /// </summary>
+    [JsonPropertyName("datacontenttype")]
+    public string? DataContentType { get; set; } = null!;
+
+    /// <summary>
     /// This stores different metadata that is not modeled as a top-level property in MessageEnvelope class.
     /// These entries will also be serialized as top-level properties when sending the message, which
     /// can be used for CloudEvents Extension Attributes.

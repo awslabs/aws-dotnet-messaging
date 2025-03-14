@@ -93,6 +93,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
                 ["specversion"] = envelope.Version,
                 ["type"] = envelope.MessageTypeIdentifier,
                 ["time"] = envelope.TimeStamp,
+                ["datacontenttype"] = _messageSerializer.DataContentType,
                 ["data"] = _messageSerializer.Serialize(message)
             };
 
@@ -182,6 +183,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             envelope.Version = JsonPropertyHelper.GetRequiredProperty(root, "specversion", element => element.GetString()!);
             envelope.MessageTypeIdentifier = JsonPropertyHelper.GetRequiredProperty(root, "type", element => element.GetString()!);
             envelope.TimeStamp = JsonPropertyHelper.GetRequiredProperty(root, "time", element => element.GetDateTimeOffset());
+            envelope.DataContentType = JsonPropertyHelper.GetStringProperty(root, "datacontenttype");
 
             // Handle metadata if present
             if (root.TryGetProperty("metadata", out var metadataElement))

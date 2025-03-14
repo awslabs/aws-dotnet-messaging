@@ -99,4 +99,6 @@ internal class MessageSerializer : IMessageSerializer
             throw new FailedToSerializeApplicationMessageException("Failed to serialize application message into a string", ex);
         }
     }
+
+    public string DataContentType => "application/json";
 }
