@@ -4,7 +4,7 @@
       "Name": "AWS.Messaging",
       "Type": "Patch",
       "ChangelogMessages": [
-        "Refactor EnvelopeSerializerCode."
+        "Refactor logic for serialization."
       ]
     }
   ]
