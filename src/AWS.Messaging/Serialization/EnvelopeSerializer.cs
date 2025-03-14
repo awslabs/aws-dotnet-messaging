@@ -145,7 +145,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             var subscriberMapping = GetAndValidateSubscriberMapping(messageType);
 
             // Create and populate the envelope with the correct type
-            var envelope = CreateEnvelopeFromJson(envelopeJson, subscriberMapping.MessageType);
+            var envelope = DeserializeEnvelope(envelopeJson, subscriberMapping.MessageType);
 
             // Add metadata from outer wrapper
             envelope.SQSMetadata = metadata.SQSMetadata;
@@ -167,37 +167,40 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
         }
     }
 
-    private MessageEnvelope CreateEnvelopeFromJson(string json, Type messageType)
+    private MessageEnvelope DeserializeEnvelope(string envelopeString, Type messageType)
     {
-        // Parse the envelope JSON
-        using var doc = JsonDocument.Parse(json);
-        var root = doc.RootElement;
-
-        // Create envelope of correct type
+        using var document = JsonDocument.Parse(envelopeString);
+        var root = document.RootElement;
         var envelopeType = typeof(MessageEnvelope<>).MakeGenericType(messageType);
         var envelope = Activator.CreateInstance(envelopeType) as MessageEnvelope
-            ?? throw new InvalidOperationException($"Failed to create envelope of type {envelopeType}");
-
-        // Set the envelope properties
-        envelope.Id = root.GetProperty("id").GetString()!;
-        envelope.Source = new Uri(root.GetProperty("source").GetString()!, UriKind.RelativeOrAbsolute);
-        envelope.Version = root.GetProperty("specversion").GetString()!;
-        envelope.MessageTypeIdentifier = root.GetProperty("type").GetString()!;
-        envelope.TimeStamp = root.GetProperty("time").GetDateTimeOffset();
-
-        // Handle metadata if present
-        if (root.TryGetProperty("metadata", out var metadataElement))
+                       ?? throw new InvalidOperationException($"Failed to create envelope of type {envelopeType}");
+        try
         {
-            envelope.Metadata = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(metadataElement)!;
+            // Set envelope properties
+            envelope.Id = JsonPropertyHelper.GetRequiredProperty(root, "id", element => element.GetString()!);
+            envelope.Source = JsonPropertyHelper.GetRequiredProperty(root, "source", element => new Uri(element.GetString()!, UriKind.RelativeOrAbsolute));
+            envelope.Version = JsonPropertyHelper.GetRequiredProperty(root, "specversion", element => element.GetString()!);
+            envelope.MessageTypeIdentifier = JsonPropertyHelper.GetRequiredProperty(root, "type", element => element.GetString()!);
+            envelope.TimeStamp = JsonPropertyHelper.GetRequiredProperty(root, "time", element => element.GetDateTimeOffset());
+
+            // Handle metadata if present
+            if (root.TryGetProperty("metadata", out var metadataElement))
+            {
+                envelope.Metadata = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(metadataElement)!;
+            }
+
+            // Deserialize the message content using the custom serializer
+            var dataContent = JsonPropertyHelper.GetRequiredProperty(root, "data", element => element.GetString()!);
+            var message = _messageSerializer.Deserialize(dataContent, messageType);
+            envelope.SetMessage(message);
+
+            return envelope;
         }
-
-        // Deserialize the message content using the custom serializer
-        var dataContent = root.GetProperty("data").GetString()!;
-        var message = _messageSerializer.Deserialize(dataContent, messageType);
-        envelope.SetMessage(message);
-
-        ValidateMessageEnvelope(envelope);
-        return envelope;
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to deserialize or validate MessageEnvelope");
+            throw new InvalidDataException("MessageEnvelope instance is not valid", ex);
+        }
     }
 
     private static string GetMessageTypeFromEnvelope(string json)
@@ -248,37 +251,6 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
         }
 
         return (currentMessageBody, combinedMetadata);
-    }
-
-    private void ValidateMessageEnvelope(MessageEnvelope? messageEnvelope)
-    {
-        if (messageEnvelope is null)
-            throw new InvalidDataException($"{nameof(messageEnvelope)} cannot be null");
-
-        var messageProperty = messageEnvelope.GetType().GetProperty("Message");
-        var messageValue = messageProperty?.GetValue(messageEnvelope);
-
-        var validations = new[]
-        {
-            (string.IsNullOrEmpty(messageEnvelope.Id), $"{nameof(messageEnvelope.Id)} cannot be null or empty."),
-            (messageEnvelope.Source is null, $"{nameof(messageEnvelope.Source)} cannot be null."),
-            (string.IsNullOrEmpty(messageEnvelope.Version), $"{nameof(messageEnvelope.Version)} cannot be null or empty."),
-            (string.IsNullOrEmpty(messageEnvelope.MessageTypeIdentifier), $"{nameof(messageEnvelope.MessageTypeIdentifier)} cannot be null or empty."),
-            (messageEnvelope.TimeStamp == DateTimeOffset.MinValue, $"{nameof(messageEnvelope.TimeStamp)} is not set."),
-            (messageValue is null, "Message cannot be null.")
-        };
-
-        var failures = validations
-            .Where(v => v.Item1)
-            .Select(v => v.Item2)
-            .ToList();
-
-        if (failures.Any())
-        {
-            var message = string.Join(Environment.NewLine, failures);
-            _logger.LogError("MessageEnvelope instance is not valid\n{ValidationFailures}", message);
-            throw new InvalidDataException($"MessageEnvelope instance is not valid{Environment.NewLine}{message}");
-        }
     }
 
     private SubscriberMapping GetAndValidateSubscriberMapping(string messageTypeIdentifier)

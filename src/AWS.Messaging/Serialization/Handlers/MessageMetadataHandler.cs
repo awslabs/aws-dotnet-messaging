@@ -28,8 +28,8 @@ internal static class MessageMetadataHandler
 
         if (message.Attributes != null)
         {
-            metadata.MessageGroupId = GetAttributeValue(message.Attributes, "MessageGroupId");
-            metadata.MessageDeduplicationId = GetAttributeValue(message.Attributes, "MessageDeduplicationId");
+            metadata.MessageGroupId = JsonPropertyHelper.GetAttributeValue(message.Attributes, "MessageGroupId");
+            metadata.MessageDeduplicationId = JsonPropertyHelper.GetAttributeValue(message.Attributes, "MessageDeduplicationId");
         }
 
         return metadata;
@@ -44,11 +44,11 @@ internal static class MessageMetadataHandler
     {
         var metadata = new SNSMetadata
         {
-            MessageId = GetStringProperty(root, "MessageId"),
-            TopicArn = GetStringProperty(root, "TopicArn"),
-            Timestamp = GetDateTimeOffsetProperty(root, "Timestamp") ?? default,
-            UnsubscribeURL = GetStringProperty(root, "UnsubscribeURL"),
-            Subject = GetStringProperty(root, "Subject")
+            MessageId = JsonPropertyHelper.GetStringProperty(root, "MessageId"),
+            TopicArn = JsonPropertyHelper.GetStringProperty(root, "TopicArn"),
+            Timestamp = JsonPropertyHelper.GetDateTimeOffsetProperty(root, "Timestamp") ?? default,
+            UnsubscribeURL = JsonPropertyHelper.GetStringProperty(root, "UnsubscribeURL"),
+            Subject = JsonPropertyHelper.GetStringProperty(root, "Subject")
         };
 
         if (root.TryGetProperty("MessageAttributes", out var messageAttributes))
@@ -68,12 +68,12 @@ internal static class MessageMetadataHandler
     {
         var metadata = new EventBridgeMetadata
         {
-            EventId = GetStringProperty(root, "id"),
-            DetailType = GetStringProperty(root, "detail-type"),
-            Source = GetStringProperty(root, "source"),
-            AWSAccount = GetStringProperty(root, "account"),
-            Time = GetDateTimeOffsetProperty(root, "time") ?? default,
-            AWSRegion = GetStringProperty(root, "region"),
+            EventId = JsonPropertyHelper.GetStringProperty(root, "id"),
+            DetailType = JsonPropertyHelper.GetStringProperty(root, "detail-type"),
+            Source = JsonPropertyHelper.GetStringProperty(root, "source"),
+            AWSAccount = JsonPropertyHelper.GetStringProperty(root, "account"),
+            Time = JsonPropertyHelper.GetDateTimeOffsetProperty(root, "time") ?? default,
+            AWSRegion = JsonPropertyHelper.GetStringProperty(root, "region"),
         };
 
         if (root.TryGetProperty("resources", out var resources))
@@ -85,21 +85,5 @@ internal static class MessageMetadataHandler
         }
 
         return metadata;
-    }
-
-    private static T? GetPropertyValue<T>(JsonElement root, string propertyName, Func<JsonElement, T> getValue)
-    {
-        return root.TryGetProperty(propertyName, out var property) ? getValue(property) : default;
-    }
-
-    private static string? GetStringProperty(JsonElement root, string propertyName)
-        => GetPropertyValue(root, propertyName, element => element.GetString());
-
-    private static DateTimeOffset? GetDateTimeOffsetProperty(JsonElement root, string propertyName)
-        => GetPropertyValue(root, propertyName, element => element.GetDateTimeOffset());
-
-    private static string? GetAttributeValue(Dictionary<string, string> attributes, string key)
-    {
-        return attributes.TryGetValue(key, out var value) ? value : null;
     }
 }
