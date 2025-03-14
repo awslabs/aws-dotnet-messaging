@@ -119,7 +119,7 @@ public class EnvelopeSerializerTests
 
         // ASSERT
         // The \u0022 corresponds to quotation mark (")
-        var expectedBlob = "{\"id\":\"id-123\",\"source\":\"/backend/service\",\"specversion\":\"1.0\",\"type\":\"addressInfo\",\"time\":\"2000-12-05T10:30:55+00:00\",\"data\":\"{\\u0022Unit\\u0022:123,\\u0022Street\\u0022:\\u0022Prince St\\u0022,\\u0022ZipCode\\u0022:\\u002200001\\u0022}\"}";
+        var expectedBlob = "{\"id\":\"id-123\",\"source\":\"/backend/service\",\"specversion\":\"1.0\",\"type\":\"addressInfo\",\"time\":\"2000-12-05T10:30:55+00:00\",\"data\":{\"Unit\":123,\"Street\":\"Prince St\",\"ZipCode\":\"00001\"}}";
         Assert.Equal(expectedBlob, jsonBlob);
     }
 
@@ -270,19 +270,19 @@ public class EnvelopeSerializerTests
         var serviceProvider = _serviceCollection.BuildServiceProvider();
         var envelopeSerializer = serviceProvider.GetRequiredService<IEnvelopeSerializer>();
 
-        var innerMessageEnvelope = new MessageEnvelope<string>
+        var innerMessageEnvelope = new MessageEnvelope<AddressInfo>
         {
             Id = "66659d05-e4ff-462f-81c4-09e560e66a5c",
             Source = new Uri("/aws/messaging", UriKind.Relative),
             Version = "1.0",
             MessageTypeIdentifier = "addressInfo",
             TimeStamp = _testdate,
-            Message = JsonSerializer.Serialize(new AddressInfo
+            Message = new AddressInfo
             {
                 Street = "Prince St",
                 Unit = 123,
                 ZipCode = "00001"
-            })
+            }
         };
 
         var outerMessageEnvelope = new Dictionary<string, object>
@@ -395,7 +395,7 @@ public class EnvelopeSerializerTests
         var serializedMessage = await envelopeSerializer.SerializeAsync(messageEnvelope);
 
         // ASSERT - Check expected base 64 encoded string
-        var expectedserializedMessage = "eyJpZCI6IjEyMyIsInNvdXJjZSI6Ii9hd3MvbWVzc2FnaW5nIiwic3BlY3ZlcnNpb24iOiIxLjAiLCJ0eXBlIjoiYWRkcmVzc0luZm8iLCJ0aW1lIjoiMjAwMC0xMi0wNVQxMDozMDo1NSswMDowMCIsImRhdGEiOiJ7XHUwMDIyVW5pdFx1MDAyMjoxMjMsXHUwMDIyU3RyZWV0XHUwMDIyOlx1MDAyMlByaW5jZSBTdFx1MDAyMixcdTAwMjJaaXBDb2RlXHUwMDIyOlx1MDAyMjAwMDAxXHUwMDIyfSIsIklzLURlbGl2ZXJlZCI6ZmFsc2V9";
+        var expectedserializedMessage = "eyJpZCI6IjEyMyIsInNvdXJjZSI6Ii9hd3MvbWVzc2FnaW5nIiwic3BlY3ZlcnNpb24iOiIxLjAiLCJ0eXBlIjoiYWRkcmVzc0luZm8iLCJ0aW1lIjoiMjAwMC0xMi0wNVQxMDozMDo1NSswMDowMCIsImRhdGEiOnsiVW5pdCI6MTIzLCJTdHJlZXQiOiJQcmluY2UgU3QiLCJaaXBDb2RlIjoiMDAwMDEifSwiSXMtRGVsaXZlcmVkIjpmYWxzZX0=";
         Assert.Equal(expectedserializedMessage, serializedMessage);
 
         // ACT - Convert To Envelope from base 64 Encoded Message

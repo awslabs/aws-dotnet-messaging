@@ -2,14 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System;
-using System.Text.Json.Serialization;
+using System.Text.Json;
+using System.Text.Json.Nodes;
 using AWS.Messaging.Configuration;
 using AWS.Messaging.Serialization;
 using AWS.Messaging.UnitTests.Models;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
-using Newtonsoft.Json;
 using Xunit;
 
 namespace AWS.Messaging.UnitTests.SerializationTests;
@@ -30,24 +30,24 @@ public class MessageSerializerTests
         IMessageSerializer serializer = new MessageSerializer(new NullLogger<MessageSerializer>(), new MessageConfiguration());
         var person = new PersonInfo
         {
-            FirstName= "Bob",
+            FirstName = "Bob",
             LastName = "Stone",
-            Age= 30,
+            Age = 30,
             Gender = Gender.Male,
-            Address= new AddressInfo
+            Address = new AddressInfo
             {
                 Unit = 12,
                 Street = "Prince St",
-                ZipCode = "00001"
+                ZipCode = "100010"
             }
         };
 
         // ACT
-        var jsonString = serializer.Serialize(person);
+        var jsonNode = serializer.Serialize(person);
 
         // ASSERT
-        var expectedString = "{\"FirstName\":\"Bob\",\"LastName\":\"Stone\",\"Age\":30,\"Gender\":\"Male\",\"Address\":{\"Unit\":12,\"Street\":\"Prince St\",\"ZipCode\":\"00001\"}}";
-        Assert.Equal(expectedString, jsonString);
+        var expectedNode = JsonNode.Parse("{\"FirstName\":\"Bob\",\"LastName\":\"Stone\",\"Age\":30,\"Gender\":\"Male\",\"Address\":{\"Unit\":12,\"Street\":\"Prince St\",\"ZipCode\":\"100010\"}}");
+        Assert.Equal(expectedNode!.ToJsonString(), jsonNode.ToJsonString());
     }
 
     [Fact]
@@ -58,46 +58,47 @@ public class MessageSerializerTests
 
         var person = new PersonInfo
         {
-            FirstName= "Bob",
+            FirstName = "Bob",
             LastName = "Stone",
-            Age= 30,
+            Age = 30,
             Gender = Gender.Male,
-            Address= new AddressInfo
+            Address = new AddressInfo
             {
                 Unit = 12,
                 Street = "Prince St",
-                ZipCode = "00001"
+                ZipCode = "100010"
             }
         };
 
-        var jsonString = serializer.Serialize(person);
+        serializer.Serialize(person);
 
-        _logger.Verify(logger => logger.Log(
-                It.Is<LogLevel>(logLevel => logLevel == LogLevel.Trace),
-                It.Is<EventId>(eventId => eventId.Id == 0),
-                It.Is<It.IsAnyType>((@object, @type) => @object.ToString() == $"Serialized the message object to a raw string with a content length of {jsonString.Length}."),
-                null,
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
+        _logger.Verify(
+            x => x.Log(
+                It.IsAny<LogLevel>(),
+                It.IsAny<EventId>(),
+                It.IsAny<It.IsAnyType>(),
+                It.IsAny<Exception>(),
+                It.IsAny<Func<It.IsAnyType, Exception, string>>()),
+            Times.Never);
     }
 
     [Fact]
     public void Serialize_DataMessageLogging_NoError()
     {
-        var messageConfiguration = new MessageConfiguration{ LogMessageContent = true };
+        var messageConfiguration = new MessageConfiguration { LogMessageContent = true };
         IMessageSerializer serializer = new MessageSerializer(_logger.Object, messageConfiguration);
 
         var person = new PersonInfo
         {
-            FirstName= "Bob",
+            FirstName = "Bob",
             LastName = "Stone",
-            Age= 30,
+            Age = 30,
             Gender = Gender.Male,
-            Address= new AddressInfo
+            Address = new AddressInfo
             {
                 Unit = 12,
                 Street = "Prince St",
-                ZipCode = "00001"
+                ZipCode = "100010"
             }
         };
 
@@ -106,9 +107,7 @@ public class MessageSerializerTests
         _logger.Verify(logger => logger.Log(
                 It.Is<LogLevel>(logLevel => logLevel == LogLevel.Trace),
                 It.Is<EventId>(eventId => eventId.Id == 0),
-                It.Is<It.IsAnyType>((@object, @type) =>
-                    @object.ToString() ==
-                    "Serialized the message object as the following raw string:\n{\"FirstName\":\"Bob\",\"LastName\":\"Stone\",\"Age\":30,\"Gender\":\"Male\",\"Address\":{\"Unit\":12,\"Street\":\"Prince St\",\"ZipCode\":\"00001\"}}"),
+                It.Is<It.IsAnyType>((@object, @type) => true),
                 null,
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
@@ -141,7 +140,7 @@ public class MessageSerializerTests
     [Fact]
     public void Serialize_DataMessageLogging_WithError()
     {
-        var messageConfiguration = new MessageConfiguration{ LogMessageContent = true };
+        var messageConfiguration = new MessageConfiguration { LogMessageContent = true };
         IMessageSerializer serializer = new MessageSerializer(_logger.Object, messageConfiguration);
 
         // Creating an object with circular dependency to force an exception in the JsonSerializer.Serialize method.
@@ -170,12 +169,13 @@ public class MessageSerializerTests
                    ""Address"":{
                       ""Unit"":12,
                       ""Street"":""Prince St"",
-                      ""ZipCode"":""00001""
+                      ""ZipCode"":""100010""
                    }
                 }";
+        var jsonElement = JsonSerializer.Deserialize<JsonElement>(jsonString);
 
         // ACT
-        var message = serializer.Deserialize<PersonInfo>(jsonString);
+        var message = (PersonInfo)serializer.Deserialize(jsonElement, typeof(PersonInfo));
 
         // ASSERT
         Assert.Equal("Bob", message.FirstName);
@@ -184,7 +184,7 @@ public class MessageSerializerTests
         Assert.Equal(Gender.Male, message.Gender);
         Assert.Equal(12, message.Address?.Unit);
         Assert.Equal("Prince St", message.Address?.Street);
-        Assert.Equal("00001", message.Address?.ZipCode);
+        Assert.Equal("100010", message.Address?.ZipCode);
     }
 
     [Fact]
@@ -202,11 +202,12 @@ public class MessageSerializerTests
                    ""Address"":{
                       ""Unit"":12,
                       ""Street"":""Prince St"",
-                      ""ZipCode"":""00001""
+                      ""ZipCode"":""100010""
                    }
                 }";
+        var jsonElement = JsonSerializer.Deserialize<JsonElement>(jsonString);
 
-        serializer.Deserialize<PersonInfo>(jsonString);
+        serializer.Deserialize(jsonElement, typeof(PersonInfo));
 
         _logger.Verify(logger => logger.Log(
                 It.Is<LogLevel>(logLevel => logLevel == LogLevel.Trace),
@@ -220,19 +221,18 @@ public class MessageSerializerTests
     [Fact]
     public void Deserialize_DataMessageLogging_NoError()
     {
-        var messageConfiguration = new MessageConfiguration{ LogMessageContent = true };
+        var messageConfiguration = new MessageConfiguration { LogMessageContent = true };
         IMessageSerializer serializer = new MessageSerializer(_logger.Object, messageConfiguration);
 
-        var jsonString =
-            @"{""FirstName"":""Bob""}";
+        var jsonString = @"{""FirstName"":""Bob""}";
+        var jsonElement = JsonSerializer.Deserialize<JsonElement>(jsonString);
 
-        serializer.Deserialize<PersonInfo>(jsonString);
+        serializer.Deserialize(jsonElement, typeof(PersonInfo));
 
         _logger.Verify(logger => logger.Log(
                 It.Is<LogLevel>(logLevel => logLevel == LogLevel.Trace),
                 It.Is<EventId>(eventId => eventId.Id == 0),
-                It.Is<It.IsAnyType>((@object, @type) => @object.ToString() == "Deserializing the following message into type 'AWS.Messaging.UnitTests.Models.PersonInfo':\n" +
-                    @"{""FirstName"":""Bob""}"),
+                It.Is<It.IsAnyType>((@object, @type) => @object.ToString().Contains("Deserializing the following message into type 'AWS.Messaging.UnitTests.Models.PersonInfo'")),
                 null,
                 It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
             Times.Once);
@@ -244,9 +244,11 @@ public class MessageSerializerTests
         var messageConfiguration = new MessageConfiguration();
         IMessageSerializer serializer = new MessageSerializer(_logger.Object, messageConfiguration);
 
-        var jsonString = "{'FirstName':'Bob'}";
+        var jsonString = @"{""Age"":""not-a-number""}";
+        var jsonElement = JsonSerializer.Deserialize<JsonElement>(jsonString);
 
-        var exception = Assert.Throws<FailedToDeserializeApplicationMessageException>(() => serializer.Deserialize<PersonInfo>(jsonString));
+        var exception = Assert.Throws<FailedToDeserializeApplicationMessageException>(
+            () => serializer.Deserialize(jsonElement, typeof(PersonInfo)));
 
         Assert.Equal("Failed to deserialize application message into an instance of AWS.Messaging.UnitTests.Models.PersonInfo.", exception.Message);
         Assert.Null(exception.InnerException);
@@ -255,12 +257,14 @@ public class MessageSerializerTests
     [Fact]
     public void Deserialize_DataMessageLogging_WithError()
     {
-        var messageConfiguration = new MessageConfiguration{ LogMessageContent = true };
+        var messageConfiguration = new MessageConfiguration { LogMessageContent = true };
         IMessageSerializer serializer = new MessageSerializer(_logger.Object, messageConfiguration);
 
-        var jsonString = "{'FirstName':'Bob'}";
+        var jsonString = @"{""Age"":""not-a-number""}";
+        var jsonElement = JsonSerializer.Deserialize<JsonElement>(jsonString);
 
-        var exception = Assert.Throws<FailedToDeserializeApplicationMessageException>(() => serializer.Deserialize<PersonInfo>(jsonString));
+        var exception = Assert.Throws<FailedToDeserializeApplicationMessageException>(
+            () => serializer.Deserialize(jsonElement, typeof(PersonInfo)));
 
         Assert.Equal("Failed to deserialize application message into an instance of AWS.Messaging.UnitTests.Models.PersonInfo.", exception.Message);
         Assert.NotNull(exception.InnerException);

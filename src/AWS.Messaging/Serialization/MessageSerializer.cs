@@ -22,9 +22,18 @@ internal class MessageSerializer : IMessageSerializer
         _messageConfiguration= messageConfiguration;
     }
 
-    /// <inheritdoc/>
-    /// <exception cref="FailedToDeserializeApplicationMessageException"></exception>
-    public object Deserialize(string message, Type deserializedType)
+    /// <summary>
+    /// Deserializes a JsonElement message into the specified type.
+    /// </summary>
+    /// <param name="message">The JsonElement containing the message to deserialize.</param>
+    /// <param name="deserializedType">The target Type to deserialize the message into.</param>
+    /// <returns>An object of the specified deserializedType containing the deserialized message data.</returns>
+    /// <exception cref="FailedToDeserializeApplicationMessageException">Thrown when deserialization fails.</exception>
+    /// <remarks>
+    /// Uses System.Text.Json for deserialization with configuration options from IMessageConfiguration.
+    /// Logging behavior is controlled by the LogMessageContent configuration setting.
+    /// </remarks>
+    public object Deserialize(JsonElement message, Type deserializedType)
     {
         try
         {
@@ -52,24 +61,32 @@ internal class MessageSerializer : IMessageSerializer
         }
     }
 
-    /// <inheritdoc/>
-    /// <exception cref="FailedToSerializeApplicationMessageException"></exception>
-    public string Serialize(object message)
+    /// <summary>
+    /// Serializes an object into a JsonNode, maintaining the data in its JSON object form
+    /// to align with CloudEvents specification for data content.
+    /// </summary>
+    /// <param name="message">The object to serialize.</param>
+    /// <returns>A JsonNode representing the serialized message, preserving the JSON structure
+    /// for direct use in CloudEvents data field.</returns>
+    /// <exception cref="FailedToSerializeApplicationMessageException">Thrown when serialization fails.</exception>
+    /// <remarks>
+    /// Uses System.Text.Json for serialization with configuration options from IMessageConfiguration.
+    /// Returns a JsonNode instead of a string to maintain the JSON structure, which is optimal for
+    /// CloudEvents integration where the data field expects structured JSON content.
+    /// Logging behavior is controlled by the LogMessageContent configuration setting.
+    /// </remarks>
+    public dynamic Serialize(object message)
     {
         try
         {
             var jsonSerializerOptions = _messageConfiguration.SerializationOptions.SystemTextJsonOptions;
-            var jsonString = JsonSerializer.Serialize(message, jsonSerializerOptions);
+            var jsonNode = JsonSerializer.SerializeToNode(message, jsonSerializerOptions);
             if (_messageConfiguration.LogMessageContent)
             {
-                _logger.LogTrace("Serialized the message object as the following raw string:\n{JsonString}", jsonString);
-            }
-            else
-            {
-                _logger.LogTrace("Serialized the message object to a raw string with a content length of {ContentLength}.", jsonString.Length);
+                _logger.LogTrace("Serialized the message object as the following :\n{JsonString}", jsonNode);
             }
 
-            return jsonString;
+            return jsonNode!;
         }
         catch (JsonException) when (!_messageConfiguration.LogMessageContent)
         {

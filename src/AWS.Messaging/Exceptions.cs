@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Text.Json;
 using AWS.Messaging.Configuration;
 using AWS.Messaging.Publishers.EventBridge;
 using AWS.Messaging.Serialization;
@@ -97,7 +98,7 @@ public class InvalidSubscriberEndpointException : AWSMessagingException
 }
 
 /// <summary>
-/// Thrown if failed to deserialize the application message while invoking <see cref="IMessageSerializer.Deserialize(string, Type)"/>
+/// Thrown if failed to deserialize the application message while invoking <see cref="IMessageSerializer.Deserialize(JsonElement,Type)"/>
 /// </summary>
 public class FailedToDeserializeApplicationMessageException : AWSMessagingException
 {

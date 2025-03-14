@@ -190,7 +190,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             }
 
             // Deserialize the message content using the custom serializer
-            var dataContent = JsonPropertyHelper.GetRequiredProperty(root, "data", element => element.GetString()!);
+            var dataContent = JsonPropertyHelper.GetRequiredProperty(root, "data", element => element);
             var message = _messageSerializer.Deserialize(dataContent, messageType);
             envelope.SetMessage(message);
 
