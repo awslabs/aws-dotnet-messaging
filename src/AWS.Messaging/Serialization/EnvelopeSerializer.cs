@@ -92,6 +92,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
                 ["specversion"] = envelope.Version,
                 ["type"] = envelope.MessageTypeIdentifier,
                 ["time"] = envelope.TimeStamp,
+                ["datacontenttype"] = _messageSerializer.GetDataContentType(),
                 ["data"] = _messageSerializer.Serialize(message)
             };
 
@@ -175,7 +176,11 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
     {
         sqsMessage.Body = await InvokePreDeserializationCallback(sqsMessage.Body);
         var messageEnvelopeConfiguration = GetMessageEnvelopeConfiguration(sqsMessage);
-        var intermediateEnvelope = JsonSerializer.Deserialize<MessageEnvelope<string>>(messageEnvelopeConfiguration.MessageEnvelopeBody!)!;
+
+        var envelopeSerializer = new CloudEventEnvelopeSerializer(_messageSerializer);
+
+        JsonNode jsonNode = JsonNode.Parse(messageEnvelopeConfiguration.MessageEnvelopeBody!)!;
+        var intermediateEnvelope = envelopeSerializer.Deserialize<string>(jsonNode!);
         ValidateMessageEnvelope(intermediateEnvelope);
 
         return new ParsedEnvelopeResult(intermediateEnvelope, messageEnvelopeConfiguration);

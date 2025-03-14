@@ -97,7 +97,7 @@ public class InvalidSubscriberEndpointException : AWSMessagingException
 }
 
 /// <summary>
-/// Thrown if failed to deserialize the application message while invoking <see cref="IMessageSerializer.Deserialize(string, Type)"/>
+/// Thrown if failed to deserialize the application message while invoking/>
 /// </summary>
 public class FailedToDeserializeApplicationMessageException : AWSMessagingException
 {

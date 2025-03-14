@@ -118,7 +118,7 @@ public class EnvelopeSerializerTests
 
         // ASSERT
         // The \u0022 corresponds to quotation mark (")
-        var expectedBlob = "{\"id\":\"id-123\",\"source\":\"/backend/service\",\"specversion\":\"1.0\",\"type\":\"addressInfo\",\"time\":\"2000-12-05T10:30:55+00:00\",\"data\":\"{\\u0022Unit\\u0022:123,\\u0022Street\\u0022:\\u0022Prince St\\u0022,\\u0022ZipCode\\u0022:\\u002200001\\u0022}\"}";
+        var expectedBlob = "{\"id\":\"id-123\",\"source\":\"/backend/service\",\"specversion\":\"1.0\",\"type\":\"addressInfo\",\"time\":\"2000-12-05T10:30:55+00:00\",\"datacontenttype\":\"application/json\",\"data\":{\"Unit\":123,\"Street\":\"Prince St\",\"ZipCode\":\"00001\"}}";
         Assert.Equal(expectedBlob, jsonBlob);
     }
 

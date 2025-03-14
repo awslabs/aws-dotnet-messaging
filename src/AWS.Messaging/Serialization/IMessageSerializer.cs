@@ -1,6 +1,8 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Text.Json.Nodes;
+
 namespace AWS.Messaging.Serialization;
 
 /// <summary>
@@ -12,14 +14,14 @@ public interface IMessageSerializer
     /// Serializes the .NET message object into a string.
     /// </summary>
     /// <param name="message">The .NET object that will be serialized.</param>
-    string Serialize(object message);
+    dynamic Serialize(object message);
 
     /// <summary>
     /// Deserializes the raw string message into the .NET type.
     /// </summary>
     /// <param name="message">The string message that will be deserialized.</param>
     /// <param name="deserializedType">The .NET type that represents the deserialized message.</param>
-    object Deserialize(string message, Type deserializedType);
+    object Deserialize(dynamic message, Type deserializedType);
 
     /// <summary>
     /// Deserializes the raw string message into the .NET type.
@@ -30,4 +32,10 @@ public interface IMessageSerializer
     {
         return (T)Deserialize(message, typeof(T));
     }
+
+    /// <summary>
+    ///
+    /// </summary>
+    /// <returns></returns>
+    string GetDataContentType();
 }

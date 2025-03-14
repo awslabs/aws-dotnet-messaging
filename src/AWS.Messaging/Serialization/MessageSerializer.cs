@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using AWS.Messaging.Configuration;
 using Microsoft.Extensions.Logging;
 
@@ -23,22 +24,34 @@ internal class MessageSerializer : IMessageSerializer
     }
 
     /// <inheritdoc/>
-    /// <exception cref="FailedToDeserializeApplicationMessageException"></exception>
-    public object Deserialize(string message, Type deserializedType)
+    public dynamic Serialize(object message)
+    {
+        return JsonSerializer.SerializeToNode(message)!;
+    }
+
+
+    /// <inheritdoc/>
+    public object Deserialize(dynamic message, Type deserializedType)
     {
         try
         {
-            var jsonSerializerOptions = _messageConfiguration.SerializationOptions.SystemTextJsonOptions;
-            if (_messageConfiguration.LogMessageContent)
+            if (message is JsonNode jsonNode)
             {
-                _logger.LogTrace("Deserializing the following message into type '{DeserializedType}':\n{Message}", deserializedType, message);
-            }
-            else
-            {
-                _logger.LogTrace("Deserializing the following message into type '{DeserializedType}'", deserializedType);
+                var jsonString = jsonNode.ToJsonString();
+                if (_messageConfiguration.LogMessageContent)
+                {
+                    _logger.LogTrace("Deserializing the following message into type '{DeserializedType}':\n{Message}", deserializedType, jsonString);
+                }
+                else
+                {
+                    _logger.LogTrace("Deserializing the following message into type '{DeserializedType}'", deserializedType);
+                }
+
+                return JsonSerializer.Deserialize(jsonString, deserializedType, _messageConfiguration.SerializationOptions.SystemTextJsonOptions)
+                       ?? throw new JsonException("The deserialized application message is null.");
             }
 
-            return JsonSerializer.Deserialize(message, deserializedType, jsonSerializerOptions) ?? throw new JsonException("The deserialized application message is null.");
+            throw new ArgumentException("Message must be a JsonNode", nameof(message));
         }
         catch (JsonException) when (!_messageConfiguration.LogMessageContent)
         {
@@ -52,34 +65,6 @@ internal class MessageSerializer : IMessageSerializer
         }
     }
 
-    /// <inheritdoc/>
-    /// <exception cref="FailedToSerializeApplicationMessageException"></exception>
-    public string Serialize(object message)
-    {
-        try
-        {
-            var jsonSerializerOptions = _messageConfiguration.SerializationOptions.SystemTextJsonOptions;
-            var jsonString = JsonSerializer.Serialize(message, jsonSerializerOptions);
-            if (_messageConfiguration.LogMessageContent)
-            {
-                _logger.LogTrace("Serialized the message object as the following raw string:\n{JsonString}", jsonString);
-            }
-            else
-            {
-                _logger.LogTrace("Serialized the message object to a raw string with a content length of {ContentLength}.", jsonString.Length);
-            }
 
-            return jsonString;
-        }
-        catch (JsonException) when (!_messageConfiguration.LogMessageContent)
-        {
-            _logger.LogError("Failed to serialize application message into a string");
-            throw new FailedToSerializeApplicationMessageException("Failed to serialize application message into a string");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to serialize application message into a string");
-            throw new FailedToSerializeApplicationMessageException("Failed to serialize application message into a string", ex);
-        }
-    }
+    public string GetDataContentType() => "application/json";
 }

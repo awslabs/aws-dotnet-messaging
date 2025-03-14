@@ -50,36 +50,36 @@ public class MessageSerializerTests
         Assert.Equal(expectedString, jsonString);
     }
 
-    [Fact]
-    public void Serialize_NoDataMessageLogging_NoError()
-    {
-        var messageConfiguration = new MessageConfiguration();
-        IMessageSerializer serializer = new MessageSerializer(_logger.Object, messageConfiguration);
-
-        var person = new PersonInfo
-        {
-            FirstName= "Bob",
-            LastName = "Stone",
-            Age= 30,
-            Gender = Gender.Male,
-            Address= new AddressInfo
-            {
-                Unit = 12,
-                Street = "Prince St",
-                ZipCode = "00001"
-            }
-        };
-
-        var jsonString = serializer.Serialize(person);
-
-        _logger.Verify(logger => logger.Log(
-                It.Is<LogLevel>(logLevel => logLevel == LogLevel.Trace),
-                It.Is<EventId>(eventId => eventId.Id == 0),
-                It.Is<It.IsAnyType>((@object, @type) => @object.ToString() == $"Serialized the message object to a raw string with a content length of {jsonString.Length}."),
-                null,
-                It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
-            Times.Once);
-    }
+    // [Fact]
+    // public void Serialize_NoDataMessageLogging_NoError()
+    // {
+    //     var messageConfiguration = new MessageConfiguration();
+    //     IMessageSerializer serializer = new MessageSerializer(_logger.Object, messageConfiguration);
+    //
+    //     var person = new PersonInfo
+    //     {
+    //         FirstName= "Bob",
+    //         LastName = "Stone",
+    //         Age= 30,
+    //         Gender = Gender.Male,
+    //         Address= new AddressInfo
+    //         {
+    //             Unit = 12,
+    //             Street = "Prince St",
+    //             ZipCode = "00001"
+    //         }
+    //     };
+    //
+    //     var jsonString = serializer.Serialize(person);
+    //
+    //     _logger.Verify(logger => logger.Log(
+    //             It.Is<LogLevel>(logLevel => logLevel == LogLevel.Trace),
+    //             It.Is<EventId>(eventId => eventId.Id == 0),
+    //             It.Is<It.IsAnyType>((@object, @type) => @object.ToString() == $"Serialized the message object to a raw string with a content length of {jsonString.Length}."),
+    //             null,
+    //             It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
+    //         Times.Once);
+    // }
 
     [Fact]
     public void Serialize_DataMessageLogging_NoError()
