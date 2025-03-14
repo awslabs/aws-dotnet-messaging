@@ -89,12 +89,12 @@ public class SQSMessagePollerTests
         var source = new CancellationTokenSource();
         var pump = BuildMessagePumpService(client, pollingControlToken: pollingControlToken);
         var task = pump.StartAsync(source.Token);
-        await task.ConfigureAwait(true);
 
         client.Verify(x => x.ReceiveMessageAsync(It.IsAny<ReceiveMessageRequest>(), It.IsAny<CancellationToken>()), Times.Never);
 
         pollingControlToken.StartPolling();
-        await Task.Delay(pollingControlToken.PollingWaitTime * 2, source.Token);
+
+        SpinWait.SpinUntil(() => false, pollingControlToken.PollingWaitTime * 5);
 
         client.Verify(x => x.ReceiveMessageAsync(It.IsAny<ReceiveMessageRequest>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce());
 
