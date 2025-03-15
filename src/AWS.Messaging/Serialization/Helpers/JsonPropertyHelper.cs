@@ -3,7 +3,7 @@
 
 using System.Text.Json;
 
-namespace AWS.Messaging.Serialization;
+namespace AWS.Messaging.Serialization.Helpers;
 
 /// <summary>
 /// Provides helper methods for safely extracting values from JsonElement and Dictionary objects.
@@ -20,6 +20,12 @@ internal static class JsonPropertyHelper
     /// <returns>The converted value or default if the property doesn't exist.</returns>
     public static T? GetPropertyValue<T>(JsonElement root, string propertyName, Func<JsonElement, T> getValue)
     {
+        if (getValue == null)
+        {
+            throw new ArgumentNullException(nameof(getValue));
+        }
+
+
         return root.TryGetProperty(propertyName, out var property) ? getValue(property) : default;
     }
 

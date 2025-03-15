@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using Amazon.SQS.Model;
 using AWS.Messaging.Configuration;
+using AWS.Messaging.Serialization.Helpers;
 using AWS.Messaging.Services;
 using Microsoft.Extensions.Logging;
 using AWS.Messaging.Serialization.Parsers;

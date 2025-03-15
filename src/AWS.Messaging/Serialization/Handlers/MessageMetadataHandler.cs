@@ -3,6 +3,7 @@
 
 using System.Text.Json;
 using Amazon.SQS.Model;
+using AWS.Messaging.Serialization.Helpers;
 using MessageAttributeValue = Amazon.SimpleNotificationService.Model.MessageAttributeValue;
 
 namespace AWS.Messaging.Serialization.Handlers;

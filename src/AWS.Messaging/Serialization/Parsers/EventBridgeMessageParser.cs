@@ -36,6 +36,13 @@ namespace AWS.Messaging.Serialization.Parsers
         {
             // The detail property can be either a string or an object
             var detailElement = root.GetProperty("detail");
+
+            // Add explicit check for null detail
+            if (detailElement.ValueKind == JsonValueKind.Null)
+            {
+                throw new InvalidOperationException("EventBridge message does not contain a valid detail property");
+            }
+
             var messageBody = detailElement.ValueKind == JsonValueKind.String
                 ? detailElement.GetString()
                 : detailElement.GetRawText();
