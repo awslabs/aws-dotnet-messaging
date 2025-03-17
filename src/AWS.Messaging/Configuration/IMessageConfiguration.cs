@@ -3,6 +3,7 @@
 
 using AWS.Messaging.Configuration.Internal;
 using AWS.Messaging.Serialization;
+using AWS.Messaging.Services;
 using AWS.Messaging.Services.Backoff;
 using AWS.Messaging.Services.Backoff.Policies;
 using AWS.Messaging.Services.Backoff.Policies.Options;
@@ -93,4 +94,9 @@ public interface IMessageConfiguration
     /// Holds an instance of <see cref="CappedExponentialBackoffOptions"/> to control the behavior of <see cref="CappedExponentialBackoffPolicy"/>.
     /// </summary>
     CappedExponentialBackoffOptions CappedExponentialBackoffOptions { get; }
+
+    /// <summary>
+    /// Holds an instance of <see cref="PollingControlToken"/> to control behaviour of <see cref="IMessagePoller"/>
+    /// </summary>
+    PollingControlToken PollingControlToken { get; }
 }
