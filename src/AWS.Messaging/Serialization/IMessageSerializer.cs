@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace AWS.Messaging.Serialization;
 
@@ -17,7 +18,7 @@ public interface IMessageSerializer
     /// </summary>
     /// <param name="message">The .NET object to be serialized.</param>
     /// <returns>A serialized representation of the message in a format appropriate for the messaging system.</returns>
-    dynamic Serialize(object message);
+    JsonNode Serialize(object message);
 
     /// <summary>
     /// Deserializes a JsonElement message into the specified .NET type.
