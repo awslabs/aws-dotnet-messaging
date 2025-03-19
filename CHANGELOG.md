@@ -1,3 +1,8 @@
+## Release 2025-03-12
+
+### AWS.Messaging (0.9.5)
+* Update error message for handling scenario where subscriber mapping is not valid.
+
 ## Release 2025-02-20
 
 ### AWS.Messaging (0.9.4)
