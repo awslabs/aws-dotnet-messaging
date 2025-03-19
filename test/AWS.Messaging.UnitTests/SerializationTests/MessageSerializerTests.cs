@@ -106,7 +106,7 @@ public class MessageSerializerTests
             {
                 Unit = 12,
                 Street = "Prince St",
-                ZipCode = "10010"
+                ZipCode = "00001"
             }
         };
 
