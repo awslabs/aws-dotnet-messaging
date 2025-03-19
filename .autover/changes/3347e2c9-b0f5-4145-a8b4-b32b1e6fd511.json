@@ -2,9 +2,9 @@
   "Projects": [
     {
       "Name": "AWS.Messaging",
-      "Type": "Patch",
+      "Type": "Minor",
       "ChangelogMessages": [
-        "Refactor logic for serialization."
+        "Refactor logic for serialization by splitting messaging parsing into multiple classes."
       ]
     }
   ]
