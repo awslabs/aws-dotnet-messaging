@@ -21,9 +21,9 @@ public interface IMessageSerializer
     JsonNode Serialize(object message);
 
     /// <summary>
-    /// Deserializes a JsonElement message into the specified .NET type.
+    /// Deserializes a <see cref="System.Text.Json.JsonElement"/> message into the specified .NET type.
     /// </summary>
-    /// <param name="message">The JsonElement containing the message to be deserialized.</param>
+    /// <param name="message">The <see cref="System.Text.Json.JsonElement"/> containing the message to be deserialized.</param>
     /// <param name="deserializedType">The target .NET type for deserialization.</param>
     /// <returns>An instance of the specified type containing the deserialized data.</returns>
     object Deserialize(JsonElement message, Type deserializedType);

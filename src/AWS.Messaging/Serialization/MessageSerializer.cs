@@ -28,9 +28,9 @@ internal class MessageSerializer : IMessageSerializer
     }
 
     /// <summary>
-    /// Deserializes a JsonElement message into the specified type.
+    /// Deserializes a <see cref="System.Text.Json.JsonElement"/> message into the specified type.
     /// </summary>
-    /// <param name="message">The JsonElement containing the message to deserialize.</param>
+    /// <param name="message">The <see cref="System.Text.Json.JsonElement"/> containing the message to deserialize.</param>
     /// <param name="deserializedType">The target Type to deserialize the message into.</param>
     /// <returns>An object of the specified deserializedType containing the deserialized message data.</returns>
     /// <exception cref="FailedToDeserializeApplicationMessageException">Thrown when deserialization fails.</exception>

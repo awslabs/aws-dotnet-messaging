@@ -48,7 +48,7 @@ public abstract class MessageEnvelope
     /// The data content type.
     /// </summary>
     [JsonPropertyName("datacontenttype")]
-    public string? DataContentType { get; set; } = null!;
+    public string? DataContentType { get; set; }
 
     /// <summary>
     /// This stores different metadata that is not modeled as a top-level property in MessageEnvelope class.
