@@ -1,5 +1,6 @@
 using Amazon.Lambda.Annotations;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace LambdaMessaging;
@@ -7,21 +8,24 @@ namespace LambdaMessaging;
 [LambdaStartup]
 public class Startup
 {
-    public void ConfigureServices(IServiceCollection services)
+    public HostApplicationBuilder ConfigureHostBuilder()
     {
-        services.AddLogging(builder =>
+        var builder = new HostApplicationBuilder();
+        builder.Services.AddLogging(b =>
         {
-            builder.SetMinimumLevel(LogLevel.Trace);
-            builder.AddLambdaLogger();
+            b.SetMinimumLevel(LogLevel.Trace);
+            b.AddLambdaLogger();
         });
-        services.AddAWSMessageBus(builder =>
+        builder.Services.AddAWSMessageBus(b =>
         {
-            builder.AddMessageHandler<ChatMessageHandler, ChatMessage>("chatMessage");
+            b.AddMessageHandler<ChatMessageHandler, ChatMessage>("chatMessage");
 
-            builder.AddLambdaMessageProcessor(options =>
+            b.AddLambdaMessageProcessor(options =>
             {
                 options.MaxNumberOfConcurrentMessages = 2;
             });
         });
+
+        return builder;
     }
 }
