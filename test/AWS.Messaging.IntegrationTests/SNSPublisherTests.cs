@@ -8,6 +8,8 @@ using AWS.Messaging.IntegrationTests.Models;
 using System.Text.Json;
 using Amazon.SimpleNotificationService;
 using Amazon.SimpleNotificationService.Model;
+using AWS.Messaging.IntegrationTests.Handlers;
+using AWS.Messaging.Serialization;
 
 namespace AWS.Messaging.IntegrationTests;
 
@@ -45,6 +47,7 @@ public class SNSPublisherTests : IAsyncLifetime
         {
             builder.AddSNSPublisher<ChatMessage>(_snsTopicArn);
             builder.AddMessageSource("/aws/messaging");
+            builder.AddMessageHandler<ChatMessageHandler, ChatMessage>();
         });
         _serviceProvider = serviceCollection.BuildServiceProvider();
     }
@@ -70,18 +73,23 @@ public class SNSPublisherTests : IAsyncLifetime
         var snsEnvelope = JsonSerializer.Deserialize<SNSEnvelope>(message.Body);
         Assert.NotNull(snsEnvelope);
 
-        var envelope = JsonSerializer.Deserialize<MessageEnvelope<string>>(snsEnvelope.Message);
+        // Get the EnvelopeSerializer from the service provider
+        var envelopeSerializer = _serviceProvider.GetRequiredService<IEnvelopeSerializer>();
+
+        // Use the EnvelopeSerializer to convert the message
+        var result = await envelopeSerializer.ConvertToEnvelopeAsync(message);
+        var envelope = result.Envelope as MessageEnvelope<ChatMessage>;
+
         Assert.NotNull(envelope);
         Assert.False(string.IsNullOrEmpty(envelope.Id));
         Assert.Equal("/aws/messaging", envelope.Source.ToString());
         Assert.True(envelope.TimeStamp > publishStartTime);
         Assert.True(envelope.TimeStamp < publishEndTime);
+        Assert.Equal(typeof(ChatMessage).ToString(), envelope.MessageTypeIdentifier);
 
-        var messageType = Type.GetType(envelope.MessageTypeIdentifier);
-        Assert.NotNull(messageType);
-
-        var chatMessageObject = JsonSerializer.Deserialize(envelope.Message, messageType);
-        var chatMessage = Assert.IsType<ChatMessage>(chatMessageObject);
+        var chatMessage = envelope.Message;
+        Assert.NotNull(chatMessage);
+        Assert.IsType<ChatMessage>(chatMessage);
         Assert.Equal("Test1", chatMessage.MessageDescription);
     }
 

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.Json.Serialization;
 using AWS.Messaging.Configuration;
 using AWS.Messaging.Services;
@@ -26,13 +27,22 @@ internal class MessageSerializer : IMessageSerializer
         _jsonSerializerContext = jsonContextContainer.GetJsonSerializerContext();
     }
 
-    /// <inheritdoc/>
-    /// <exception cref="FailedToDeserializeApplicationMessageException"></exception>
+    /// <summary>
+    /// Deserializes a <see cref="System.Text.Json.JsonElement"/> message into the specified type.
+    /// </summary>
+    /// <param name="message">The <see cref="System.Text.Json.JsonElement"/> containing the message to deserialize.</param>
+    /// <param name="deserializedType">The target Type to deserialize the message into.</param>
+    /// <returns>An object of the specified deserializedType containing the deserialized message data.</returns>
+    /// <exception cref="FailedToDeserializeApplicationMessageException">Thrown when deserialization fails.</exception>
+    /// <remarks>
+    /// Uses System.Text.Json for deserialization with configuration options from IMessageConfiguration.
+    /// Logging behavior is controlled by the LogMessageContent configuration setting.
+    /// </remarks>
     [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("ReflectionAnalysis", "IL2026",
         Justification = "Consumers relying on trimming would have been required to call the AddAWSMessageBus overload that takes in JsonSerializerContext that will be used here to avoid the call that requires unreferenced code.")]
     [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("ReflectionAnalysis", "IL3050",
         Justification = "Consumers relying on trimming would have been required to call the AddAWSMessageBus overload that takes in JsonSerializerContext that will be used here to avoid the call that requires unreferenced code.")]
-    public object Deserialize(string message, Type deserializedType)
+    public object Deserialize(JsonElement message, Type deserializedType)
     {
         try
         {
@@ -73,34 +83,35 @@ internal class MessageSerializer : IMessageSerializer
         Justification = "Consumers relying on trimming would have been required to call the AddAWSMessageBus overload that takes in JsonSerializerContext that will be used here to avoid the call that requires unreferenced code.")]
     [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("ReflectionAnalysis", "IL3050",
         Justification = "Consumers relying on trimming would have been required to call the AddAWSMessageBus overload that takes in JsonSerializerContext that will be used here to avoid the call that requires unreferenced code.")]
-    public string Serialize(object message)
+    public JsonNode Serialize(object message)
     {
+        if (message == null)
+        {
+            throw new FailedToSerializeApplicationMessageException("Cannot serialize null object");
+        }
+
         try
         {
+            JsonNode jsonNode;
             var jsonSerializerOptions = _messageConfiguration.SerializationOptions.SystemTextJsonOptions;
-
-            string jsonString;
-            Type messageType = message.GetType();
 
             if (_jsonSerializerContext != null)
             {
-                jsonString = JsonSerializer.Serialize(message, messageType, _jsonSerializerContext);
+
+                jsonNode =  JsonSerializer.SerializeToNode(message, message.GetType(), _jsonSerializerContext)!;
             }
             else
             {
-                jsonString = JsonSerializer.Serialize(message, jsonSerializerOptions);
+                jsonNode = JsonSerializer.SerializeToNode(message, jsonSerializerOptions)!;
             }
 
             if (_messageConfiguration.LogMessageContent)
             {
-                _logger.LogTrace("Serialized the message object as the following raw string:\n{JsonString}", jsonString);
-            }
-            else
-            {
-                _logger.LogTrace("Serialized the message object to a raw string with a content length of {ContentLength}.", jsonString.Length);
+                _logger.LogTrace("Serialized the message object as the following :\n{JsonNode}", jsonNode);
             }
 
-            return jsonString;
+            return jsonNode;
+
         }
         catch (JsonException) when (!_messageConfiguration.LogMessageContent)
         {
@@ -113,4 +124,6 @@ internal class MessageSerializer : IMessageSerializer
             throw new FailedToSerializeApplicationMessageException("Failed to serialize application message into a string", ex);
         }
     }
+
+    public string DataContentType => "application/json";
 }
