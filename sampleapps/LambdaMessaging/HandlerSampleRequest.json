@@ -3,7 +3,7 @@
         {
             "messageId": "19dd0b57-b21e-4ac1-bd88-01bbb068cb78",
             "receiptHandle": "MessageReceiptHandle",
-            "body": "{\"id\":\"d9b4bfc7-9398-44aa-8049-85c07490fb35\",\"source\":\"/AWSLambda/FunctionName\",\"specversion\":\"1.0\",\"type\":\"ChatMessage\",\"time\":\"2024-03-22T21:01:03.5484607+00:00\",\"data\":\"{\\u0022MessageDescription\\u0022:\\u0022value2\\u0022}\"}",
+            "body": "{\"id\":\"d9b4bfc7-9398-44aa-8049-85c07490fb35\",\"source\":\"/AWSLambda/FunctionName\",\"specversion\":\"1.0\",\"type\":\"chatMessage\",\"time\":\"2024-03-22T21:01:03.5484607+00:00\",\"data\":\"{\\u0022MessageDescription\\u0022:\\u0022Testing!!!\\u0022}\"}",
             "attributes": {
                 "ApproximateReceiveCount": "1",
                 "SentTimestamp": "1523232000000",
