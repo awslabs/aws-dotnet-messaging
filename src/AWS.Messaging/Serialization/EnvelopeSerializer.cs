@@ -29,6 +29,15 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
     private readonly IMessageSourceHandler _messageSourceHandler;
     private readonly ILogger<EnvelopeSerializer> _logger;
 
+    // Order matters for the SQS parser (must be last), but SNS and EventBridge parsers
+    // can be in any order since they check for different, mutually exclusive properties
+    private static readonly IMessageParser[] _parsers = new IMessageParser[]
+    {
+        new SNSMessageParser(), // Checks for SNS-specific properties (Type, TopicArn)
+        new EventBridgeMessageParser(), // Checks for EventBridge properties (detail-type, detail)
+        new SQSMessageParser() // Fallback parser - must be last
+    };
+
     public EnvelopeSerializer(
         ILogger<EnvelopeSerializer> logger,
         IMessageConfiguration messageConfiguration,
@@ -142,12 +151,8 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             // Get the raw envelope JSON and metadata from the appropriate wrapper (SNS/EventBridge/SQS)
             var (envelopeJson, metadata) = await ParseOuterWrapper(sqsMessage);
 
-            // Parse just the type field first to get the correct mapping
-            var messageType = GetMessageTypeFromEnvelope(envelopeJson);
-            var subscriberMapping = GetAndValidateSubscriberMapping(messageType);
-
             // Create and populate the envelope with the correct type
-            var envelope = DeserializeEnvelope(envelopeJson, subscriberMapping.MessageType, subscriberMapping);
+            var (envelope, subscriberMapping) = DeserializeEnvelope(envelopeJson);
 
             // Add metadata from outer wrapper
             envelope.SQSMetadata = metadata.SQSMetadata;
@@ -169,10 +174,15 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
         }
     }
 
-    private MessageEnvelope DeserializeEnvelope(string envelopeString, Type messageType, SubscriberMapping subscriberMapping)
+    private  (MessageEnvelope Envelope, SubscriberMapping Mapping) DeserializeEnvelope(string envelopeString)
     {
         using var document = JsonDocument.Parse(envelopeString);
         var root = document.RootElement;
+
+        // Get the message type and lookup mapping first
+        var messageType = root.GetProperty("type").GetString() ?? throw new InvalidDataException("Message type identifier not found in envelope");
+        var subscriberMapping = GetAndValidateSubscriberMapping(messageType);
+
         var envelope = subscriberMapping.MessageEnvelopeFactory.Invoke();
 
         try
@@ -206,10 +216,10 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
 
             // Deserialize the message content using the custom serializer
             var dataContent = JsonPropertyHelper.GetRequiredProperty(root, "data", element => element.GetString()!);
-            var message = _messageSerializer.Deserialize(dataContent, messageType);
+            var message = _messageSerializer.Deserialize(dataContent, subscriberMapping.MessageType);
             envelope.SetMessage(message);
 
-            return envelope;
+            return (envelope, subscriberMapping);
         }
         catch (Exception ex)
         {
@@ -218,16 +228,42 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
         }
     }
 
-    private static string GetMessageTypeFromEnvelope(string json)
-    {
-        using var doc = JsonDocument.Parse(json);
-        return doc.RootElement.GetProperty("type").GetString()
-            ?? throw new InvalidDataException("Message type identifier not found in envelope");
-    }
-
     private async Task<(string MessageBody, MessageMetadata Metadata)> ParseOuterWrapper(Message sqsMessage)
     {
         sqsMessage.Body = await InvokePreDeserializationCallback(sqsMessage.Body);
+
+        // Example 1: SNS-wrapped message in SQS
+        /*
+        sqsMessage.Body = {
+            "Type": "Notification",
+            "MessageId": "abc-123",
+            "TopicArn": "arn:aws:sns:us-east-1:123456789012:MyTopic",
+            "Message": {
+                "id": "order-123",
+                "source": "com.myapp.orders",
+                "type": "OrderCreated",
+                "time": "2024-03-21T10:00:00Z",
+                "data": {
+                    "orderId": "12345",
+                    "amount": 99.99
+                }
+            }
+        }
+        */
+
+        // Example 2: Raw SQS message
+        /*
+        sqsMessage.Body = {
+            "id": "order-123",
+            "source": "com.myapp.orders",
+            "type": "OrderCreated",
+            "time": "2024-03-21T10:00:00Z",
+            "data": {
+                "orderId": "12345",
+                "amount": 99.99
+            }
+        }
+        */
 
         JsonElement rootCopy;
         using (var document = JsonDocument.Parse(sqsMessage.Body))
@@ -235,26 +271,36 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             rootCopy = document.RootElement.Clone();
         }
 
-        var parsers = new IMessageParser[]
-        {
-            new SNSMessageParser(),
-            new EventBridgeMessageParser(),
-            new SQSMessageParser()
-        };
-
         string currentMessageBody = sqsMessage.Body;
         var combinedMetadata = new MessageMetadata();
 
-        // Try all parsers in order
-        foreach (var parser in parsers.Where(p => p.CanParse(rootCopy)))
+        // Try each parser in order
+        foreach (var parser in _parsers.Where(p => p.CanParse(rootCopy)))
         {
+            // Example 1 (SNS message) flow:
+            // 1. SNSMessageParser.CanParse = true (finds "Type": "Notification")
+            // 2. parser.Parse extracts inner message and SNS metadata
+            // 3. messageBody = contents of "Message" field
+            // 4. metadata contains SNS information (TopicArn, MessageId, etc.)
+
+            // Example 2 (Raw SQS) flow:
+            // 1. SNSMessageParser.CanParse = false (no SNS properties)
+            // 2. EventBridgeMessageParser.CanParse = false (no EventBridge properties)
+            // 3. SQSMessageParser.CanParse = true (fallback)
+            // 4. messageBody = original message
+            // 5. metadata contains just SQS information
             var (messageBody, metadata) = parser.Parse(rootCopy, sqsMessage);
 
             // Update the message body if this parser extracted an inner message
             if (!string.IsNullOrEmpty(messageBody))
             {
+                // For Example 1:
+                // - Updates currentMessageBody to inner message
+                // - Creates new JsonElement for next parser to check
+
+                // For Example 2:
+                // - This block runs but messageBody is same as original
                 currentMessageBody = messageBody;
-                // Parse the new message body for the next iteration
                 using var newDoc = JsonDocument.Parse(messageBody);
                 rootCopy = newDoc.RootElement.Clone();
             }
@@ -264,6 +310,28 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             if (metadata.SNSMetadata != null) combinedMetadata.SNSMetadata = metadata.SNSMetadata;
             if (metadata.EventBridgeMetadata != null) combinedMetadata.EventBridgeMetadata = metadata.EventBridgeMetadata;
         }
+
+        // Example 1 final return:
+        // MessageBody = {
+        //     "id": "order-123",
+        //     "source": "com.myapp.orders",
+        //     "type": "OrderCreated",
+        //     "time": "2024-03-21T10:00:00Z",
+        //     "data": { ... }
+        // }
+        // Metadata = {
+        //     SNSMetadata: { TopicArn: "arn:aws...", MessageId: "abc-123" }
+        // }
+
+        // Example 2 final return:
+        // MessageBody = {
+        //     "id": "order-123",
+        //     "source": "com.myapp.orders",
+        //     "type": "OrderCreated",
+        //     "time": "2024-03-21T10:00:00Z",
+        //     "data": { ... }
+        // }
+        // Metadata = { } // Just basic SQS metadata
 
         return (currentMessageBody, combinedMetadata);
     }
