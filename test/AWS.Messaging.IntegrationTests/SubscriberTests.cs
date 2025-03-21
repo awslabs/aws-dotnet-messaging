@@ -316,7 +316,7 @@ public class SubscriberTests : IAsyncLifetime
         var timeElapsed = DateTime.UtcNow - processStartTime;
 
         var inMemoryLogger = serviceProvider.GetRequiredService<InMemoryLogger>();
-        var errorMessages = inMemoryLogger.Logs.Where(x => x.Message.Equals("_messageConfiguration does not have a valid subscriber mapping for message ID 'AWS.Messaging.IntegrationTests.Models.ChatMessage'"));
+        var errorMessages = inMemoryLogger.Logs.Where(x => x.Message.StartsWith("'") && x.Message.Contains("is not a valid subscriber mapping"));
         Assert.NotEmpty(errorMessages);
         Assert.True(errorMessages.Count() >= numberOfMessages);
         Assert.True(timeElapsed.TotalSeconds > 59);
