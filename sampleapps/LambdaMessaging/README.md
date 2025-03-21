@@ -43,9 +43,28 @@ dotnet tool install -g amazon.lambda.testtool
 dotnet lambda-test-tool start --lambda-emulator-port 5050
 ```
 
-3. Update the `Properties/launchSettings.json` file to contain the test tools's current version. You can determine the test tool's version by running `dotnet lambda-test-tool info`.
+3. Get the test tool version:
 
-4. Run the `LambdaMessaging` project. // TODO come back to this
+```
+dotnet lambda-test-tool info
+```
+
+4. Run the `LambdaMessaging` project. 
+
+There are 2 ways to run it 
+1. Visual studio (easiest way).
+    1a. Update `Properties/launchSettings.json` and replace `${VERSIOMN} with the actual test tool version.
+2. Via command line
+
+```
+cd bin\Debug\net8.0
+$env:AWS_LAMBDA_RUNTIME_API = "localhost:5050/MyFunction"
+$env:VERSION = "0.9.1" // Use the version returned from dotnet lambda-test-tool info
+
+dotnet exec --depsfile ./LambdaMessaging.deps.json --runtimeconfig ./LambdaMessaging.runtimeconfig.json "$env:USERPROFILE\.dotnet\tools\.store\amazon.lambda.testtool\$env:VERSION\amazon.lambda.testtool\$env:VERSION\content\Amazon.Lambda.RuntimeSupport\net8.0\Amazon.Lambda.RuntimeSupport.dll" LambdaMessaging::LambdaMessaging.Function_FunctionHandler_Generated::FunctionHandler
+
+
+```
 
 5. You should now see the `MyFunction` appear in the test tools function list drop down in the top right corner. Select `MyFunction`.
 
