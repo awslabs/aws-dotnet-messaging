@@ -23,12 +23,12 @@ This sample demonstrates:
 
 #### SQS Queues
 1. Create a standard SQS queue named "MPF"
-2. Create a FIFO SQS queue named "MPF.fifo"
+2. Create a FIFO SQS queue named "MPF.fifo". When creating the queue be sure to enable `Content-based deduplication`.
 3. Note the queue URLs
 
 #### SNS Topics
 1. Create a standard SNS topic named "MPF"
-2. Create a FIFO SNS topic named "MPF.fifo"
+2. Create a FIFO SNS topic named "MPF.fifo". When creating the topic be sure to enable `Content-based deduplication`.
 3. Note the topic ARNs
 
 #### EventBridge
@@ -58,7 +58,7 @@ And keep this line commented:
 #### Option B: Configuration-based (appsettings.json)
 
 1. Comment out the code-based configuration in Program.cs
-    
+
 2. Uncomment the configuration loading:
 ```
 bus.LoadConfigurationFromSettings(builder.Configuration);
@@ -108,11 +108,11 @@ bus.LoadConfigurationFromSettings(builder.Configuration);
 Ensure you have AWS credentials configured either through:
 
 - AWS CLI
-    
+
 - Environment variables
-    
+
 - AWS credentials file
-    
+
 - IAM role (if running on AWS)
 
 ## Project Structure
@@ -135,14 +135,14 @@ PublisherAPI/
 ## Running the Application
 
 1. Build the project:
-    
+
 
 ```bash
 dotnet build
 ```
 
-2. Run the application:
-    
+2. Run the application:
+
 
 ```bash
 dotnet run

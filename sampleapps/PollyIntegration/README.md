@@ -8,7 +8,6 @@ This sample demonstrates:
 - Integration of AWS Message Processing Framework with Polly for resilient messaging
 - Custom backoff handling for message processing
 - SQS message processing with typed handlers
-- OpenTelemetry integration for observability
 - Both code-based and configuration-based setup options
 
 ## Prerequisites
@@ -83,42 +82,37 @@ builder.LoadConfigurationFromSettings(context.Configuration);
 Choose Option A if you:
 
 - Want configuration close to the code
-    
+
 - Need dynamic runtime configuration
-    
+
 - Are prototyping or testing
-    
+
 
 Choose Option B if you:
 
 - Need configuration changes without recompiling
-    
+
 - Want environment-specific settings
-    
+
 - Prefer separation of configuration from code
-    
+
 - Need to manage multiple configurations
-    
+
 
 ### 3. Configure AWS Credentials
 
 Ensure you have AWS credentials configured either through:
 
-- AWS CLI ( 
-    
-    ```plaintext
-    aws configure
-    ```
-    
-    )
-    
+- AWS CLI 
+
 - Environment variables
-    
+
 - AWS credentials file
-    
+
 - IAM role (if running on AWS)
 
 ## Project Structure
+```
 PollyIntegration/
 ├── MessageHandlers/
 │   └── ChatMessageHandler.cs    # Sample message handler
@@ -127,6 +121,7 @@ PollyIntegration/
 ├── Program.cs                  # Application entry point
 ├── PollyBackoffHandler.cs      # Custom Polly integration
 └── appsettings.json           # Application configuration
+```
 
 ## Running  the Application
 1. Build the project
@@ -145,33 +140,10 @@ You can send a test message to your SQS queue using the AWS Console
 
 Using AWS CLI:
 ```
-aws sqs send-message \
-    --queue-url YOUR_QUEUE_URL \
-    --message-body '{
-        "type": "chatMessage",
-        "id": "123",
-        "source": "test",
-        "specversion": "1.0",
-        "time": "2024-01-01T00:00:00Z",
-        "data": {
-            "messageDescription": "Test message"
-        }
-    }'
+
+$messageBody = "{""""type"""":""""chatMessage"""",""""id"""":""""123"""",""""source"""":""""test"""",""""specversion"""":""""1.0"""",""""time"""":""""2024-01-01T00:00:00Z"""",""""data"""":""""{\\""""messageDescription\\"""":\\""""Test message\\""""}""""}"
+
+aws sqs send-message --queue-url YOUR_QUEUE_URL --message-body $messageBody
 
 ```
 Replace YOUR_QUEUE_URL with your actual SQS queue URL.
-
-## Additional Configuration Options
-
-### Polly Backoff Configuration
-```
-{
-    "AWS.Messaging": {
-        "BackoffPolicy": "CappedExponential",
-        "CappedExponentialBackoffOptions": {
-            "CapBackoffTime": 2
-        }
-    }
-}
-
-```

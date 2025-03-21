@@ -8,7 +8,6 @@ This sample demonstrates:
 - Configuring and using SQS message pollers
 - Implementing typed message handlers
 - Configuration-based and code-based setup options
-- OpenTelemetry integration for observability
 - Configurable backoff policies for message processing
 - Proper message handling patterns
 
@@ -88,13 +87,13 @@ builder.LoadConfigurationFromSettings(context.Configuration);
 Ensure you have AWS credentials configured either through:
 
 - AWS CLI
-    
+
 - Environment variables
-    
+
 - AWS credentials file
-    
+
 - IAM role (if running on AWS)
-    
+
 
 ## Project Structure
 ```
@@ -124,18 +123,9 @@ You can test the service by sending messages to the SQS queue using�
 
 ### Using AWS CLI:
 ```
-aws sqs send-message \
-    --queue-url YOUR_QUEUE_URL \
-    --message-body '{
-        "type": "chatMessage",
-        "id": "123",
-        "source": "test",
-        "specversion": "1.0",
-        "time": "2024-01-01T00:00:00Z",
-        "data": {
-            "messageDescription": "Test message"
-        }
-    }'
+$messageBody = "{""""type"""":""""chatMessage"""",""""id"""":""""123"""",""""source"""":""""test"""",""""specversion"""":""""1.0"""",""""time"""":""""2024-01-01T00:00:00Z"""",""""data"""":""""{\\""""messageDescription\\"""":\\""""Test message\\""""}""""}"
+
+aws sqs send-message --queue-url YOUR_QUEUE_URL --message-body $messageBody
 ```
 
 ## Configuration Options
