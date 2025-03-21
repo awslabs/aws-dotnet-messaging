@@ -24,7 +24,6 @@ LambdaMessaging/
 ├── Startup.cs # DI and service configuration
 ├── ChatMessage.cs # Message type definition
 ├── ChatMessageHandler.cs # Message handler implementation
-├── serverless.template # AWS SAM template
 ├── LambdaMessaging.csproj # Project file
 ```
 
