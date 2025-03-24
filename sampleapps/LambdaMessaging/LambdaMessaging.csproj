@@ -13,7 +13,7 @@
     <PackageReference Include="Amazon.Lambda.Annotations" Version="1.7.0" />
     <PackageReference Include="Amazon.Lambda.Serialization.SystemTextJson" Version="2.4.0" />
     <PackageReference Include="Amazon.Lambda.Logging.AspNetCore" Version="3.1.0" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.3" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\AWS.Messaging.Lambda\AWS.Messaging.Lambda.csproj" />
