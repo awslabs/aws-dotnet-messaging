@@ -606,9 +606,9 @@ public class EnvelopeSerializerTests
         // Verify the inner exception type and message
         Assert.IsType<InvalidDataException>(exception.InnerException);
         var innerException = exception.InnerException as InvalidDataException;
-        Assert.Contains("'unknownMessageType' is not a valid subscriber mapping.", innerException.Message);
-        Assert.Contains("Available mappings:", innerException.Message);
-        Assert.Contains("addressInfo", innerException.Message);
+        Assert.Contains("'unknownMessageType' is not a valid subscriber mapping.", innerException?.Message);
+        Assert.Contains("Available mappings:", innerException?.Message);
+        Assert.Contains("addressInfo", innerException?.Message);
     }
 
 }

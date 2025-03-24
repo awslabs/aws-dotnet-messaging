@@ -160,9 +160,14 @@ public class SubscriberTests : IAsyncLifetime
             {
                 options.VisibilityTimeoutExtensionThreshold = 3; // and a message is eligible for extension after it's been processing at least 3 seconds
                 options.MaxNumberOfConcurrentMessages = 10;
+                options.WaitTimeSeconds = 2;
             });
             builder.AddMessageHandler<ChatMessageHandler, ChatMessage>();
             builder.AddMessageSource("/aws/messaging");
+            builder.ConfigureBackoffPolicy(policyBuilder =>
+            {
+                policyBuilder.UseNoBackoff();
+            });
         });
         var serviceProvider = _serviceCollection.BuildServiceProvider();
 
@@ -181,16 +186,22 @@ public class SubscriberTests : IAsyncLifetime
         Assert.NotNull(pump);
         var source = new CancellationTokenSource();
 
-        await pump.StartAsync(source.Token).ConfigureAwait(true);
+        await pump.StartAsync(source.Token);
 
         // Wait for the pump to shut down after processing the expected number of messages,
         // with some padding to ensure messages aren't being processed more than once
-        source.CancelAfter(3000);
+        source.CancelAfter(30_000);
+
+        var tempStorage = serviceProvider.GetRequiredService<TempStorage<ChatMessage>>();
+        while (tempStorage.Messages.Count < 5 && !source.IsCancellationRequested)
+        {
+            await Task.Delay(200, source.Token);
+        }
 
         // Stop polling and wait for the polling cycle to complete with a buffer
         pollingControlToken.StopPolling();
 
-        SpinWait.SpinUntil(() => false, pollingControlToken.PollingWaitTime * 3);
+        await Task.Delay(5_000);
 
         // Publish the next 5 messages that should not be received due to stopping polling
         for (int i = 5; i < 10; i++)
@@ -204,7 +215,6 @@ public class SubscriberTests : IAsyncLifetime
         SpinWait.SpinUntil(() => source.IsCancellationRequested);
 
         var inMemoryLogger = serviceProvider.GetRequiredService<InMemoryLogger>();
-        var tempStorage = serviceProvider.GetRequiredService<TempStorage<ChatMessage>>();
 
         Assert.Empty(inMemoryLogger.Logs.Where(x => x.Exception is AmazonSQSException ex && ex.ErrorCode.Equals("AWS.SimpleQueueService.TooManyEntriesInBatchRequest")));
         Assert.Equal(5, tempStorage.Messages.Count);
