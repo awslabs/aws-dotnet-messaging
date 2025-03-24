@@ -87,7 +87,7 @@ public class SQSMessagePollerTests
         pollingControlToken.StopPolling();
 
         var source = new CancellationTokenSource();
-        var pump = BuildMessagePumpService(client, pollingControlToken: pollingControlToken);
+        var pump = BuildMessagePumpService(client, options => { options.WaitTimeSeconds = 1; }, pollingControlToken: pollingControlToken);
         var task = pump.StartAsync(source.Token);
 
         client.Verify(x => x.ReceiveMessageAsync(It.IsAny<ReceiveMessageRequest>(), It.IsAny<CancellationToken>()), Times.Never);

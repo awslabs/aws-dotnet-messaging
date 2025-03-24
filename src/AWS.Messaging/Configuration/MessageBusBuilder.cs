@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Collections.Concurrent;
 using AWS.Messaging.Configuration.Internal;
 using AWS.Messaging.Publishers;
 using AWS.Messaging.Publishers.EventBridge;
@@ -26,7 +27,7 @@ namespace AWS.Messaging.Configuration;
 /// </summary>
 public class MessageBusBuilder : IMessageBusBuilder
 {
-    private static readonly Dictionary<IServiceCollection, MessageConfiguration> _messageConfigurations = new();
+    private static readonly ConcurrentDictionary<IServiceCollection, MessageConfiguration> _messageConfigurations = new();
     private readonly MessageConfiguration _messageConfiguration;
     private readonly IList<ServiceDescriptor> _additionalServices = new List<ServiceDescriptor>();
     private readonly IServiceCollection _serviceCollection;
