@@ -22,9 +22,11 @@ Publishers can also be configured if you expect the Lambda function to publish m
 [LambdaStartup]
 public class Startup
 {
-    public void ConfigureServices(IServiceCollection services)
+   public HostApplicationBuilder ConfigureHostBuilder()
     {
-        services.AddAWSMessageBus(builder =>
+        var hostBuilder = new HostApplicationBuilder();
+        
+        hostBuilder.Services.AddAWSMessageBus(builder =>
         {
             builder.AddMessageHandler<OrderHandler, OrderInfo>();
 
@@ -33,6 +35,8 @@ public class Startup
                 options.MaxNumberOfConcurrentMessages = 4;
             });
         });
+        
+        return hostBuilder;
     }
 }
 ```
