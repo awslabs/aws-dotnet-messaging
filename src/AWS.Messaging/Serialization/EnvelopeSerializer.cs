@@ -265,75 +265,78 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
         }
         */
 
-        JsonElement rootCopy;
-        using (var document = JsonDocument.Parse(sqsMessage.Body))
+        var document = JsonDocument.Parse(sqsMessage.Body);
+
+        try
         {
-            rootCopy = document.RootElement.Clone();
-        }
+            string currentMessageBody = sqsMessage.Body;
+            var combinedMetadata = new MessageMetadata();
 
-        string currentMessageBody = sqsMessage.Body;
-        var combinedMetadata = new MessageMetadata();
-
-        // Try each parser in order
-        foreach (var parser in _parsers.Where(p => p.CanParse(rootCopy)))
-        {
-            // Example 1 (SNS message) flow:
-            // 1. SNSMessageParser.CanParse = true (finds "Type": "Notification")
-            // 2. parser.Parse extracts inner message and SNS metadata
-            // 3. messageBody = contents of "Message" field
-            // 4. metadata contains SNS information (TopicArn, MessageId, etc.)
-
-            // Example 2 (Raw SQS) flow:
-            // 1. SNSMessageParser.CanParse = false (no SNS properties)
-            // 2. EventBridgeMessageParser.CanParse = false (no EventBridge properties)
-            // 3. SQSMessageParser.CanParse = true (fallback)
-            // 4. messageBody = original message
-            // 5. metadata contains just SQS information
-            var (messageBody, metadata) = parser.Parse(rootCopy, sqsMessage);
-
-            // Update the message body if this parser extracted an inner message
-            if (!string.IsNullOrEmpty(messageBody))
+            // Try each parser in order
+            foreach (var parser in _parsers.Where(p => p.CanParse(document.RootElement)))
             {
-                // For Example 1:
-                // - Updates currentMessageBody to inner message
-                // - Creates new JsonElement for next parser to check
+                // Example 1 (SNS message) flow:
+                // 1. SNSMessageParser.CanParse = true (finds "Type": "Notification")
+                // 2. parser.Parse extracts inner message and SNS metadata
+                // 3. messageBody = contents of "Message" field
+                // 4. metadata contains SNS information (TopicArn, MessageId, etc.)
 
-                // For Example 2:
-                // - This block runs but messageBody is same as original
-                currentMessageBody = messageBody;
-                using var newDoc = JsonDocument.Parse(messageBody);
-                rootCopy = newDoc.RootElement.Clone();
+                // Example 2 (Raw SQS) flow:
+                // 1. SNSMessageParser.CanParse = false (no SNS properties)
+                // 2. EventBridgeMessageParser.CanParse = false (no EventBridge properties)
+                // 3. SQSMessageParser.CanParse = true (fallback)
+                // 4. messageBody = original message
+                // 5. metadata contains just SQS information
+                var (messageBody, metadata) = parser.Parse(document.RootElement, sqsMessage);
+
+                // Update the message body if this parser extracted an inner message
+                if (!string.IsNullOrEmpty(messageBody))
+                {
+                    // For Example 1:
+                    // - Updates currentMessageBody to inner message
+                    // - Creates new JsonElement for next parser to check
+
+                    // For Example 2:
+                    // - This block runs but messageBody is same as original
+                    currentMessageBody = messageBody;
+                    document.Dispose();
+                    document = JsonDocument.Parse(messageBody);
+                }
+
+                // Combine metadata
+                if (metadata.SQSMetadata != null) combinedMetadata.SQSMetadata = metadata.SQSMetadata;
+                if (metadata.SNSMetadata != null) combinedMetadata.SNSMetadata = metadata.SNSMetadata;
+                if (metadata.EventBridgeMetadata != null) combinedMetadata.EventBridgeMetadata = metadata.EventBridgeMetadata;
             }
 
-            // Combine metadata
-            if (metadata.SQSMetadata != null) combinedMetadata.SQSMetadata = metadata.SQSMetadata;
-            if (metadata.SNSMetadata != null) combinedMetadata.SNSMetadata = metadata.SNSMetadata;
-            if (metadata.EventBridgeMetadata != null) combinedMetadata.EventBridgeMetadata = metadata.EventBridgeMetadata;
+            // Example 1 final return:
+            // MessageBody = {
+            //     "id": "order-123",
+            //     "source": "com.myapp.orders",
+            //     "type": "OrderCreated",
+            //     "time": "2024-03-21T10:00:00Z",
+            //     "data": { ... }
+            // }
+            // Metadata = {
+            //     SNSMetadata: { TopicArn: "arn:aws...", MessageId: "abc-123" }
+            // }
+
+            // Example 2 final return:
+            // MessageBody = {
+            //     "id": "order-123",
+            //     "source": "com.myapp.orders",
+            //     "type": "OrderCreated",
+            //     "time": "2024-03-21T10:00:00Z",
+            //     "data": { ... }
+            // }
+            // Metadata = { } // Just basic SQS metadata
+
+            return (currentMessageBody, combinedMetadata);
         }
-
-        // Example 1 final return:
-        // MessageBody = {
-        //     "id": "order-123",
-        //     "source": "com.myapp.orders",
-        //     "type": "OrderCreated",
-        //     "time": "2024-03-21T10:00:00Z",
-        //     "data": { ... }
-        // }
-        // Metadata = {
-        //     SNSMetadata: { TopicArn: "arn:aws...", MessageId: "abc-123" }
-        // }
-
-        // Example 2 final return:
-        // MessageBody = {
-        //     "id": "order-123",
-        //     "source": "com.myapp.orders",
-        //     "type": "OrderCreated",
-        //     "time": "2024-03-21T10:00:00Z",
-        //     "data": { ... }
-        // }
-        // Metadata = { } // Just basic SQS metadata
-
-        return (currentMessageBody, combinedMetadata);
+        finally
+        {
+            document.Dispose();
+        }
     }
 
     private SubscriberMapping GetAndValidateSubscriberMapping(string messageTypeIdentifier)
