@@ -1,0 +1,15 @@
+version: 2
+updates:
+  - package-ecosystem: "nuget"
+    directories:
+      - "src"
+      - "test"
+    schedule:
+      interval: "daily"
+  - package-ecosystem: "dotnet-sdk"
+    directories:
+      - "src"
+      - "test"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
