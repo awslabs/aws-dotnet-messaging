@@ -431,7 +431,7 @@ To use the AWS Message Processing Framework for .NET to poll messages from an _e
 		{
 			"Sid": "Statement1",
 			"Effect": "Allow",
-			"Action": ["sqs:receivemessage", "sqs:deletemessage"],
+			"Action": ["sqs:receivemessage", "sqs:deletemessage", "sqs:changemessagevisibility"],
 			"Resource": ["arn:aws:sqs:<region>:<account>:<queue>"]
 		}
 	]
