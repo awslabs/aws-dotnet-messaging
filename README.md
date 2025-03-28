@@ -372,6 +372,72 @@ You can customize how the message envelope is configured and read:
     * `ConfigureSerializationOptions` on `MessageBusBuilder` allows you to configure the [`System.Text.Json.JsonSerializerOptions`](https://learn.microsoft.com/en-us/dotnet/api/system.text.json.jsonserializeroptions) that will be used when serializing and deserializing the message.
     * To inject additional attributes or transform the message envelope once the framework builds it, you can implement `ISerializationCallback` and register that via `AddSerializationCallback` on `MessageBusBuilder`.
 
+# Permissions
+To use the AWS Message Processing Framework for .NET to publish a message to an _existing_ AWS SQS Queue, the following permissions are required:
+```
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "Statement1",
+            "Effect": "Allow",
+            "Action": [
+                "sqs:sendmessage"
+            ],
+            "Resource": [
+                "arn:aws:sqs:<region>:<account>:<queue>"
+            ]
+        }
+    ]
+}
+```
+To use the AWS Message Processing Framework for .NET to publish a message to an _existing_ AWS SNS Topic, the following permissions are required:
+```
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "Statement1",
+            "Effect": "Allow",
+            "Action": [
+                "sns:Publish"
+            ],
+            "Resource": [
+                "arn:aws:sns:<region>:<account>:<topic>"
+            ]
+        }
+    ]
+}
+```
+To use the AWS Message Processing Framework for .NET to publish a message to an _existing_ AWS EventBridge Event Bus, the following permissions are required:
+```
+{
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Sid": "Statement1",
+			"Effect": "Allow",
+			"Action": ["events:PutEvents"],
+			"Resource": ["arn:aws:events:<region>:<account>:event-bus/<bus>"]
+		}
+	]
+}
+```
+To use the AWS Message Processing Framework for .NET to poll messages from an _existing_ AWS SQS Queue, the following permissions are required:
+```
+{
+	"Version": "2012-10-17",
+	"Statement": [
+		{
+			"Sid": "Statement1",
+			"Effect": "Allow",
+			"Action": ["sqs:receivemessage", "sqs:deletemessage"],
+			"Resource": ["arn:aws:sqs:<region>:<account>:<queue>"]
+		}
+	]
+}
+```
+
 # Getting Help
 For feature requests or issues using this framework please open an [issue in this repository](https://github.com/aws/aws-dotnet-messaging/issues).
 
