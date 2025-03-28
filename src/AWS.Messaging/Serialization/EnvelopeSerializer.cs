@@ -1,13 +1,12 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Amazon.SQS.Model;
 using AWS.Messaging.Configuration;
-using AWS.Messaging.Internal;
 using AWS.Messaging.Serialization.Helpers;
+using AWS.Messaging.Internal;
 using AWS.Messaging.Services;
 using Microsoft.Extensions.Logging;
 using AWS.Messaging.Serialization.Parsers;
@@ -104,7 +103,8 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
                 ["specversion"] = envelope.Version,
                 ["type"] = envelope.MessageTypeIdentifier,
                 ["time"] = envelope.TimeStamp,
-                ["data"] = _messageSerializer.Serialize(message)
+                ["datacontenttype"] = _messageSerializer.DataContentType,
+                ["data"] = JsonNode.Parse(_messageSerializer.Serialize(message)) // parse the string to get the value as the actual json node.
             };
 
             // Write any Metadata as top-level keys
@@ -204,6 +204,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             envelope.Version = JsonPropertyHelper.GetRequiredProperty(root, "specversion", element => element.GetString()!);
             envelope.MessageTypeIdentifier = JsonPropertyHelper.GetRequiredProperty(root, "type", element => element.GetString()!);
             envelope.TimeStamp = JsonPropertyHelper.GetRequiredProperty(root, "time", element => element.GetDateTimeOffset());
+            envelope.DataContentType = JsonPropertyHelper.GetStringProperty(root, "datacontenttype");
 
             // Handle metadata - copy any properties that aren't standard envelope properties
             foreach (var property in root.EnumerateObject())
@@ -215,7 +216,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             }
 
             // Deserialize the message content using the custom serializer
-            var dataContent = JsonPropertyHelper.GetRequiredProperty(root, "data", element => element.GetString()!);
+            var dataContent = JsonPropertyHelper.GetRequiredProperty(root, "data", element => element.GetRawText());
             var message = _messageSerializer.Deserialize(dataContent, subscriberMapping.MessageType);
             envelope.SetMessage(message);
 

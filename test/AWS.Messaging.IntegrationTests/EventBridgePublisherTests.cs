@@ -12,6 +12,8 @@ using System.Collections.Generic;
 using Amazon.SQS.Model;
 using Amazon.SecurityToken;
 using Amazon.SecurityToken.Model;
+using AWS.Messaging.IntegrationTests.Handlers;
+using AWS.Messaging.Serialization;
 
 namespace AWS.Messaging.IntegrationTests;
 
@@ -105,6 +107,7 @@ public class EventBridgePublisherTests : IAsyncLifetime
         {
             builder.AddEventBridgePublisher<ChatMessage>(_eventBusArn);
             builder.AddMessageSource("/aws/messaging");
+            builder.AddMessageHandler<ChatMessageHandler, ChatMessage>();
         });
         _serviceProvider = serviceCollection.BuildServiceProvider();
     }
@@ -126,23 +129,23 @@ public class EventBridgePublisherTests : IAsyncLifetime
         var receiveMessageResponse = await _sqsClient.ReceiveMessageAsync(_sqsQueueUrl);
         var message = Assert.Single(receiveMessageResponse.Messages);
 
-        // EventBridge adds an external envelope which we need to strip away
-        var eventBridgeEnvelope = JsonSerializer.Deserialize<EventBridgeEnvelope>(message.Body);
-        Assert.NotNull(eventBridgeEnvelope);
+        var envelopeSerializer = _serviceProvider.GetRequiredService<IEnvelopeSerializer>();
 
-        Assert.NotNull(eventBridgeEnvelope.Detail);
-        var envelope = eventBridgeEnvelope.Detail;
+        // Use the EnvelopeSerializer to convert the message
+        var result = await envelopeSerializer.ConvertToEnvelopeAsync(message);
+        var envelope = result.Envelope as MessageEnvelope<ChatMessage>;
+
+        Assert.NotNull(envelope);
         Assert.False(string.IsNullOrEmpty(envelope.Id));
         Assert.Equal("/aws/messaging", envelope.Source.ToString());
         Assert.True(envelope.TimeStamp > publishStartTime);
         Assert.True(envelope.TimeStamp < publishEndTime);
+        Assert.Equal(typeof(ChatMessage).ToString(), envelope.MessageTypeIdentifier);
 
-        var messageType = Type.GetType(eventBridgeEnvelope.Detail.MessageTypeIdentifier);
-        Assert.NotNull(messageType);
-
-        var chatMessageObject = JsonSerializer.Deserialize(eventBridgeEnvelope.Detail.Message, messageType);
-        var chatMessage = Assert.IsType<ChatMessage>(chatMessageObject);
-        Assert.Equal("Test1", chatMessage.MessageDescription);
+        var chatMessage = envelope.Message;
+        Assert.NotNull(chatMessage);
+        Assert.IsType<ChatMessage>(chatMessage);
+        Assert.Equal("Test1", chatMessage.MessageDescription);;
     }
 
     public async Task DisposeAsync()

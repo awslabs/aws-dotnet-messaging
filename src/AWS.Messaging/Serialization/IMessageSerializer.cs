@@ -30,4 +30,9 @@ public interface IMessageSerializer
     {
         return (T)Deserialize(message, typeof(T));
     }
+
+    /// <summary>
+    /// The data content type
+    /// </summary>
+    string DataContentType { get; }
 }
