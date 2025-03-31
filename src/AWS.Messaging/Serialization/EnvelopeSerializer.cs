@@ -78,7 +78,8 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             Version = CLOUD_EVENT_SPEC_VERSION,
             MessageTypeIdentifier = publisherMapping.MessageTypeIdentifier,
             TimeStamp = timeStamp,
-            Message = message
+            Message = message,
+            DataContentType = _messageSerializer.DataContentType
         };
     }
 
@@ -103,9 +104,18 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
                 ["specversion"] = envelope.Version,
                 ["type"] = envelope.MessageTypeIdentifier,
                 ["time"] = envelope.TimeStamp,
-                ["datacontenttype"] = _messageSerializer.DataContentType,
-                ["data"] = JsonNode.Parse(_messageSerializer.Serialize(message)) // parse the string to get the value as the actual json node.
+                ["datacontenttype"] = envelope.DataContentType ?? "application/json"
             };
+
+            if (IsJsonContentType(envelope.DataContentType))
+            {
+                blob["data"] = JsonNode.Parse(_messageSerializer.Serialize(message));
+            }
+            else
+            {
+                blob["data"] = _messageSerializer.Serialize(message);
+
+            }
 
             // Write any Metadata as top-level keys
             // This may be useful for any extensions defined in
@@ -174,6 +184,34 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
         }
     }
 
+    private bool IsJsonContentType(string? dataContentType)
+    {
+        if (string.IsNullOrWhiteSpace(dataContentType))
+        {
+            // If dataContentType is not specified, it should be treated as "application/json"
+            return true;
+        }
+
+        // Remove any parameters from the content type
+        var mediaType = dataContentType.Split(';')[0].Trim().ToLower();
+
+        // Check if the media type is "application/json"
+        if (mediaType == "application/json")
+        {
+            return true;
+        }
+
+        // Check if the media subtype is "json" or ends with "+json"
+        var parts = mediaType.Split('/');
+        if (parts.Length == 2)
+        {
+            var subtype = parts[1];
+            return subtype == "json" || subtype.EndsWith("+json");
+        }
+
+        return false;
+    }
+
     private  (MessageEnvelope Envelope, SubscriberMapping Mapping) DeserializeEnvelope(string envelopeString)
     {
         using var document = JsonDocument.Parse(envelopeString);
@@ -216,7 +254,10 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             }
 
             // Deserialize the message content using the custom serializer
-            var dataContent = JsonPropertyHelper.GetRequiredProperty(root, "data", element => element.GetRawText());
+            var dataContent = JsonPropertyHelper.GetRequiredProperty(root, "data", element =>
+                IsJsonContentType(envelope.DataContentType)
+                    ? element.GetRawText()
+                    : element.GetString()!);
             var message = _messageSerializer.Deserialize(dataContent, subscriberMapping.MessageType);
             envelope.SetMessage(message);
 

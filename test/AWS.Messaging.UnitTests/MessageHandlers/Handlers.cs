@@ -44,6 +44,16 @@ public class ChatMessageHandlerWithDependencies : IMessageHandler<ChatMessage>
     }
 }
 
+public class PlainTextHandler : IMessageHandler<string>
+{
+    public Task<MessageProcessStatus> HandleAsync(MessageEnvelope<string> messageEnvelope, CancellationToken token = default)
+    {
+        // Simple handler implementation for test purposes
+        return Task.FromResult(MessageProcessStatus.Success());
+    }
+}
+
+
 /// <summary>
 /// Implements handling for mutiple message types
 /// </summary>

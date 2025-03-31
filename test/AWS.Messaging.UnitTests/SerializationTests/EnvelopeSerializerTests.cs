@@ -35,6 +35,7 @@ public class EnvelopeSerializerTests
         {
             builder.AddSQSPublisher<AddressInfo>("sqsQueueUrl", "addressInfo");
             builder.AddMessageHandler<AddressInfoHandler, AddressInfo>("addressInfo");
+            builder.AddMessageHandler<PlainTextHandler, string>("plaintext");
             builder.AddMessageSource("/aws/messaging");
         });
 
@@ -736,6 +737,158 @@ public class EnvelopeSerializerTests
         Assert.Contains("Available mappings:", innerException.Message);
         Assert.Contains("addressInfo", innerException.Message);
     }
+
+    [Fact]
+    public async Task SerializeEnvelope_WithNonJsonContentType_PlainText()
+    {
+        // ARRANGE
+        var plainTextContent = "Hello, this is plain text content";
+        var envelope = new MessageEnvelope<string>
+        {
+            Id = "id-123",
+            Source = new Uri("/backend/service", UriKind.Relative),
+            Version = "1.0",
+            MessageTypeIdentifier = "plaintext",
+            TimeStamp = _testdate,
+            Message = plainTextContent,
+            DataContentType = "text/plain"
+        };
+
+        var serviceProvider = _serviceCollection.BuildServiceProvider();
+        var envelopeSerializer = serviceProvider.GetRequiredService<IEnvelopeSerializer>();
+
+        // ACT
+        var jsonBlob = await envelopeSerializer.SerializeAsync(envelope);
+
+        // ASSERT
+        var expectedBlob = "{\"id\":\"id-123\",\"source\":\"/backend/service\",\"specversion\":\"1.0\"," +
+                           "\"type\":\"plaintext\",\"time\":\"2000-12-05T10:30:55+00:00\"," +
+                           "\"datacontenttype\":\"text/plain\",\"data\":\"\\u0022Hello, this is plain text content\\u0022\"}";
+        Assert.Equal(expectedBlob, jsonBlob);
+    }
+
+    [Fact]
+    public async Task SerializeEnvelope_WithNonJsonContentType_Xml()
+    {
+        // ARRANGE
+        var xmlContent = "<root><message>Test XML Content</message></root>";
+        var envelope = new MessageEnvelope<string>
+        {
+            Id = "id-123",
+            Source = new Uri("/backend/service", UriKind.Relative),
+            Version = "1.0",
+            MessageTypeIdentifier = "xml",
+            TimeStamp = _testdate,
+            Message = xmlContent,
+            DataContentType = "application/xml"
+        };
+
+        var serviceProvider = _serviceCollection.BuildServiceProvider();
+        var envelopeSerializer = serviceProvider.GetRequiredService<IEnvelopeSerializer>();
+
+        // ACT
+        var jsonBlob = await envelopeSerializer.SerializeAsync(envelope);
+
+        // ASSERT
+        var expectedBlob = "{\"id\":\"id-123\",\"source\":\"/backend/service\",\"specversion\":\"1.0\",\"type\":\"xml\",\"time\":\"2000-12-05T10:30:55+00:00\",\"datacontenttype\":\"application/xml\",\"data\":\"\\u0022\\\\u003Croot\\\\u003E\\\\u003Cmessage\\\\u003ETest XML Content\\\\u003C/message\\\\u003E\\\\u003C/root\\\\u003E\\u0022\"}";
+        Assert.Equal(expectedBlob, jsonBlob);
+    }
+
+    [Fact]
+    //[InlineData("text/html", "<html><body>Hello World</body></html>")]
+    public async Task SerializeEnvelope_WithCSV()
+    {
+
+        var content = "column1,column2\nvalue1,value2";
+        // ARRANGE
+        var envelope = new MessageEnvelope<string>
+        {
+            Id = "id-123",
+            Source = new Uri("/backend/service", UriKind.Relative),
+            Version = "1.0",
+            MessageTypeIdentifier = "custom",
+            TimeStamp = _testdate,
+            Message = content,
+            DataContentType = "text/csv"
+        };
+
+        var serviceProvider = _serviceCollection.BuildServiceProvider();
+        var envelopeSerializer = serviceProvider.GetRequiredService<IEnvelopeSerializer>();
+
+        // ACT
+        var jsonBlob = await envelopeSerializer.SerializeAsync(envelope);
+
+        // ASSERT
+        var expectedBlob = $"{{\"id\":\"id-123\",\"source\":\"/backend/service\",\"specversion\":\"1.0\",\"type\":\"custom\",\"time\":\"2000-12-05T10:30:55+00:00\",\"datacontenttype\":\"text/csv\",\"data\":\"\\u0022column1,column2\\\\nvalue1,value2\\u0022\"}}";
+        Assert.Equal(expectedBlob, jsonBlob);
+    }
+
+    [Fact]
+    public async Task SerializeEnvelope_WithHTML()
+    {
+
+        var content = "<html><body>Hello World</body></html>";
+        // ARRANGE
+        var envelope = new MessageEnvelope<string>
+        {
+            Id = "id-123",
+            Source = new Uri("/backend/service", UriKind.Relative),
+            Version = "1.0",
+            MessageTypeIdentifier = "custom",
+            TimeStamp = _testdate,
+            Message = content,
+            DataContentType = "text/html"
+        };
+
+        var serviceProvider = _serviceCollection.BuildServiceProvider();
+        var envelopeSerializer = serviceProvider.GetRequiredService<IEnvelopeSerializer>();
+
+        // ACT
+        var jsonBlob = await envelopeSerializer.SerializeAsync(envelope);
+
+        // ASSERT
+        var expectedBlob = "{\"id\":\"id-123\",\"source\":\"/backend/service\",\"specversion\":\"1.0\",\"type\":\"custom\",\"time\":\"2000-12-05T10:30:55+00:00\",\"datacontenttype\":\"text/html\",\"data\":\"\\u0022\\\\u003Chtml\\\\u003E\\\\u003Cbody\\\\u003EHello World\\\\u003C/body\\\\u003E\\\\u003C/html\\\\u003E\\u0022\"}";
+        Assert.Equal(expectedBlob, jsonBlob);
+    }
+
+    [Fact]
+    public async Task ConvertToEnvelope_WithNonJsonContentType()
+    {
+        // ARRANGE
+        var serviceProvider = _serviceCollection.BuildServiceProvider();
+        var envelopeSerializer = serviceProvider.GetRequiredService<IEnvelopeSerializer>();
+        var plainTextContent = "Hello, this is plain text content";
+        var messageEnvelope = new MessageEnvelope<string>
+        {
+            Id = "id-123",
+            Source = new Uri("/aws/messaging", UriKind.Relative),
+            Version = "1.0",
+            MessageTypeIdentifier = "plaintext",
+            TimeStamp = _testdate,
+            Message = plainTextContent,
+            DataContentType = "text/plain"
+        };
+
+        var sqsMessage = new Message
+        {
+            Body = await envelopeSerializer.SerializeAsync(messageEnvelope),
+            ReceiptHandle = "receipt-handle"
+        };
+
+        // ACT
+        var result = await envelopeSerializer.ConvertToEnvelopeAsync(sqsMessage);
+
+        // ASSERT
+        var envelope = (MessageEnvelope<string>)result.Envelope;
+        Assert.NotNull(envelope);
+        Assert.Equal(_testdate, envelope.TimeStamp);
+        Assert.Equal("1.0", envelope.Version);
+        Assert.Equal("/aws/messaging", envelope.Source?.ToString());
+        Assert.Equal("plaintext", envelope.MessageTypeIdentifier);
+        Assert.Equal("text/plain", envelope.DataContentType);
+        Assert.Equal(plainTextContent, envelope.Message);
+    }
+
 
 }
 
