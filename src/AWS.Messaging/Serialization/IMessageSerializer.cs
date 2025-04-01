@@ -9,9 +9,10 @@ namespace AWS.Messaging.Serialization;
 public interface IMessageSerializer
 {
     /// <summary>
-    /// Serializes the .NET message object into a string.
+    /// Serializes the .NET message object into a string and specifies the content type of the serialized data.
     /// </summary>
     /// <param name="message">The .NET object that will be serialized.</param>
+    /// <returns>A <see cref="MessageSerializerResults"/> containing the serialized string and its content type.</returns>
     MessageSerializerResults Serialize(object message);
 
     /// <summary>
