@@ -798,6 +798,86 @@ public class EnvelopeSerializerTests
         Assert.Equal(plainTextContent, envelope.Message);
     }
 
+    [Fact]
+    public async Task ConvertToEnvelope_WithCustomJsonContentType()
+    {
+        // ARRANGE
+        var mockMessageSerializer = new Mock<IMessageSerializer>();
+        _serviceCollection.RemoveAll<IMessageSerializer>();
+        _serviceCollection.AddSingleton(mockMessageSerializer.Object);
+
+        var serviceProvider = _serviceCollection.BuildServiceProvider();
+        var envelopeSerializer = serviceProvider.GetRequiredService<IEnvelopeSerializer>();
+
+        var message = new AddressInfo
+        {
+            Street = "Prince St",
+            Unit = 123,
+            ZipCode = "00001"
+        };
+
+        // Mock serializer behavior
+        var serializedMessage = JsonSerializer.Serialize(message);
+        mockMessageSerializer
+            .Setup(x => x.Serialize(It.IsAny<object>()))
+            .Returns(new MessageSerializerResults(serializedMessage, "application/ld+json"));
+
+        mockMessageSerializer
+            .Setup(x => x.Deserialize(It.IsAny<string>(), typeof(AddressInfo)))
+            .Returns(message);
+
+        // Create the envelope
+        var envelope = new MessageEnvelope<AddressInfo>
+        {
+            Id = "test-id-123",
+            Source = new Uri("/aws/messaging", UriKind.Relative),
+            Version = "1.0",
+            MessageTypeIdentifier = "addressInfo",
+            TimeStamp = _testdate,
+            Message = message
+        };
+
+        // Serialize the envelope to SQS message
+        var sqsMessage = new Message
+        {
+            Body = await envelopeSerializer.SerializeAsync(envelope),
+            ReceiptHandle = "receipt-handle"
+        };
+
+        // ACT
+        var result = await envelopeSerializer.ConvertToEnvelopeAsync(sqsMessage);
+
+        // ASSERT
+        var deserializedEnvelope = (MessageEnvelope<AddressInfo>)result.Envelope;
+        Assert.NotNull(deserializedEnvelope);
+
+        // Verify the content type was preserved
+        Assert.Equal("application/ld+json", deserializedEnvelope.DataContentType);
+
+        // Verify the message was correctly deserialized
+        Assert.NotNull(deserializedEnvelope.Message);
+        Assert.Equal("Prince St", deserializedEnvelope.Message.Street);
+        Assert.Equal(123, deserializedEnvelope.Message.Unit);
+        Assert.Equal("00001", deserializedEnvelope.Message.ZipCode);
+
+        // Verify other envelope properties
+        Assert.Equal("test-id-123", deserializedEnvelope.Id);
+        Assert.Equal("/aws/messaging", deserializedEnvelope.Source?.ToString());
+        Assert.Equal("1.0", deserializedEnvelope.Version);
+        Assert.Equal("addressInfo", deserializedEnvelope.MessageTypeIdentifier);
+        Assert.Equal(_testdate, deserializedEnvelope.TimeStamp);
+
+        // Verify the serializer was called with correct parameters
+        mockMessageSerializer.Verify(
+            x => x.Serialize(It.IsAny<object>()),
+            Times.Once);
+
+        mockMessageSerializer.Verify(
+            x => x.Deserialize(It.IsAny<string>(), typeof(AddressInfo)),
+            Times.Once);
+    }
+
+
 
 }
 

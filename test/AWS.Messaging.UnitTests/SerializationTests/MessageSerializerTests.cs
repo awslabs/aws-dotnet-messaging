@@ -47,11 +47,12 @@ public class MessageSerializerTests
         };
 
         // ACT
-        var jsonString = serializer.Serialize(person).Data;
+        var result = serializer.Serialize(person);
 
         // ASSERT
         var expectedString = "{\"FirstName\":\"Bob\",\"LastName\":\"Stone\",\"Age\":30,\"Gender\":\"Male\",\"Address\":{\"Unit\":12,\"Street\":\"Prince St\",\"ZipCode\":\"00001\"}}";
-        Assert.Equal(expectedString, jsonString);
+        Assert.Equal(expectedString, result.Data);
+        Assert.Equal("application/json", result.ContentType);
     }
 
     [Theory]
