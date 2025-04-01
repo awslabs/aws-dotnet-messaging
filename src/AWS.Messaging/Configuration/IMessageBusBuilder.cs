@@ -112,4 +112,9 @@ public interface IMessageBusBuilder
     /// Configures the backoff policy used by <see cref="BackoffHandler"/> and its available options.
     /// </summary>
     IMessageBusBuilder ConfigureBackoffPolicy(Action<BackoffPolicyBuilder> configure);
+
+    /// <summary>
+    /// Configures the <see cref="PollingControlToken"/>, which can be used to start and stop the SQS Message Poller.
+    /// </summary>
+    IMessageBusBuilder ConfigurePollingControlToken(PollingControlToken pollingControlToken);
 }

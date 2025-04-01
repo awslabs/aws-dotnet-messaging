@@ -6,7 +6,7 @@ namespace AWS.Messaging.Configuration
     /// <summary>
     /// Control token to start and stop message polling for a service.
     /// </summary>
-    public record PollingControlToken
+    public class PollingControlToken
     {
         /// <summary>
         /// Indicates if polling is enabled.
@@ -26,8 +26,6 @@ namespace AWS.Messaging.Configuration
         /// <summary>
         /// Configurable amount of time to wait between polling for a change in status
         /// </summary>
-        public TimeSpan PollingWaitTime { get; set; } = TimeSpan.FromMilliseconds(200);
+        public TimeSpan PollingWaitTime { get; init; } = TimeSpan.FromMilliseconds(200);
     }
-
-    
 }
