@@ -1,3 +1,23 @@
+## Release 2025-04-01
+
+### AWS.Messaging (0.20.1-preview)
+* Update error message for handling scenario where subscriber mapping is not valid.
+* Updated the .NET SDK dependencies to the latest version 4.0.0-preview.4
+* Update .NET target to .NET 8
+* Add trimming support for Native AOT compatiblity
+* Upgraded AWS .NET SDK dependencies to version 4.0
+* Update AWS SDK to Preview 11
+### AWS.Messaging.Lambda (0.20.1-preview)
+* Updated the .NET SDK dependencies to the latest version 4.0.0-preview.4
+* Update .NET target to .NET 8
+* Add trimming support for Native AOT compatiblity
+* Upgraded AWS .NET SDK dependencies to version 4.0
+### AWS.Messaging.Telemetry.OpenTelemetry (0.20.1-preview)
+* Updated the .NET SDK dependencies to the latest version 4.0.0-preview.4
+* Update .NET target to .NET 8
+* Add trimming support for Native AOT compatiblity
+* Upgraded AWS .NET SDK dependencies to version 4.0
+
 ## Release 2025-03-12
 
 ### AWS.Messaging (0.9.5)
