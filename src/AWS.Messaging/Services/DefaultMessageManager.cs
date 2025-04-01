@@ -145,6 +145,7 @@ public class DefaultMessageManager : IMessageManager
                     for (var unprocessedIndex = i + 1; unprocessedIndex < messageGroup.Count; unprocessedIndex++)
                     {
                         await _sqsMessageCommunication.ReportMessageFailureAsync(messageGroup[unprocessedIndex].Envelope, token);
+                        _inFlightMessageMetadata.Remove(messageGroup[unprocessedIndex].Envelope, out _);
                     }
                     _logger.LogError("Handler invocation failed for a message belonging to message group '{GroupdId}' having message ID '{MessageID}'. Skipping processing of {Remaining} messages from the same group.", groupId, message.Envelope.Id, remaining);
                     break;
