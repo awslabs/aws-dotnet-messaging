@@ -47,7 +47,7 @@ public class MessageSerializerTests
         };
 
         // ACT
-        var jsonString = serializer.Serialize(person);
+        var jsonString = serializer.Serialize(person).Data;
 
         // ASSERT
         var expectedString = "{\"FirstName\":\"Bob\",\"LastName\":\"Stone\",\"Age\":30,\"Gender\":\"Male\",\"Address\":{\"Unit\":12,\"Street\":\"Prince St\",\"ZipCode\":\"00001\"}}";
@@ -75,7 +75,7 @@ public class MessageSerializerTests
             }
         };
 
-        var jsonString = serializer.Serialize(person);
+        var jsonString = serializer.Serialize(person).Data;
 
         _logger.Verify(logger => logger.Log(
                 It.Is<LogLevel>(logLevel => logLevel == LogLevel.Trace),

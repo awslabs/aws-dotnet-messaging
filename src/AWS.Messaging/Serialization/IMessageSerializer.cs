@@ -12,7 +12,7 @@ public interface IMessageSerializer
     /// Serializes the .NET message object into a string.
     /// </summary>
     /// <param name="message">The .NET object that will be serialized.</param>
-    string Serialize(object message);
+    MessageSerializerResults Serialize(object message);
 
     /// <summary>
     /// Deserializes the raw string message into the .NET type.
@@ -30,9 +30,4 @@ public interface IMessageSerializer
     {
         return (T)Deserialize(message, typeof(T));
     }
-
-    /// <summary>
-    /// The data content type
-    /// </summary>
-    string DataContentType { get; }
 }

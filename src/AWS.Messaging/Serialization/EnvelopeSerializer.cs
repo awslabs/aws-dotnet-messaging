@@ -78,8 +78,7 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
             Version = CLOUD_EVENT_SPEC_VERSION,
             MessageTypeIdentifier = publisherMapping.MessageTypeIdentifier,
             TimeStamp = timeStamp,
-            Message = message,
-            DataContentType = _messageSerializer.DataContentType
+            Message = message
         };
     }
 
@@ -103,17 +102,20 @@ internal class EnvelopeSerializer : IEnvelopeSerializer
                 ["source"] = envelope.Source?.ToString(),
                 ["specversion"] = envelope.Version,
                 ["type"] = envelope.MessageTypeIdentifier,
-                ["time"] = envelope.TimeStamp,
-                ["datacontenttype"] = envelope.DataContentType ?? "application/json"
+                ["time"] = envelope.TimeStamp
             };
 
-            if (IsJsonContentType(envelope.DataContentType))
+            var messageSerializerResults = _messageSerializer.Serialize(message);
+
+            blob["datacontenttype"] = messageSerializerResults.ContentType;
+
+            if (IsJsonContentType(messageSerializerResults.ContentType))
             {
-                blob["data"] = JsonNode.Parse(_messageSerializer.Serialize(message));
+                blob["data"] = JsonNode.Parse(messageSerializerResults.Data);
             }
             else
             {
-                blob["data"] = _messageSerializer.Serialize(message);
+                blob["data"] = messageSerializerResults.Data;
 
             }
 
