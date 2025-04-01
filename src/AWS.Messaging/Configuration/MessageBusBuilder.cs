@@ -1,6 +1,7 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using System.Collections.Concurrent;
 using AWS.Messaging.Configuration.Internal;
 using AWS.Messaging.Publishers;
 using AWS.Messaging.Publishers.EventBridge;
@@ -26,7 +27,7 @@ namespace AWS.Messaging.Configuration;
 /// </summary>
 public class MessageBusBuilder : IMessageBusBuilder
 {
-    private static readonly Dictionary<IServiceCollection, MessageConfiguration> _messageConfigurations = new();
+    private static readonly ConcurrentDictionary<IServiceCollection, MessageConfiguration> _messageConfigurations = new();
     private readonly MessageConfiguration _messageConfiguration;
     private readonly IList<ServiceDescriptor> _additionalServices = new List<ServiceDescriptor>();
     private readonly IServiceCollection _serviceCollection;
@@ -161,6 +162,13 @@ public class MessageBusBuilder : IMessageBusBuilder
     public IMessageBusBuilder AddMessageSourceSuffix(string suffix)
     {
         _messageConfiguration.SourceSuffix = suffix;
+        return this;
+    }
+
+    /// <inheritdoc/>
+    public IMessageBusBuilder ConfigurePollingControlToken(PollingControlToken pollingControlToken)
+    {
+        _messageConfiguration.PollingControlToken = pollingControlToken;
         return this;
     }
 
@@ -327,6 +335,7 @@ public class MessageBusBuilder : IMessageBusBuilder
         _serviceCollection.TryAdd(ServiceDescriptor.Singleton<ILoggerFactory, NullLoggerFactory>());
         _serviceCollection.TryAdd(ServiceDescriptor.Singleton(typeof(ILogger<>), typeof(NullLogger<>)));
 
+        _serviceCollection.TryAddSingleton(_messageConfiguration.PollingControlToken);
         _serviceCollection.TryAddSingleton<IMessageConfiguration>(_messageConfiguration);
         _serviceCollection.TryAddSingleton<IMessageSerializer, MessageSerializer>();
         _serviceCollection.TryAddSingleton<IEnvelopeSerializer, EnvelopeSerializer>();

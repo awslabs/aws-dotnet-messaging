@@ -26,6 +26,12 @@ public class SQSMessagePollerTests
 {
     private const string TEST_QUEUE_URL = "queueUrl";
     private InMemoryLogger? _inMemoryLogger;
+    private readonly ServiceCollection _serviceCollection;
+
+    public SQSMessagePollerTests()
+    {
+        _serviceCollection = new ServiceCollection();
+    }
 
     /// <summary>
     /// Tests that starting an SQS poller with default settings begins polling SQS
@@ -40,6 +46,60 @@ public class SQSMessagePollerTests
         await RunSQSMessagePollerTest(client);
 
         client.Verify(x => x.ReceiveMessageAsync(It.IsAny<ReceiveMessageRequest>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce());
+    }
+
+    /// <summary>
+    /// Tests that starting an SQS poller with <see cref="PollingControlToken.IsPollingEnabled"/>
+    /// set to false, will not poll any messages.
+    /// </summary>
+    [Fact]
+    public async Task SQSMessagePoller_PollingControlStopped_DoesNotPollSQS()
+    {
+        var client = new Mock<IAmazonSQS>();
+        client.Setup(x => x.ReceiveMessageAsync(It.IsAny<ReceiveMessageRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ReceiveMessageResponse(), TimeSpan.FromMilliseconds(50));
+        var pollingControlToken = new PollingControlToken
+        {
+            PollingWaitTime = TimeSpan.FromMilliseconds(25)
+        };
+        pollingControlToken.StopPolling();
+
+        await RunSQSMessagePollerTest(client, pollingControlToken: pollingControlToken);
+
+        client.Verify(x => x.ReceiveMessageAsync(It.IsAny<ReceiveMessageRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    /// <summary>
+    /// Tests that starting an SQS poller with <see cref="PollingControlToken.IsPollingEnabled"/>
+    /// set to false, will not poll any messages first. Then when changing the value to true
+    /// polling resumes and messages are received.
+    /// </summary>
+    [Fact]
+    public async Task SQSMessagePoller_PollingControlRestarted_PollsSQS()
+    {
+        var client = new Mock<IAmazonSQS>();
+        client.Setup(x => x.ReceiveMessageAsync(It.IsAny<ReceiveMessageRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ReceiveMessageResponse(), TimeSpan.FromMilliseconds(50));
+        var pollingControlToken = new PollingControlToken
+        {
+            PollingWaitTime = TimeSpan.FromMilliseconds(25)
+        };
+        pollingControlToken.StopPolling();
+
+        var source = new CancellationTokenSource();
+        var pump = BuildMessagePumpService(client, options => { options.WaitTimeSeconds = 1; }, pollingControlToken: pollingControlToken);
+        var task = pump.StartAsync(source.Token);
+
+        client.Verify(x => x.ReceiveMessageAsync(It.IsAny<ReceiveMessageRequest>(), It.IsAny<CancellationToken>()), Times.Never);
+
+        pollingControlToken.StartPolling();
+
+        SpinWait.SpinUntil(() => false, pollingControlToken.PollingWaitTime * 5);
+
+        client.Verify(x => x.ReceiveMessageAsync(It.IsAny<ReceiveMessageRequest>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce());
+
+        source.Cancel();
+        await task;
     }
 
     /// <summary>
@@ -251,20 +311,38 @@ public class SQSMessagePollerTests
     /// </summary>
     /// <param name="mockSqsClient">Mocked SQS client</param>
     /// <param name="options">SQS MessagePoller options</param>
-    private async Task RunSQSMessagePollerTest(Mock<IAmazonSQS> mockSqsClient, Action<SQSMessagePollerOptions>? options = null)
+    /// <param name="pollingControlToken">Polling control token to start or stop message receipt</param>
+    private async Task RunSQSMessagePollerTest(Mock<IAmazonSQS> mockSqsClient, Action<SQSMessagePollerOptions>? options = null, PollingControlToken? pollingControlToken = null)
     {
-        var serviceCollection = new ServiceCollection();
-        serviceCollection.AddLogging();
+        var pump = BuildMessagePumpService(mockSqsClient, options, pollingControlToken);
 
-        serviceCollection.AddAWSMessageBus(builder =>
+        var source = new CancellationTokenSource();
+        source.CancelAfter(500);
+
+        await pump.StartAsync(source.Token);
+    }
+
+    /// <summary>
+    /// Helper function that initializes but does not start a <see cref="MessagePumpService"/> with
+    /// a mocked SQS client
+    /// </summary>
+    /// <param name="mockSqsClient">Mocked SQS client</param>
+    /// <param name="options">SQS MessagePoller options</param>
+    /// <param name="pollingControlToken">Polling control token to start or stop message receipt</param>
+    private MessagePumpService BuildMessagePumpService(Mock<IAmazonSQS> mockSqsClient, Action<SQSMessagePollerOptions>? options = null, PollingControlToken? pollingControlToken = null)
+    {
+        _serviceCollection.AddLogging();
+
+        _serviceCollection.AddAWSMessageBus(builder =>
         {
+            if (pollingControlToken is not null) builder.ConfigurePollingControlToken(pollingControlToken);
             builder.AddSQSPoller(TEST_QUEUE_URL, options);
             builder.AddMessageHandler<ChatMessageHandler, ChatMessage>();
         });
 
-        serviceCollection.AddSingleton(mockSqsClient.Object);
+        _serviceCollection.AddSingleton(mockSqsClient.Object);
 
-        var serviceProvider = serviceCollection.BuildServiceProvider();
+        var serviceProvider = _serviceCollection.BuildServiceProvider();
 
         var pump = serviceProvider.GetService<IHostedService>() as MessagePumpService;
 
@@ -273,10 +351,7 @@ public class SQSMessagePollerTests
             Assert.Fail($"Unable to get the {nameof(MessagePumpService)} from the service provider.");
         }
 
-        var source = new CancellationTokenSource();
-        source.CancelAfter(500);
-
-        await pump.StartAsync(source.Token);
+        return pump;
     }
 
     /// <summary>
