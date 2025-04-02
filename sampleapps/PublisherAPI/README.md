@@ -8,112 +8,14 @@ This sample demonstrates:
 - Publishing messages to SQS queues (standard and FIFO)
 - Publishing messages to SNS topics (standard and FIFO)
 - Publishing messages to EventBridge
-- Configuration-based and code-based setup options
+- Configuration-based setup using .NET Aspire
 - Handling service-specific message options
 
 ## Prerequisites
 
 - .NET 8.0 or later
-- AWS Account with appropriate permissions
-- Basic understanding of AWS messaging services (SQS, SNS, EventBridge)
+- Follow the setup instructions in the AppHost README to ensure all AWS resources and .NET Aspire components are properly configured
 
-## Setup
-
-### 1. Create AWS Resources
-
-#### SQS Queues
-1. Create a standard SQS queue named "MPF"
-2. Create a FIFO SQS queue named "MPF.fifo". When creating the queue be sure to enable `Content-based deduplication`.
-3. Note the queue URLs
-
-#### SNS Topics
-1. Create a standard SNS topic named "MPF"
-2. Create a FIFO SNS topic named "MPF.fifo". When creating the topic be sure to enable `Content-based deduplication`.
-3. Note the topic ARNs
-
-#### EventBridge
-1. Note your default event bus ARN or create a custom event bus
-
-### 2. Configure Message Publishing
-
-You can choose either configuration approach:
-
-#### Option A: Code-based Configuration
-
-In `Program.cs`, update the endpoints and keep these lines uncommented:
-```csharp
-bus.AddSQSPublisher<ChatMessage>("https://sqs.us-west-2.amazonaws.com/012345678910/MPF", "chatMessage");
-bus.AddSNSPublisher<OrderInfo>("arn:aws:sns:us-west-2:012345678910:MPF", "orderInfo");
-bus.AddEventBridgePublisher<FoodItem>("arn:aws:events:us-west-2:012345678910:event-bus/default", "foodItem");
-
-// FIFO endpoints
-bus.AddSQSPublisher<TransactionInfo>("https://sqs.us-west-2.amazonaws.com/012345678910/MPF.fifo", "transactionInfo");
-bus.AddSNSPublisher<BidInfo>("arn:aws:sns:us-west-2:012345678910:MPF.fifo", "bidInfo");
-```
-And keep this line commented:
-
-```
-// bus.LoadConfigurationFromSettings(builder.Configuration);
-```
-#### Option B: Configuration-based (appsettings.json)
-
-1. Comment out the code-based configuration in Program.cs
-
-2. Uncomment the configuration loading:
-```
-bus.LoadConfigurationFromSettings(builder.Configuration);
-```
-3. Update appsettings.json:
-
-```
-{
-    "AWS.Messaging": {
-        "SQSPublishers": [
-            {
-                "MessageType": "PublisherAPI.Models.ChatMessage",
-                "QueueUrl": "https://sqs.us-west-2.amazonaws.com/012345678910/MPF",
-                "MessageTypeIdentifier": "chatMessage"
-            },
-            {
-                "MessageType": "PublisherAPI.Models.TransactionInfo",
-                "QueueUrl": "https://sqs.us-west-2.amazonaws.com/012345678910/MPF.fifo",
-                "MessageTypeIdentifier": "transactionInfo"
-            }
-        ],
-        "SNSPublishers": [
-            {
-                "MessageType": "PublisherAPI.Models.OrderInfo",
-                "TopicUrl": "arn:aws:sns:us-west-2:012345678910:MPF",
-                "MessageTypeIdentifier": "orderInfo"
-            },
-            {
-                "MessageType": "PublisherAPI.Models.BidInfo",
-                "TopicUrl": "arn:aws:sns:us-west-2:012345678910:MPF.fifo",
-                "MessageTypeIdentifier": "bidInfo"
-            }
-        ],
-        "EventBridgePublishers": [
-            {
-                "MessageType": "PublisherAPI.Models.FoodItem",
-                "EventBusName": "arn:aws:events:us-west-2:012345678910:event-bus/default",
-                "MessageTypeIdentifier": "foodItem"
-            }
-        ]
-    }
-}
-
-```
-### 3. Configure AWS Credentials
-
-Ensure you have AWS credentials configured either through:
-
-- AWS CLI
-
-- Environment variables
-
-- AWS credentials file
-
-- IAM role (if running on AWS)
 
 ## Project Structure
 
@@ -132,29 +34,12 @@ PublisherAPI/
 
 ```
 
-## Running the Application
-
-1. Build the project:
-
-
-```bash
-dotnet build
-```
-
-2. Run the application:
-
-
-```bash
-dotnet run
-```
-
 
 ## Testing
-The API includes Swagger UI for testing. Access it at:
 
-```
-https://localhost:7204/swagger
-```
+The API includes Swagger UI for testing. When running the Aspire AppHost, access it at: https://localhost:7204/swagger (the port may be different in Aspire)
+
+
 ### Example API Requests
 
 #### Send Chat Message (Standard SQS):

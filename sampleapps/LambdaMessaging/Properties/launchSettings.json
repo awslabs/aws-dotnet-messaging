@@ -1,13 +1,10 @@
 {
   "profiles": {
-    "Default": {
-      "workingDirectory": ".\\bin\\$(Configuration)\\net8.0",
+    "Aspire_LambdaMessaging": {
       "commandName": "Executable",
-      "commandLineArgs": "exec --depsfile ./LambdaMessaging.deps.json  --runtimeconfig ./LambdaMessaging.runtimeconfig.json %USERPROFILE%/.dotnet/tools/.store/amazon.lambda.testtool/${VERSION}/amazon.lambda.testtool/${VERSION}/content/Amazon.Lambda.RuntimeSupport/net8.0/Amazon.Lambda.RuntimeSupport.dll LambdaMessaging::LambdaMessaging.Function_FunctionHandler_Generated::FunctionHandler",
       "executablePath": "dotnet",
-      "environmentVariables": {
-        "AWS_LAMBDA_RUNTIME_API": "localhost:5050/MyFunction"
-      }
+      "commandLineArgs": "exec --depsfile ./LambdaMessaging.deps.json --runtimeconfig ./LambdaMessaging.runtimeconfig.json %USERPROFILE%\\.dotnet\\tools\\.store\\amazon.lambda.testtool\\0.9.1\\amazon.lambda.testtool\\0.9.1\\content\\Amazon.Lambda.RuntimeSupport\\net8.0\\Amazon.Lambda.RuntimeSupport.dll LambdaMessaging::LambdaMessaging.Function_FunctionHandler_Generated::FunctionHandler",
+      "workingDirectory": ".\\bin\\$(Configuration)\\net8.0"
     }
   }
 }

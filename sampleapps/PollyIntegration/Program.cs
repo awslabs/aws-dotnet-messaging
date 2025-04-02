@@ -1,4 +1,4 @@
-﻿using AWS.Messaging.Services.Backoff;
+using AWS.Messaging.Services.Backoff;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -12,6 +12,7 @@ using Polly.Retry;
 using PollyIntegration;
 using PollyIntegration.MessageHandlers;
 using PollyIntegration.Models;
+using System.Text.Json;
 
 await Host.CreateDefaultBuilder(args)
     .ConfigureLogging(logging =>
@@ -39,8 +40,19 @@ await Host.CreateDefaultBuilder(args)
                 // To load the configuration from appsettings.json instead of the code below, uncomment this and remove the following lines.
                 // builder.LoadConfigurationFromSettings(context.Configuration);
 
-                builder.AddSQSPoller("https://sqs.us-west-2.amazonaws.com/012345678910/MPF");
+                var mpfQueueUrl = context.Configuration["AWS:Resources:MPFQueueUrl"];
+
+                builder.AddSQSPoller(mpfQueueUrl);
                 builder.AddMessageHandler<ChatMessageHandler, ChatMessage>("chatMessage");
+
+
+                builder.ConfigureSerializationOptions(options =>
+                {
+                    options.SystemTextJsonOptions = new JsonSerializerOptions
+                    {
+                        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+                    };
+                });
 
                 // Logging data messages is disabled by default to protect sensitive user data. If you want this enabled, uncomment the line below.
                 // builder.EnableMessageContentLogging();

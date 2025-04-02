@@ -30,7 +30,9 @@ await Host.CreateDefaultBuilder(args)
             // To load the configuration from appsettings.json instead of the code below, uncomment this and remove the following lines.
             // builder.LoadConfigurationFromSettings(context.Configuration);
 
-            builder.AddSQSPoller("https://sqs.us-west-2.amazonaws.com/012345678910/MPF");
+            var mpfQueueUrl = context.Configuration["AWS:Resources:MPFQueueUrl"];
+
+            builder.AddSQSPoller(mpfQueueUrl);
             builder.AddMessageHandler<ChatMessageHandler, ChatMessage>("chatMessage");
 
             builder.ConfigureSerializationOptions(options =>
