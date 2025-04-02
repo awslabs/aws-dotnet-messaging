@@ -73,7 +73,7 @@ internal class MessageSerializer : IMessageSerializer
         Justification = "Consumers relying on trimming would have been required to call the AddAWSMessageBus overload that takes in JsonSerializerContext that will be used here to avoid the call that requires unreferenced code.")]
     [System.Diagnostics.CodeAnalysis.UnconditionalSuppressMessage("ReflectionAnalysis", "IL3050",
         Justification = "Consumers relying on trimming would have been required to call the AddAWSMessageBus overload that takes in JsonSerializerContext that will be used here to avoid the call that requires unreferenced code.")]
-    public string Serialize(object message)
+    public MessageSerializerResults Serialize(object message)
     {
         try
         {
@@ -100,7 +100,7 @@ internal class MessageSerializer : IMessageSerializer
                 _logger.LogTrace("Serialized the message object to a raw string with a content length of {ContentLength}.", jsonString.Length);
             }
 
-            return jsonString;
+            return new MessageSerializerResults(jsonString, "application/json");
         }
         catch (JsonException) when (!_messageConfiguration.LogMessageContent)
         {

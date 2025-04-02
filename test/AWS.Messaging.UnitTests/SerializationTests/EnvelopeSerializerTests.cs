@@ -35,6 +35,7 @@ public class EnvelopeSerializerTests
         {
             builder.AddSQSPublisher<AddressInfo>("sqsQueueUrl", "addressInfo");
             builder.AddMessageHandler<AddressInfoHandler, AddressInfo>("addressInfo");
+            builder.AddMessageHandler<PlainTextHandler, string>("plaintext");
             builder.AddMessageSource("/aws/messaging");
         });
 
@@ -119,7 +120,7 @@ public class EnvelopeSerializerTests
 
         // ASSERT
         // The \u0022 corresponds to quotation mark (")
-        var expectedBlob = "{\"id\":\"id-123\",\"source\":\"/backend/service\",\"specversion\":\"1.0\",\"type\":\"addressInfo\",\"time\":\"2000-12-05T10:30:55+00:00\",\"data\":\"{\\u0022Unit\\u0022:123,\\u0022Street\\u0022:\\u0022Prince St\\u0022,\\u0022ZipCode\\u0022:\\u002200001\\u0022}\"}";
+        var expectedBlob = "{\"id\":\"id-123\",\"source\":\"/backend/service\",\"specversion\":\"1.0\",\"type\":\"addressInfo\",\"time\":\"2000-12-05T10:30:55+00:00\",\"datacontenttype\":\"application/json\",\"data\":{\"Unit\":123,\"Street\":\"Prince St\",\"ZipCode\":\"00001\"}}";
         Assert.Equal(expectedBlob, jsonBlob);
     }
 
@@ -272,19 +273,19 @@ public class EnvelopeSerializerTests
         var serviceProvider = _serviceCollection.BuildServiceProvider();
         var envelopeSerializer = serviceProvider.GetRequiredService<IEnvelopeSerializer>();
 
-        var innerMessageEnvelope = new MessageEnvelope<string>
+        var innerMessageEnvelope = new MessageEnvelope<AddressInfo>
         {
             Id = "66659d05-e4ff-462f-81c4-09e560e66a5c",
             Source = new Uri("/aws/messaging", UriKind.Relative),
             Version = "1.0",
             MessageTypeIdentifier = "addressInfo",
             TimeStamp = _testdate,
-            Message = JsonSerializer.Serialize(new AddressInfo
+            Message = new AddressInfo
             {
                 Street = "Prince St",
                 Unit = 123,
                 ZipCode = "00001"
-            })
+            }
         };
 
         var outerMessageEnvelope = new Dictionary<string, object>
@@ -397,7 +398,7 @@ public class EnvelopeSerializerTests
         var serializedMessage = await envelopeSerializer.SerializeAsync(messageEnvelope);
 
         // ASSERT - Check expected base 64 encoded string
-        var expectedserializedMessage = "eyJpZCI6IjEyMyIsInNvdXJjZSI6Ii9hd3MvbWVzc2FnaW5nIiwic3BlY3ZlcnNpb24iOiIxLjAiLCJ0eXBlIjoiYWRkcmVzc0luZm8iLCJ0aW1lIjoiMjAwMC0xMi0wNVQxMDozMDo1NSswMDowMCIsImRhdGEiOiJ7XHUwMDIyVW5pdFx1MDAyMjoxMjMsXHUwMDIyU3RyZWV0XHUwMDIyOlx1MDAyMlByaW5jZSBTdFx1MDAyMixcdTAwMjJaaXBDb2RlXHUwMDIyOlx1MDAyMjAwMDAxXHUwMDIyfSIsIklzLURlbGl2ZXJlZCI6ZmFsc2V9";
+        var expectedserializedMessage = "eyJpZCI6IjEyMyIsInNvdXJjZSI6Ii9hd3MvbWVzc2FnaW5nIiwic3BlY3ZlcnNpb24iOiIxLjAiLCJ0eXBlIjoiYWRkcmVzc0luZm8iLCJ0aW1lIjoiMjAwMC0xMi0wNVQxMDozMDo1NSswMDowMCIsImRhdGFjb250ZW50dHlwZSI6ImFwcGxpY2F0aW9uL2pzb24iLCJkYXRhIjp7IlVuaXQiOjEyMywiU3RyZWV0IjoiUHJpbmNlIFN0IiwiWmlwQ29kZSI6IjAwMDAxIn0sIklzLURlbGl2ZXJlZCI6ZmFsc2V9";
         Assert.Equal(expectedserializedMessage, serializedMessage);
 
         // ACT - Convert To Envelope from base 64 Encoded Message
@@ -452,6 +453,15 @@ public class EnvelopeSerializerTests
             }
         };
 
+        var serializedContent = JsonSerializer.Serialize(messageEnvelope.Message);
+        var messageSerializeResults = new MessageSerializerResults(serializedContent, "application/json");
+
+
+        // Mock the serializer to return a specific string
+        messageSerializer
+            .Setup(x => x.Serialize(It.IsAny<object>()))
+            .Returns(messageSerializeResults);
+
         await envelopeSerializer.SerializeAsync(messageEnvelope);
 
         if (dataMessageLogging)
@@ -459,7 +469,7 @@ public class EnvelopeSerializerTests
             logger.Verify(log => log.Log(
                     It.Is<LogLevel>(logLevel => logLevel == LogLevel.Trace),
                     It.Is<EventId>(eventId => eventId.Id == 0),
-                    It.Is<It.IsAnyType>((@object, @type) => @object.ToString() == "Serialized the MessageEnvelope object as the following raw string:\n{\"id\":\"123\",\"source\":\"/aws/messaging\",\"specversion\":\"1.0\",\"type\":\"addressInfo\",\"time\":\"2000-12-05T10:30:55+00:00\",\"data\":null}"),
+                    It.Is<It.IsAnyType>((@object, @type) => @object.ToString() == "Serialized the MessageEnvelope object as the following raw string:\n{\"id\":\"123\",\"source\":\"/aws/messaging\",\"specversion\":\"1.0\",\"type\":\"addressInfo\",\"time\":\"2000-12-05T10:30:55+00:00\",\"datacontenttype\":\"application/json\",\"data\":{\"Unit\":123,\"Street\":\"Prince St\",\"ZipCode\":\"00001\"}}"),
                     null,
                     It.IsAny<Func<It.IsAnyType, Exception?, string>>()),
                 Times.Once);
@@ -612,22 +622,30 @@ public class EnvelopeSerializerTests
         var envelopeSerializer = serviceProvider.GetRequiredService<IEnvelopeSerializer>();
 
         // Create a JSON string with both standard envelope properties and custom metadata
-        var jsonString = @"{
-            ""id"": ""test-id-123"",
-            ""source"": ""/aws/messaging"",
-            ""specversion"": ""1.0"",
-            ""type"": ""addressInfo"",
-            ""time"": ""2000-12-05T10:30:55+00:00"",
-            ""data"": ""{\""Unit\"":123,\""Street\"":\""Prince St\"",\""ZipCode\"":\""00001\""}"",
-            ""customString"": ""test-value"",
-            ""customNumber"": 42,
-            ""customBoolean"": true,
-            ""customObject"": {""nestedKey"": ""nestedValue""}
-        }";
+        var testData = new
+        {
+            id = "test-id-123",
+            source = "/aws/messaging",
+            specversion = "1.0",
+            type = "addressInfo",
+            time = "2000-12-05T10:30:55+00:00",
+            data = new AddressInfo
+            {
+                Unit = 123,
+                Street = "Prince St",
+                ZipCode = "00001"
+            },
+            customString = "test-value",
+            customNumber = 42,
+            customBoolean = true,
+            customObject = new { nestedKey = "nestedValue" }
+        };
+
+        var json = JsonSerializer.Serialize(testData);
 
         var sqsMessage = new Message
         {
-            Body = jsonString
+            Body = json
         };
 
         // ACT
@@ -719,6 +737,147 @@ public class EnvelopeSerializerTests
         Assert.Contains("Available mappings:", innerException.Message);
         Assert.Contains("addressInfo", innerException.Message);
     }
+
+    [Fact]
+    public async Task ConvertToEnvelope_WithNonJsonContentType()
+    {
+        // ARRANGE
+        var logger = new Mock<ILogger<EnvelopeSerializer>>();
+        var services = new ServiceCollection();
+        services.AddAWSMessageBus(builder =>
+        {
+            builder.AddMessageHandler<PlainTextHandler, string>("plaintext");
+        });
+        var serviceProvider = services.BuildServiceProvider();
+        var messageConfiguration = serviceProvider.GetRequiredService<IMessageConfiguration>();
+        var messageSerializer = new Mock<IMessageSerializer>();
+        var dateTimeHandler = new Mock<IDateTimeHandler>();
+        var messageIdGenerator = new Mock<IMessageIdGenerator>();
+        var messageSourceHandler = new Mock<IMessageSourceHandler>();
+        var envelopeSerializer = new EnvelopeSerializer(logger.Object, messageConfiguration, messageSerializer.Object, dateTimeHandler.Object, messageIdGenerator.Object, messageSourceHandler.Object);
+        var plainTextContent = "Hello, this is plain text content";
+        var messageEnvelope = new MessageEnvelope<string>
+        {
+            Id = "id-123",
+            Source = new Uri("/aws/messaging", UriKind.Relative),
+            Version = "1.0",
+            MessageTypeIdentifier = "plaintext",
+            TimeStamp = _testdate,
+            Message = plainTextContent
+        };
+
+        var serializedContent = JsonSerializer.Serialize(messageEnvelope.Message);
+        var messageSerializeResults = new MessageSerializerResults(serializedContent, "text/plain");
+
+        // Mock the serializer to return a specific string
+        messageSerializer
+            .Setup(x => x.Serialize(It.IsAny<object>()))
+            .Returns(messageSerializeResults);
+
+        messageSerializer
+            .Setup(x => x.Deserialize(It.IsAny<string>(), typeof(string)))
+            .Returns("Hello, this is plain text content");
+
+        var sqsMessage = new Message
+        {
+            Body = await envelopeSerializer.SerializeAsync(messageEnvelope),
+            ReceiptHandle = "receipt-handle"
+        };
+
+        // ACT
+        var result = await envelopeSerializer.ConvertToEnvelopeAsync(sqsMessage);
+
+        // ASSERT
+        var envelope = (MessageEnvelope<string>)result.Envelope;
+        Assert.NotNull(envelope);
+        Assert.Equal(_testdate, envelope.TimeStamp);
+        Assert.Equal("1.0", envelope.Version);
+        Assert.Equal("/aws/messaging", envelope.Source?.ToString());
+        Assert.Equal("plaintext", envelope.MessageTypeIdentifier);
+        Assert.Equal("text/plain", envelope.DataContentType);
+        Assert.Equal(plainTextContent, envelope.Message);
+    }
+
+    [Fact]
+    public async Task ConvertToEnvelope_WithCustomJsonContentType()
+    {
+        // ARRANGE
+        var mockMessageSerializer = new Mock<IMessageSerializer>();
+        _serviceCollection.RemoveAll<IMessageSerializer>();
+        _serviceCollection.AddSingleton(mockMessageSerializer.Object);
+
+        var serviceProvider = _serviceCollection.BuildServiceProvider();
+        var envelopeSerializer = serviceProvider.GetRequiredService<IEnvelopeSerializer>();
+
+        var message = new AddressInfo
+        {
+            Street = "Prince St",
+            Unit = 123,
+            ZipCode = "00001"
+        };
+
+        // Mock serializer behavior
+        var serializedMessage = JsonSerializer.Serialize(message);
+        mockMessageSerializer
+            .Setup(x => x.Serialize(It.IsAny<object>()))
+            .Returns(new MessageSerializerResults(serializedMessage, "application/ld+json"));
+
+        mockMessageSerializer
+            .Setup(x => x.Deserialize(It.IsAny<string>(), typeof(AddressInfo)))
+            .Returns(message);
+
+        // Create the envelope
+        var envelope = new MessageEnvelope<AddressInfo>
+        {
+            Id = "test-id-123",
+            Source = new Uri("/aws/messaging", UriKind.Relative),
+            Version = "1.0",
+            MessageTypeIdentifier = "addressInfo",
+            TimeStamp = _testdate,
+            Message = message
+        };
+
+        // Serialize the envelope to SQS message
+        var sqsMessage = new Message
+        {
+            Body = await envelopeSerializer.SerializeAsync(envelope),
+            ReceiptHandle = "receipt-handle"
+        };
+
+        // ACT
+        var result = await envelopeSerializer.ConvertToEnvelopeAsync(sqsMessage);
+
+        // ASSERT
+        var deserializedEnvelope = (MessageEnvelope<AddressInfo>)result.Envelope;
+        Assert.NotNull(deserializedEnvelope);
+
+        // Verify the content type was preserved
+        Assert.Equal("application/ld+json", deserializedEnvelope.DataContentType);
+
+        // Verify the message was correctly deserialized
+        Assert.NotNull(deserializedEnvelope.Message);
+        Assert.Equal("Prince St", deserializedEnvelope.Message.Street);
+        Assert.Equal(123, deserializedEnvelope.Message.Unit);
+        Assert.Equal("00001", deserializedEnvelope.Message.ZipCode);
+
+        // Verify other envelope properties
+        Assert.Equal("test-id-123", deserializedEnvelope.Id);
+        Assert.Equal("/aws/messaging", deserializedEnvelope.Source?.ToString());
+        Assert.Equal("1.0", deserializedEnvelope.Version);
+        Assert.Equal("addressInfo", deserializedEnvelope.MessageTypeIdentifier);
+        Assert.Equal(_testdate, deserializedEnvelope.TimeStamp);
+
+        // Verify the serializer was called with correct parameters
+        mockMessageSerializer.Verify(
+            x => x.Serialize(It.IsAny<object>()),
+            Times.Once);
+
+        mockMessageSerializer.Verify(
+            x => x.Deserialize(It.IsAny<string>(), typeof(AddressInfo)),
+            Times.Once);
+    }
+
+
 
 }
 
