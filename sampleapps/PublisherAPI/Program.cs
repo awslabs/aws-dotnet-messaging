@@ -17,13 +17,26 @@ builder.Services.AddAWSMessageBus(bus =>
     // To load the configuration from appsettings.json instead of the code below, uncomment this and remove the following lines.
     // bus.LoadConfigurationFromSettings(builder.Configuration);
 
-    bus.AddSQSPublisher<ChatMessage>("https://sqs.us-west-2.amazonaws.com/012345678910/MPF", "chatMessage");
-    bus.AddSNSPublisher<OrderInfo>("arn:aws:sns:us-west-2:012345678910:MPF", "orderInfo");
-    bus.AddEventBridgePublisher<FoodItem>("arn:aws:events:us-west-2:012345678910:event-bus/default", "foodItem");
+    // Standard SQS Queue
+    var mpfQueueUrl = builder.Configuration["AWS:Resources:MPFQueueUrl"];
+    bus.AddSQSPublisher<ChatMessage>(mpfQueueUrl, "chatMessage");
 
-    // FIFO endpoints
-    bus.AddSQSPublisher<TransactionInfo>("https://sqs.us-west-2.amazonaws.com/012345678910/MPF.fifo", "transactionInfo");
-    bus.AddSNSPublisher<BidInfo>("arn:aws:sns:us-west-2:012345678910:MPF.fifo", "bidInfo");
+    // FIFO SQS Queue  
+    var mpfFifoQueueUrl = builder.Configuration["AWS:Resources:MPFFIFOQueueUrl"];
+    bus.AddSQSPublisher<TransactionInfo>(mpfFifoQueueUrl, "transactionInfo");
+
+    // Standard SNS Topic
+    var mpfTopicArn = builder.Configuration["AWS:Resources:MPFTopicArn"];
+    bus.AddSNSPublisher<OrderInfo>(mpfTopicArn, "orderInfo");
+
+    // FIFO SNS Topic
+    var mpfFifoTopicArn = builder.Configuration["AWS:Resources:MPFFIFOTopicArn"];
+    bus.AddSNSPublisher<BidInfo>(mpfFifoTopicArn, "bidInfo");
+
+    // EventBridge Event Bus
+    var mpfEventBusArn = builder.Configuration["AWS:Resources:MPFEventBusArn"];
+    bus.AddEventBridgePublisher<FoodItem>(mpfEventBusArn, "foodItem");
+
 
     bus.ConfigureSerializationOptions(options =>
     {

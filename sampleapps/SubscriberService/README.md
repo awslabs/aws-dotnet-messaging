@@ -7,92 +7,14 @@ This sample application demonstrates how to use the AWS Message Processing Frame
 This sample demonstrates:
 - Configuring and using SQS message pollers
 - Implementing typed message handlers
-- Configuration-based and code-based setup options
+- Configuration-based setup using .NET Aspire
 - Configurable backoff policies for message processing
 - Proper message handling patterns
 
 ## Prerequisites
 
 - .NET 8.0 or later
-- AWS Account with appropriate permissions
-- Basic understanding of Amazon SQS and message processing
-
-## Setup
-
-### 1. Create AWS Resources
-
-#### SQS Queue
-1. Open the AWS Management Console
-2. Navigate to Amazon SQS
-3. Click "Create Queue"
-4. Choose "Standard Queue"
-5. Enter a queue name (e.g., "MPF")
-6. Keep default settings for this demo
-7. Click "Create Queue"
-8. Copy the Queue URL - you'll need this later
-
-### 2. Configure Message Processing
-
-You can choose either configuration approach:
-
-#### Option A: Code-based Configuration
-
-In `Program.cs`, update the queue URL and keep these lines uncommented:
-```csharp
-builder.AddSQSPoller("https://sqs.us-west-2.amazonaws.com/012345678910/MPF");
-builder.AddMessageHandler<ChatMessageHandler, ChatMessage>("chatMessage");
-```
-And keep this line commented:
-
-```
-// builder.LoadConfigurationFromSettings(context.Configuration);
-```
-#### Option B: Configuration-based (appsettings.json)
-
-1. Comment out the code-based configuration in Program.cs
-2. Uncomment the configuration loading:
-```
-builder.LoadConfigurationFromSettings(context.Configuration);
-```
-3. Update appsettings.json:
-```
-{
-    "AWS.Messaging": {
-        "MessageHandlers": [
-            {
-                "HandlerType": "SubscriberService.MessageHandlers.ChatMessageHandler",
-                "MessageType": "SubscriberService.Models.ChatMessage",
-                "MessageTypeIdentifier": "chatMessage"
-            }
-        ],
-        "SQSPollers": [
-            {
-                "QueueUrl": "https://sqs.us-west-2.amazonaws.com/012345678910/MPF",
-                "Options": {
-                    "MaxNumberOfConcurrentMessages": 10,
-                    "VisibilityTimeout": 20,
-                    "WaitTimeSeconds": 20,
-                    "VisibilityTimeoutExtensionHeartbeatInterval": 1,
-                    "VisibilityTimeoutExtensionThreshold": 5
-                }
-            }
-        ],
-        "BackoffPolicy": "CappedExponential"
-    }
-}
-```
-
-### 3. Configure AWS Credentials
-
-Ensure you have AWS credentials configured either through:
-
-- AWS CLI
-
-- Environment variables
-
-- AWS credentials file
-
-- IAM role (if running on AWS)
+- Follow the setup instructions in the AppHost README to ensure all AWS resources and .NET Aspire components are properly configured
 
 
 ## Project Structure
@@ -106,22 +28,19 @@ SubscriberService/
 └── appsettings.json           # Application configuration
 ```
 
-## Running the Application
-
-1. Build the project:
-```
-dotnet build
-```
-2. Run the application:
-```
-dotnet run
-```
-
 ## Testing
 
-You can test the service by sending messages to the SQS queue using the AWS Console, AWS CLI, or the companion PublisherAPI project.
+You can test the service using one of these two methods:
 
-### Using AWS CLI:
+### 1. Using PublisherAPI (Recommended)
+
+1. Ensure the Aspire AppHost is running
+2. Open the PublisherAPI Swagger UI
+3. Navigate to the ChatMessage endpoint
+4. Send a test message using the Swagger interface
+
+
+### 2. Manual Testing via AWS CLI
 ```
 $messageBody = "{""""type"""":""""chatMessage"""",""""id"""":""""123"""",""""source"""":""""test"""",""""specversion"""":""""1.0"""",""""time"""":""""2024-01-01T00:00:00Z"""",""""data"""":""""{\\""""messageDescription\\"""":\\""""Test message\\""""}""""}"
 
