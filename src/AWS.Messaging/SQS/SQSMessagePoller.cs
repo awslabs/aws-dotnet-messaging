@@ -137,7 +137,7 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
                     }
 
                     _logger.LogTrace("Retrieved {MessagesCount} messages from {QueueUrl} via request ID {RequestId}",
-                        receiveMessageResponse.Messages.Count, receiveMessageRequest.QueueUrl, receiveMessageResponse.ResponseMetadata.RequestId);
+                        receiveMessageResponse.Messages?.Count ?? 0, receiveMessageRequest.QueueUrl, receiveMessageResponse.ResponseMetadata.RequestId);
 
                     return receiveMessageResponse.Messages;
                 },
