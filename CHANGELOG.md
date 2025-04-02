@@ -1,3 +1,10 @@
+## Release 2025-04-02
+
+### AWS.Messaging (0.20.0-preview.1)
+* Add null check when retrieved messages is null
+* Update MessageSerializer to store data as actual json. Fixes #168
+* Remove failed messages from inflight messages metatadata dictionary. Fixes #191
+
 ## Release 2025-04-01 #2
 
 ### AWS.Messaging (0.20.0-preview)
