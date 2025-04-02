@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -213,7 +214,7 @@ namespace AWS.Messaging.UnitTests
 
             var manager = new DefaultMessageManager(mockSQSMessageCommunication.Object, mockHandlerInvoker.Object, new NullLogger<DefaultMessageManager>(), new MessageManagerConfiguration());
             var subscriberMapping = SubscriberMapping.Create<ChatMessageHandler, ChatMessage>();
-           
+
             var tasks = new List<Task>();
 
             for (int i = 0; i < 100; i++)
@@ -375,6 +376,66 @@ namespace AWS.Messaging.UnitTests
             mockSQSMessageCommunication.Verify(x => x.ReportMessageFailureAsync(It.IsAny<MessageEnvelope>(), It.IsAny<CancellationToken>()), Times.Never);
 
             Assert.Equal(0, manager.ActiveMessageCount);
+        }
+
+        [Fact]
+        public async Task ProcessMessageGroupAsync_WhenMessageFails_RemovesSkippedMessagesFromInflightMetadata()
+        {
+            // Arrange
+            var mockSQSMessageCommunication = CreateMockSQSMessageCommunication();
+            var mockHandlerInvoker = CreateMockHandlerInvoker(MessageProcessStatus.Failed());
+
+            var manager = new DefaultMessageManager(
+                mockSQSMessageCommunication.Object,
+                mockHandlerInvoker.Object,
+                new NullLogger<DefaultMessageManager>(),
+                new MessageManagerConfiguration());
+
+            // Create a message group with 2 messages
+            var message1 = new MessageEnvelope<ChatMessage>
+            {
+                Id = "1",
+                SQSMetadata = new SQSMetadata()
+                {
+                    MessageID ="1",
+                    MessageGroupId = "group1",
+                    ReceiptHandle =  "receipt1"
+                },
+            };
+
+            var message2 = new MessageEnvelope<ChatMessage>
+            {
+                Id = "2",
+                SQSMetadata = new SQSMetadata()
+                {
+                    MessageID ="2",
+                    MessageGroupId = "group1",
+                    ReceiptHandle =  "receipt2"
+                },
+            };
+
+            var messageGroup = new List<ConvertToEnvelopeResult>
+            {
+                new(message1, SubscriberMapping.Create<ChatMessageHandler, ChatMessage>()),
+                new(message2, SubscriberMapping.Create<ChatMessageHandler, ChatMessage>()),
+            };
+
+            // Act
+            await manager.ProcessMessageGroupAsync(messageGroup, "group`", CancellationToken.None);
+
+            // Access _inFlightMessageMetadata through reflection
+            var inFlightMessageMetadataField = typeof(DefaultMessageManager)
+                .GetField("_inFlightMessageMetadata", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var inFlightMessageMetadata = inFlightMessageMetadataField.GetValue(manager) as ConcurrentDictionary<MessageEnvelope, InFlightMetadata>;
+
+            // Assert
+            Assert.False(inFlightMessageMetadata.ContainsKey(message2),
+                "Skipped message should not remain in _inFlightMessageMetadata after group failure");
+
+            // Verify message failure was reported for skipped message
+            mockSQSMessageCommunication.Verify(x =>
+                x.ReportMessageFailureAsync(message2, It.IsAny<CancellationToken>()),
+                Times.Once);
         }
 
         private MessageEnvelope<TransactionInfo> CreateTransactionEnvelope(string id, string userId, bool shouldFail)
