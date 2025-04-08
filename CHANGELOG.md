@@ -1,3 +1,8 @@
+## Release 2025-04-08
+
+### AWS.Messaging.Lambda (0.10.2)
+* Fix null pointer exception when message contains no SQS message attributes
+
 ## Release 2025-03-12
 
 ### AWS.Messaging (0.9.5)
