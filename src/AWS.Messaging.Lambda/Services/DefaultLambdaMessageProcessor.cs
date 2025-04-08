@@ -337,7 +337,7 @@ internal class DefaultLambdaMessageProcessor : ILambdaMessageProcessor, ISQSMess
         return ValueTask.CompletedTask;
     }
 
-    private Message ConvertToStandardSQSMessage(SQSEvent.SQSMessage sqsEventMessage)
+    internal static Message ConvertToStandardSQSMessage(SQSEvent.SQSMessage sqsEventMessage)
     {
         var sqsMessage = new Message
         {
@@ -349,16 +349,19 @@ internal class DefaultLambdaMessageProcessor : ILambdaMessageProcessor, ISQSMess
             ReceiptHandle = sqsEventMessage.ReceiptHandle,
         };
 
-        foreach (var attr in sqsEventMessage.MessageAttributes)
+        if (sqsEventMessage.MessageAttributes != null)
         {
-            sqsMessage.MessageAttributes.Add(attr.Key, new MessageAttributeValue
+            foreach (var attr in sqsEventMessage.MessageAttributes)
             {
-                BinaryListValues = attr.Value.BinaryListValues,
-                BinaryValue = attr.Value.BinaryValue,
-                DataType = attr.Value.DataType,
-                StringListValues = attr.Value.StringListValues,
-                StringValue = attr.Value.StringValue,
-            });
+                sqsMessage.MessageAttributes.Add(attr.Key, new MessageAttributeValue
+                {
+                    BinaryListValues = attr.Value.BinaryListValues,
+                    BinaryValue = attr.Value.BinaryValue,
+                    DataType = attr.Value.DataType,
+                    StringListValues = attr.Value.StringListValues,
+                    StringValue = attr.Value.StringValue,
+                });
+            }
         }
 
         return sqsMessage;
