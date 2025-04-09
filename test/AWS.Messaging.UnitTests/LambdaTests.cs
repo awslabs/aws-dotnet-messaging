@@ -14,10 +14,12 @@ using Amazon.SQS.Model;
 using AWS.Messaging.Lambda;
 using AWS.Messaging.Serialization;
 using AWS.Messaging.UnitTests.Models;
+using AWS.Messaging.Lambda.Services;
 using Microsoft.Extensions.DependencyInjection;
 using Moq;
 using Xunit;
 using static Amazon.Lambda.SQSEvents.SQSEvent;
+using Amazon;
 
 namespace AWS.Messaging.UnitTests;
 
@@ -310,6 +312,65 @@ public class LambdaTests
         Assert.True(message6BPos != -1);
         Assert.True(message4BPos < message5BPos);
         Assert.True(message5BPos < message6BPos);
+    }
+
+    [Fact]
+    public void ConvertToSDKMessage()
+    {
+        var lambdaMessage = new SQSEvent.SQSMessage
+        {
+            Attributes = new Dictionary<string, string> { { "key", "value" } },
+            Body = "body",
+            Md5OfMessageAttributes = "md5Attributes",
+            MessageId = "messageId",
+            ReceiptHandle = "handle"
+        };
+
+        var sdkMessage = DefaultLambdaMessageProcessor.ConvertToStandardSQSMessage(lambdaMessage);
+
+        Assert.Equal(lambdaMessage.Body, sdkMessage.Body);
+        Assert.Equal(lambdaMessage.Md5OfMessageAttributes, sdkMessage.MD5OfMessageAttributes);
+        Assert.Equal(lambdaMessage.MessageId, sdkMessage.MessageId);
+        Assert.Equal(lambdaMessage.ReceiptHandle, sdkMessage.ReceiptHandle);
+        Assert.True(object.ReferenceEquals(lambdaMessage.Attributes, sdkMessage.Attributes));
+
+        if (AWSConfigs.InitializeCollections)
+        {
+            Assert.Empty(sdkMessage.MessageAttributes);
+        }
+        else
+        {
+            Assert.Null(sdkMessage.MessageAttributes);
+        }
+
+        lambdaMessage.MessageAttributes = new Dictionary<string, MessageAttribute>
+        {
+            {"keyString", new MessageAttribute
+                {
+                    DataType = "String",
+                    StringValue = "TheString"
+                }
+            },
+            {"keyBinary", new MessageAttribute
+                {
+                    DataType = "Binary",
+                    BinaryValue = new System.IO.MemoryStream(new byte[]{1,2,3})
+                }
+            }
+        };
+
+        sdkMessage = DefaultLambdaMessageProcessor.ConvertToStandardSQSMessage(lambdaMessage);
+
+
+        Assert.Equal(lambdaMessage.Body, sdkMessage.Body);
+        Assert.Equal(lambdaMessage.Md5OfMessageAttributes, sdkMessage.MD5OfMessageAttributes);
+        Assert.Equal(lambdaMessage.MessageId, sdkMessage.MessageId);
+        Assert.Equal(lambdaMessage.ReceiptHandle, sdkMessage.ReceiptHandle);
+        Assert.True(object.ReferenceEquals(lambdaMessage.Attributes, sdkMessage.Attributes));
+
+        Assert.Equal(2, sdkMessage.MessageAttributes.Count);
+        Assert.Equal("Binary", sdkMessage.MessageAttributes["keyBinary"].DataType);
+        Assert.Equal(3, sdkMessage.MessageAttributes["keyBinary"].BinaryValue.Length);
     }
 
     private async Task<string> Execute(SimulatedMessage[] messages, int maxNumberOfConcurrentMessages = 1, bool deleteMessagesWhenCompleted = false, bool addInvalidMessageFormatRecord = false, bool isFifoQueue = false)
