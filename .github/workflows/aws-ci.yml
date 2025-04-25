@@ -3,8 +3,8 @@ name: AWS CI
 on:
   pull_request:
     branches:
-      - main
-      - dev
+      - v3sdk-release
+      - v3sdk-development
 
 permissions:
   id-token: write
