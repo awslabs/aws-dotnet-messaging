@@ -32,6 +32,7 @@ public class MessageMetadataHandlerTests
         // Assert
         Assert.Equal("test-message-id", metadata.MessageID);
         Assert.Equal("test-receipt-handle", metadata.ReceiptHandle);
+        Assert.NotNull(metadata.MessageAttributes);
         Assert.Single(metadata.MessageAttributes);
         Assert.Equal("TestValue", metadata.MessageAttributes["TestAttribute"].StringValue);
     }
@@ -140,6 +141,7 @@ public class MessageMetadataHandlerTests
         Assert.Equal("123456789012", metadata.AWSAccount);
         Assert.Equal(DateTimeOffset.Parse("2024-03-15T10:00:00Z"), metadata.Time);
         Assert.Equal("us-east-1", metadata.AWSRegion);
+        Assert.NotNull(metadata.Resources);
         Assert.Equal(2, metadata.Resources.Count);
         Assert.Contains("resource1", metadata.Resources);
         Assert.Contains("resource2", metadata.Resources);

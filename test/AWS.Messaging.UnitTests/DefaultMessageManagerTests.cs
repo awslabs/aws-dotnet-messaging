@@ -426,9 +426,11 @@ namespace AWS.Messaging.UnitTests
             // Access _inFlightMessageMetadata through reflection
             var inFlightMessageMetadataField = typeof(DefaultMessageManager)
                 .GetField("_inFlightMessageMetadata", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            Assert.NotNull(inFlightMessageMetadataField);
             var inFlightMessageMetadata = inFlightMessageMetadataField.GetValue(manager) as ConcurrentDictionary<MessageEnvelope, InFlightMetadata>;
 
             // Assert
+            Assert.NotNull(inFlightMessageMetadata);
             Assert.False(inFlightMessageMetadata.ContainsKey(message2),
                 "Skipped message should not remain in _inFlightMessageMetadata after group failure");
 

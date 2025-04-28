@@ -33,7 +33,7 @@ namespace AWS.Messaging.Tests.Common.Services
 
         public IEnumerable<LogItem> Logs => concurrentLogs.ToList();
 
-        public IDisposable BeginScope<TState>(TState state) => _scopeProvider.Push(state);
+        public IDisposable BeginScope<TState>(TState state)  where TState : notnull => _scopeProvider.Push(state);
 
         public bool IsEnabled(LogLevel logLevel) => logLevel != LogLevel.None;
 
