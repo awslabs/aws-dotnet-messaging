@@ -1,0 +1,11 @@
+{
+  "Projects": [
+    {
+      "Name": "AWS.Messaging",
+      "Type": "Minor",
+      "ChangelogMessages": [
+        "Updated the .NET SDK dependencies to the latest version GA 4.0.0"
+      ]
+    }
+  ]
+}

@@ -31,6 +31,8 @@ await Host.CreateDefaultBuilder(args)
             // builder.LoadConfigurationFromSettings(context.Configuration);
 
             var mpfQueueUrl = context.Configuration["AWS:Resources:MPFQueueUrl"];
+            if (string.IsNullOrEmpty(mpfQueueUrl))
+                throw new InvalidOperationException("Missing required configuration parameter 'AWS:Resources:MPFQueueUrl'.");
 
             builder.AddSQSPoller(mpfQueueUrl);
             builder.AddMessageHandler<ChatMessageHandler, ChatMessage>("chatMessage");

@@ -81,6 +81,7 @@ public class SQSMessageParserTests
         // Assert
         Assert.Equal(json, messageBody);
         Assert.NotNull(metadata.SQSMetadata);
+        Assert.NotNull(metadata.SQSMetadata.MessageAttributes);
         Assert.Single(metadata.SQSMetadata.MessageAttributes);
         Assert.Equal("TestValue", metadata.SQSMetadata.MessageAttributes["TestAttribute"].StringValue);
     }
