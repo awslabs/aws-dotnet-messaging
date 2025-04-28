@@ -2,18 +2,15 @@
   "Projects": [
     {
       "Name": "AWS.Messaging",
-      "Path": "src/AWS.Messaging/AWS.Messaging.csproj",
-      "PrereleaseLabel": "preview"
+      "Path": "src/AWS.Messaging/AWS.Messaging.csproj"
     },
     {
       "Name": "AWS.Messaging.Lambda",
-      "Path": "src/AWS.Messaging.Lambda/AWS.Messaging.Lambda.csproj",
-      "PrereleaseLabel": "preview"
+      "Path": "src/AWS.Messaging.Lambda/AWS.Messaging.Lambda.csproj"
     },
     {
       "Name": "AWS.Messaging.Telemetry.OpenTelemetry",
-      "Path": "src/AWS.Messaging.Telemetry.OpenTelemetry/AWS.Messaging.Telemetry.OpenTelemetry.csproj",
-      "PrereleaseLabel": "preview"
+      "Path": "src/AWS.Messaging.Telemetry.OpenTelemetry/AWS.Messaging.Telemetry.OpenTelemetry.csproj"
     }
   ],
   "UseCommitsForChangelog": false,
