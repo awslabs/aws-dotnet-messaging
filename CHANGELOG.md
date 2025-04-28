@@ -1,3 +1,10 @@
+## Release 2025-04-28
+
+### AWS.Messaging.Lambda (0.20.1-preview)
+* Fix null pointer exception when message contains no SQS message attributes
+### AWS.Messaging (0.22.0-preview)
+* Updated the .NET SDK dependencies to the latest version GA 4.0.0
+
 ## Release 2025-04-08
 
 ### AWS.Messaging.Lambda (0.10.2)
