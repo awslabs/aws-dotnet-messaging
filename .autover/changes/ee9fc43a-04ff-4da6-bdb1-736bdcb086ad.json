@@ -1,0 +1,25 @@
+{
+  "Projects": [
+    {
+      "Name": "AWS.Messaging",
+      "Type": "Minor",
+      "ChangelogMessages": [
+        "Telemetry collection enhancement."
+      ]
+    },
+    {
+      "Name": "AWS.Messaging.Lambda",
+      "Type": "Minor",
+      "ChangelogMessages": [
+        "Telemetry collection enhancement."
+      ]
+    },
+    {
+      "Name": "AWS.Messaging.Telemetry.OpenTelemetry",
+      "Type": "Minor",
+      "ChangelogMessages": [
+        "Telemetry collection enhancement."
+      ]
+    }
+  ]
+}

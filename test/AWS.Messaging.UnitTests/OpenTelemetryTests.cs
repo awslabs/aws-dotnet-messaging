@@ -76,6 +76,8 @@ public class OpenTelemetryTests
         services.AddSingleton<ITelemetryProvider, OpenTelemetryProvider>();
         services.AddSingleton<ChatMessageHandler>();
 
+        services.Configure<OpenTelemetryProviderOptions>((_) => { });
+
         _serviceProvider = services.BuildServiceProvider();
 
         _publisher = new MessageRoutingPublisher(
@@ -189,7 +191,7 @@ public class OpenTelemetryTests
     /// in the message envelope
     /// </summary>
     [Fact]
-    public async Task OpenTelemetry_Handler_ParentFromEnvelope()
+    public async Task OpenTelemetry_Handler_HasLinkToActivityFromEnvelope()
     {
         var activities = new List<Activity>();
         var envelope = new MessageEnvelope<ChatMessage>()
@@ -219,7 +221,13 @@ public class OpenTelemetryTests
         Assert.Single(activities);
         Assert.Equal("AWS.Messaging: Processing message", activities[0].OperationName);
 
-        // The MPF activity's parent should be the one specified in envelope.Metadata above
-        Assert.Equal("00-d2d8865217873923d2d74cf680a30ac3-d63e320582f9ff94-01", activities[0].ParentId);
+        Assert.Single(activities[0].Links);
+
+        var link = activities[0].Links.First();
+
+        // The MPF activity's link should be the one specified in envelope.Metadata above
+        Assert.Equal("d2d8865217873923d2d74cf680a30ac3", link.Context.TraceId.ToString());
+        Assert.Equal("d63e320582f9ff94", link.Context.SpanId.ToString());
+        Assert.Equal(ActivityTraceFlags.Recorded, link.Context.TraceFlags);
     }
 }

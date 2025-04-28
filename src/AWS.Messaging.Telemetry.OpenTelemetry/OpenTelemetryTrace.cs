@@ -15,56 +15,40 @@ namespace AWS.Messaging.Telemetry.OpenTelemetry;
 /// </summary>
 public class OpenTelemetryTrace : ITelemetryTrace
 {
-    private readonly Activity? _activity;
-    private readonly Activity? _parentToRestore;
+    private bool _disposedValue;
+    private readonly TelemetrySpan _span;
 
     /// <summary>
-    /// Creates a new trace
+    ///
     /// </summary>
-    /// <param name="activity">New trace</param>
-    /// <param name="parentToRestore">Optional parent activity that will be set as <see cref="Activity.Current"/> when this trace is disposed</param>
-    public OpenTelemetryTrace(Activity? activity, Activity? parentToRestore = null)
+    /// <param name="span"></param>
+    public OpenTelemetryTrace(TelemetrySpan span)
     {
-        _activity = activity;
-        _parentToRestore = parentToRestore;
+        _span = span;
     }
 
     /// <inheritdoc/>
     public void AddException(Exception exception, bool fatal = true)
     {
-        _activity?.RecordException(exception);
+        _ = _span.RecordException(exception);
 
         if (fatal)
         {
-            _activity?.SetStatus(ActivityStatusCode.Error, exception.Message);
+            _span.SetStatus(Status.Error.WithDescription(exception.Message));
         }
     }
 
     /// <inheritdoc/>
     public void AddMetadata(string key, object value)
-    {
-        if (_activity != null && _activity.IsAllDataRequested)
-        {
-            _activity.SetTag(key, value);
-        }
-    }
+        => _span.SetAttribute(key, value?.ToString());
 
     /// <inheritdoc/>
     public void RecordTelemetryContext(MessageEnvelope envelope)
     {
-        ActivityContext contextToInject = default;
-        if (_activity != null)
-        {
-            contextToInject = _activity.Context;
-        }
-        // Even if an "AWS.Messaging" activity was not created, we still
-        // propogate the current activity (if it exists) through the message envelope
-        else if (Activity.Current != null)
-        {
-            contextToInject = Activity.Current.Context;
-        }
+        PropagationContext propagationContext = new(_span.Context, Baggage.Current);
 
-        Propagators.DefaultTextMapPropagator.Inject(new PropagationContext(contextToInject, Baggage.Current), envelope, InjectTraceContextIntoEnvelope);
+        Propagators.DefaultTextMapPropagator
+            .Inject(propagationContext, envelope, InjectTraceContextIntoEnvelope);
     }
 
     /// <summary>
@@ -73,34 +57,36 @@ public class OpenTelemetryTrace : ITelemetryTrace
     /// <param name="envelope">Outbound message envelope</param>
     /// <param name="key">Context key</param>
     /// <param name="value">Context value</param>
-    private void InjectTraceContextIntoEnvelope(MessageEnvelope envelope, string key, string value)
+    private static void InjectTraceContextIntoEnvelope(MessageEnvelope envelope, string key, string value)
     {
         envelope.Metadata[key] = JsonSerializer.SerializeToElement(value, typeof(string), MessagingJsonSerializerContext.Default);
     }
 
-    private bool _disposed;
-
     /// <summary>
-    /// Disposes the inner <see cref="Activity"/>, and also restores the parent activity if set
+    /// Releases resources related to the OpenTelemetry span.
+    /// Ends the span if called from Dispose.
     /// </summary>
-    /// <param name="disposing">Indicates whether the call comes from Dispose (true) or a finalizer (false)</param>
+    /// <param name="disposing">
+    /// true if called from Dispose; false if called from a finalizer.
+    /// </param>
     protected virtual void Dispose(bool disposing)
     {
-        if (!_disposed)
+        if (!_disposedValue)
         {
-            _activity?.Dispose();
-            if (_parentToRestore != null)
+            if (disposing)
             {
-                Activity.Current = _parentToRestore;
+                _span.End();
             }
-            _disposed = true;
+
+            _disposedValue = true;
         }
     }
 
     /// <inheritdoc/>
     public void Dispose()
     {
-        Dispose(true);
+        Dispose(disposing: true);
+
         GC.SuppressFinalize(this);
     }
 }
