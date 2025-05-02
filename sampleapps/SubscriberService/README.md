@@ -42,7 +42,7 @@ You can test the service using one of these two methods:
 
 ### 2. Manual Testing via AWS CLI
 ```
-$messageBody = "{""""type"""":""""chatMessage"""",""""id"""":""""123"""",""""source"""":""""test"""",""""specversion"""":""""1.0"""",""""time"""":""""2024-01-01T00:00:00Z"""",""""data"""":""""{\\""""messageDescription\\"""":\\""""Test message\\""""}""""}"
+$messageBody = '{"type":"chatMessage","id":"123","source":"test","specversion":"1.0","time":"2024-01-01T00:00:00Z","data":{"messageDescription":"Test message"}}'
 
 aws sqs send-message --queue-url YOUR_QUEUE_URL --message-body $messageBody
 ```
