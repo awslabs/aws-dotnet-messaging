@@ -1,0 +1,25 @@
+{
+  "Projects": [
+    {
+      "Name": "AWS.Messaging",
+      "Type": "Major",
+      "ChangelogMessages": [
+        "This marks the first stable release of AWS Message Processing Framework for .NET which is now generally available."
+      ]
+    },
+    {
+      "Name": "AWS.Messaging.Lambda",
+      "Type": "Major",
+      "ChangelogMessages": [
+        "This marks the first stable release of AWS Message Processing Framework for .NET which is now generally available."
+      ]
+    },
+    {
+      "Name": "AWS.Messaging.Telemetry.OpenTelemetry",
+      "Type": "Major",
+      "ChangelogMessages": [
+        "This marks the first stable release of AWS Message Processing Framework for .NET which is now generally available."
+      ]
+    }
+  ]
+}
