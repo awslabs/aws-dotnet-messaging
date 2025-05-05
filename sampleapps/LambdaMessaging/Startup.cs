@@ -1,7 +1,10 @@
 using Amazon.Lambda.Annotations;
+using AWS.Messaging.Telemetry.OpenTelemetry;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using OpenTelemetry.Resources;
+using OpenTelemetry.Trace;
 
 namespace LambdaMessaging;
 
@@ -25,6 +28,13 @@ public class Startup
                 options.MaxNumberOfConcurrentMessages = 2;
             });
         });
+
+        builder.Services.AddOpenTelemetry()
+            .ConfigureResource(resource => resource.AddService("LambdaService"))
+            .WithTracing(tracing => tracing
+                .AddAWSMessagingInstrumentation()
+                .AddXRayTraceId()
+                .AddOtlpExporter());
 
         return builder;
     }

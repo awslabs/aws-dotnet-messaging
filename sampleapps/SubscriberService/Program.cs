@@ -8,6 +8,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using OpenTelemetry.Exporter;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using SubscriberService.MessageHandlers;
@@ -30,7 +31,7 @@ await Host.CreateDefaultBuilder(args)
             // To load the configuration from appsettings.json instead of the code below, uncomment this and remove the following lines.
             // builder.LoadConfigurationFromSettings(context.Configuration);
 
-            var mpfQueueUrl = context.Configuration["AWS:Resources:MPFQueueUrl"];
+            var mpfQueueUrl = "https://sqs.us-west-2.amazonaws.com/147997163238/MPF";
             if (string.IsNullOrEmpty(mpfQueueUrl))
                 throw new InvalidOperationException("Missing required configuration parameter 'AWS:Resources:MPFQueueUrl'.");
 
@@ -68,7 +69,13 @@ await Host.CreateDefaultBuilder(args)
             .ConfigureResource(resource => resource.AddService("SubscriberService"))
             .WithTracing(tracing => tracing
                 .AddAWSMessagingInstrumentation()
-                .AddConsoleExporter());
+                .AddAWSInstrumentation()
+                .AddXRayTraceId()
+                .AddOtlpExporter(options =>
+                {
+                    options.Endpoint = new Uri("http://34.219.59.119:4318/v1/traces");
+                    options.Protocol = OtlpExportProtocol.HttpProtobuf;
+                }));
     })
     .Build()
     .RunAsync();

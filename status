@@ -1,0 +1,1047 @@
+[33mcommit da633aa680e7210b55a7fac549ba49211ebde575[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mdatacontent4[m[33m)[m
+Author: Garrett Beatty <gcbeatty@amazon.com>
+Date:   Fri Mar 28 11:18:51 2025 -0400
+
+    Parse data field as direct json object
+
+[33mcommit e735bbf2006cf43d8b2fe9e9d2eef9ff8ca0c753[m[33m ([m[1;31morigin/v4sdk-development[m[33m, [m[1;32mv4sdk-development[m[33m)[m
+Author: Garrett Beatty <gcbeatty@amazon.com>
+Date:   Wed Mar 26 18:40:13 2025 -0400
+
+    Refactor serialization logic and remove JsonSerializer.Deserialize use for entire envelope (#192)
+
+[33mcommit 6d1fe2f0418b0e8923394b0fc1e0dc7f33c1f188[m
+Merge: 2e6aed9 e590fe2
+Author: Garrett Beatty <gcbeatty@amazon.com>
+Date:   Wed Mar 26 09:52:07 2025 -0400
+
+    Merge pull request #200 from awslabs/gcbeatty/merge
+
+[33mcommit e590fe2a6ec00c0522b71687eb2a2aeacaa4c2d4[m[33m ([m[1;31morigin/gcbeatty/merge[m[33m, [m[1;32mgcbeatty/merge[m[33m)[m
+Author: Garrett Beatty <gcbeatty@amazon.com>
+Date:   Tue Mar 25 17:10:36 2025 -0400
+
+    add change file
+
+[33mcommit 022a8a70c8c37bc97297a68216024afcb19ebbc5[m
+Merge: 2e6aed9 b3b009f
+Author: Garrett Beatty <gcbeatty@amazon.com>
+Date:   Tue Mar 25 13:25:43 2025 -0400
+
+    Merge branch 'dev' into v4sdk-development
+
+[33mcommit 2e6aed993bf71f8a600b983892c0c5b8c86cc810[m
+Author: Phil Asmar <phil.asmar@gmail.com>
+Date:   Tue Mar 25 12:39:37 2025 -0400
+
+    add change file
+
+[33mcommit 41bcffc50c8859bf9a08a4f2fa82d1297d37381c[m
+Author: Phil Asmar <phil.asmar@gmail.com>
+Date:   Tue Mar 25 09:24:51 2025 -0400
+
+    bump version further and add preview suffix
+
+[33mcommit d4aef63de67fb9df01aaaf58e8b3b6ede2b561f0[m
+Author: Phil Asmar <phil.asmar@gmail.com>
+Date:   Wed Mar 19 10:21:33 2025 -0400
+
+    chore: revert version numbers to match main branch
+
+[33mcommit b3b009ff7932018daf5970ab350602bc018c107e[m[33m ([m[1;31morigin/dev[m[33m, [m[1;32mgcbeatty/sdkupdates[m[33m, [m[1;32mdev[m[33m)[m
+Author: Garrett Beatty <gcbeatty@amazon.com>
+Date:   Mon Mar 24 13:51:31 2025 -0400
+
+    Update sample apps readme (#196)
+
+[33mcommit 394a445e1fa443c35657c31f244cb0c859867ac7[m
+Author: Norm Johanson <normj@amazon.com>
+Date:   Fri Mar 14 13:57:08 2025 -0700
+
+    Add support for Native AOT (Retarget library to .NET 8) (#184)
+
+[33mcommit 1abdcc55e3248ce0096550e6145adc19b6078673[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mother[m[33m)[m
+Author: aws-sdk-dotnet-automation <github-aws-sdk-dotnet-automation@amazon.com>
+Date:   Wed Mar 12 20:51:27 2025 +0000
+
+    Updated changelog
+
+[33mcommit 8bab0ed77dd09af39ece597aeacd338a8b96415f[m
+Author: aws-sdk-dotnet-automation <github-aws-sdk-dotnet-automation@amazon.com>
+Date:   Wed Mar 12 20:51:27 2025 +0000
+
+    release_2025-03-12
+
+[33mcommit 519a1b4dd53f4a4b0faa2804cca4684a00a33b7d[m
+Author: Phil Asmar <phil.asmar@gmail.com>
+Date:   Wed Mar 12 16:24:57 2025 -0400
+
+    chore: fix doc site
+
+[33mcommit 8151b3d951602c0f6134440d8adf35cbdaea2f66[m
+Merge: 5e80982 1813172
+Author: Norm Johanson <normj@amazon.com>
+Date:   Fri Mar 7 08:19:26 2025 -0800
+
+    Merge pull request #183 from awslabs/normj/v4-stage-merge
+    
+    Sync v4-development with dev
+
+[33mcommit bdb0f185e00807ce9b7e6beff47915e2dbc658ba[m
+Author: Garrett Beatty <gcbeatty@amazon.com>
+Date:   Fri Mar 7 08:31:11 2025 -0600
+
+    Update error message for when subscribermapping is null (#181)
+
+[33mcommit 1813172f65faf4d4a08c13d9cbcc98d429f118af[m
+Merge: 1e818f4 5e80982
+Author: Norm Johanson <normj@amazon.com>
+Date:   Thu Mar 6 17:22:40 2025 -0800
+
+    Merge branch 'v4sdk-development' into normj/v4-stage-merge
+
+[33mcommit 1e818f42dbc6ae374fbfde6f817bcccd12ab708a[m
+Author: aws-sdk-dotnet-automation <43080735+aws-sdk-dotnet-automation@users.noreply.github.com>
+Date:   Thu Feb 20 12:29:45 2025 -0800
+
+    Release 2025-02-20 (#178)
+    
+    * release_2025-02-20
+    
+    * Updated changelog
+
+[33mcommit 0d317c1b6489f21c4ddcae48f771f9b718d3f587[m
+Merge: 5db5888 a1b0aed
+Author: Norm Johanson <normj@amazon.com>
+Date:   Thu Feb 20 12:02:35 2025 -0800
+
+    Merge branch 'main' into dev
+
+[33mcommit a1b0aedb5b69fede6913f84c4a8bc633dd7ec7e1[m
+Author: Norm Johanson <normj@amazon.com>
+Date:   Thu Feb 20 11:13:01 2025 -0800
+
+    Fix issue with fifo queues message failure reporint issue (#175)
+    
+    * Fix issue with fifo queues and Lambda not informing Lambda about skipped messages when an earlier message fails.
+    
+    https://github.com/awslabs/aws-dotnet-messaging/issues/174
+
+[33mcommit 5db58889d44204c9924536c7bef0c047eb2fa834[m
+Author: kristiansamuelsson <46819699+kristiansamuelsson@users.noreply.github.com>
+Date:   Thu Feb 20 20:12:32 2025 +0100
+
+    Avoid logging errors during shutdown due to SQS client call being cancelled (#173)
+
+[33mcommit 8209ab5ea82eda59da5f83e697d06c84555b310e[m
+Merge: 0541a95 480b607
+Author: aws-sdk-dotnet-automation <github-aws-sdk-dotnet-automation@amazon.com>
+Date:   Wed Jan 15 19:43:24 2025 +0000
+
+    Merge branch 'dev'
+
+[33mcommit 480b607ae08ff8b47a9a6c6f8efd92f2fe54f5ae[m
+Author: aws-sdk-dotnet-automation <43080735+aws-sdk-dotnet-automation@users.noreply.github.com>
+Date:   Wed Jan 15 14:42:58 2025 -0500
+
+    Release 2025-01-13 (#170)
+
+[33mcommit 89b2d75dbb08cf4a9dc7ed56df2727a136c7ea3a[m
+Author: Garrett Beatty <gcbeatty@amazon.com>
+Date:   Thu Jan 9 09:18:48 2025 -0500
+
+    Update logic to make DefaultMessageManager fail on InvalidMessageHandlerSignatureException (#169)
+
+[33mcommit 8a2270bfbf1591d9179cb8fc0a10b4b8c8c84587[m
+Author: Phil Asmar <phil.asmar@gmail.com>
+Date:   Thu Dec 5 09:36:59 2024 -0500
+
+    chore: add workflow to check if change file is included in a PR
+
+[33mcommit 5e809820a4806c6724ee1a10ac9482d3dbcea85a[m
+Author: Malhar Khimsaria <96malhar@gmail.com>
+Date:   Thu Oct 24 17:25:52 2024 -0700
+
+    feat: add support for .NET SDK V4 (#163)
+
+[33mcommit 83d0a8c702236721302c15f93890245ae74d6758[m[33m ([m[1;31morigin/v4sdk-release[m[33m)[m
+Author: Malhar Khimsaria <96malhar@gmail.com>
+Date:   Mon Oct 21 15:42:49 2024 -0700
+
+    chore: Update config files to support GitHub CI for V4 (#162)
+
+[33mcommit 22cfa08750b88bd975c972732a4ab7136b113697[m
+Author: Joshua Mangiola <joshm982@gmail.com>
+Date:   Sat Oct 12 17:24:22 2024 +1030
+
+    Removes references to SNS in EventBridge publisher
+
+[33mcommit 0541a95355918657c2c0255889a6804b3145074c[m[33m ([m[1;32mmain[m[33m)[m
+Author: Ashish Dhingra <67916761+ashishdhingra@users.noreply.github.com>
+Date:   Thu Sep 5 14:58:21 2024 -0700
+
+    chore: Modified bug issue template to add checkbox to report potential regression.
+
+[33mcommit 479735deb0f4179c3817662078379f1d3e231f14[m
+Merge: c43c3bb bbdb9b6
+Author: aws-sdk-dotnet-automation <github-aws-sdk-dotnet-automation@amazon.com>
+Date:   Fri Aug 16 17:14:32 2024 +0000
+
+    Merge branch 'dev'
+
+[33mcommit bbdb9b63b3735d880c76edfbd81e6e785c084d4b[m
+Author: aws-sdk-dotnet-automation <github-aws-sdk-dotnet-automation@amazon.com>
+Date:   Thu Aug 15 14:57:18 2024 +0000
+
+    Updated changelog
+
+[33mcommit cf86f2c94f9455ce29d772a289812d4d6e33ecc3[m
+Author: aws-sdk-dotnet-automation <github-aws-sdk-dotnet-automation@amazon.com>
+Date:   Thu Aug 15 14:57:18 2024 +0000
+
+    release_2024-08-15
+
+[33mcommit 3919df22b56680be927679421cfb53a3c8ce42c2[m
+Author: Brendon <brendon.parker@rfsmart.com>
+Date:   Thu Aug 15 10:56:36 2024 -0400
+
+    Use static MessageConfiguration tied to ServiceCollection (#156)
+
+[33mcommit c43c3bb09d48e167bc62678978353e7f14be779d[m
+Merge: ee29c3d 9fd7248
+Author: aws-sdk-dotnet-automation <github-aws-sdk-dotnet-automation@amazon.com>
+Date:   Fri Aug 2 19:50:07 2024 +0000
+
+    Merge branch 'dev'
+
+[33mcommit 9fd7248828cf91d450adc67c606cbe6523f0185f[m
+Merge: c42c72c ad00549
+Author: Philippe El Asmar <53088140+philasmar@users.noreply.github.com>
+Date:   Fri Aug 2 15:49:43 2024 -0400
+
+    Merge pull request #153 from awslabs/releases/next-release
+    
+    Release 2024-08-02
+
+[33mcommit ad005494d3bfeae04c777306fe1220b7d27c85e3[m
+Author: aws-sdk-dotnet-automation <github-aws-sdk-dotnet-automation@amazon.com>
+Date:   Fri Aug 2 19:40:28 2024 +0000
+
+    Updated changelog
+
+[33mcommit 7cb391275a5c479e33abe7f77d5e7791ed70df17[m[33m ([m[1;33mtag: [m[1;33mrelease_2024-08-02[m[33m)[m
+Author: aws-sdk-dotnet-automation <github-aws-sdk-dotnet-automation@amazon.com>
+Date:   Fri Aug 2 19:40:28 2024 +0000
+
+    release_2024-08-02
+
+[33mcommit c42c72c485571a4503e3c541a5fd55853d96593c[m
+Author: Brendon <parker.brendon@gmail.com>
+Date:   Fri Aug 2 15:39:19 2024 -0400
+
+    Add configurable visibility timeout default when using partial batch failures (#151)
+
+[33mcommit ee29c3dadeaf7c49116727db1d2cfb22b9ad853a[m
+Author: Ashish Dhingra <67916761+ashishdhingra@users.noreply.github.com>
+Date:   Mon Jun 17 13:57:04 2024 -0700
+
+    chore: Add GitHub workflows for stale issue/discussions and closed issue message.
+
+[33mcommit ac76d89449ced976eba5f629dac5011d1b6dce00[m
+Author: Ashish Dhingra <67916761+ashishdhingra@users.noreply.github.com>
+Date:   Mon Jun 17 13:57:04 2024 -0700
+
+    chore: Add GitHub workflows for stale issue/discussions and closed issue message.
+
+[33mcommit d090bc83d976794cb994650c711a0bdaffccb33b[m
+Merge: 90a00fe 89f9b06
+Author: Philippe El Asmar <53088140+philasmar@users.noreply.github.com>
+Date:   Thu Apr 25 13:31:40 2024 -0400
+
+    Merge pull request #138 from awslabs/dev
+    
+    add beacon to the docs site
+
+[33mcommit 89f9b0673c40c72d2b3528646b66c6a9db5e89d3[m
+Author: Amelia Tee Qiao Ying <atqy@amazon.com>
+Date:   Sat Mar 23 06:14:44 2024 +0000
+
+    add beacon to the docs site
+
+[33mcommit 90a00fe7b415c1f37429fe1ed5d282b95fd4bd25[m
+Merge: 00a8622 d894124
+Author: aws-sdk-dotnet-automation <github-aws-sdk-dotnet-automation@amazon.com>
+Date:   Mon Apr 22 19:52:09 2024 +0000
+
+    Merge branch 'dev'
+
+[33mcommit d894124e5a9d73bb1c1789e1f8fe5081e0ad6eb0[m
+Merge: bd82dd9 73cbdef
+Author: Malhar Khimsaria <96malhar@gmail.com>
+Date:   Mon Apr 22 12:51:52 2024 -0700
+
+    Merge pull request #136 from awslabs/releases/next-release
+    
+    Release 2024-04-22
+
+[33mcommit 73cbdef171cea84ac45701c565277048b221d980[m
+Author: aws-sdk-dotnet-automation <github-aws-sdk-dotnet-automation@amazon.com>
+Date:   Mon Apr 22 16:32:53 2024 +0000
+
+    Updated changelog
+
+[33mcommit 91ed7dcb7c547f1bfd8c03f51dfdd0148c483b78[m[33m ([m[1;33mtag: [m[1;33mrelease_2024-04-22[m[33m)[m
+Author: aws-sdk-dotnet-automation <github-aws-sdk-dotnet-automation@amazon.com>
+Date:   Mon Apr 22 16:32:53 2024 +0000
+
+    release_2024-04-22
+
+[33mcommit bd82dd9493cfcd0dc9d96e57afab644f5cc6a612[m
+Author: Rob Van Pamel <rob.vanpamel@gmail.com>
+Date:   Mon Apr 22 17:59:54 2024 +0200
+
+    return the result from the publisher to the caller. (#130)
+
+[33mcommit 00a8622fb6852cb7a619a141d49dffda52eb95ac[m
+Author: Phil Asmar <phil.asmar@gmail.com>
+Date:   Fri Apr 12 15:54:52 2024 -0400
+
+    address alex's comment
+
+[33mcommit 79a9143557099bcf14c61e92fa027097ac8afac4[m
+Author: Phil Asmar <phil.asmar@gmail.com>
+Date:   Fri Apr 12 13:04:37 2024 -0400
+
+    chore: add 'change file' section to the contributions file
+
+[33mcommit b18c8e52b041cdb5d083a41bfd93b7968122e8d0[m
+Author: Malhar Khimsaria <96malhar@gmail.com>
+Date:   Tue Apr 16 12:11:32 2024 -0700
+
+    [UA update] chore: Update User-Agent string (#127)
+
+[33mcommit 8581da7474e0ad14269cdc04f9bd951bb877db0a[m
+Author: eddiemcs3 <48039682+eddiemcs3@users.noreply.github.com>
+Date:   Mon Apr 8 17:03:55 2024 -0400
+
+    docs: update telemetry design wording for clarity
+
+[33mcommit 99f495c774d796b2370a0b8be3f5bcc6eb3315d0[m
+Author: Phil Asmar <phil.asmar@gmail.com>
+Date:   Fri Apr 12 15:54:52 2024 -0400
+
+    address alex's comment
+
+[33mcommit c8ff7de32c35ea6d0b997058a47880c29c486977[m
+Author: Phil Asmar <phil.asmar@gmail.com>
+Date:   Fri Apr 12 13:04:37 2024 -0400
+
+    chore: add 'change file' section to the contributions file
+
+[33mcommit 0cfe39f4861e2483634a53df9736645babc7ace4[m
+Author: Malhar Khimsaria <96malhar@gmail.com>
+Date:   Tue Apr 16 12:11:32 2024 -0700
+
+    [UA update] chore: Update User-Agent string (#127)
+
+[33mcommit b9cf4c4327a5a65837bc8849c972297f7bf803f9[m
+Author: eddiemcs3 <48039682+eddiemcs3@users.noreply.github.com>
+Date:   Mon Apr 8 17:03:55 2024 -0400
+
+    docs: update telemetry design wording for clarity
+
+[33mcommit db7703ff5eb4a17c7450ee55713b41c7cac2fc4a[m
+Merge: faf2f2a ff73323
+Author: aws-sdk-dotnet-automation <43080735+aws-sdk-dotnet-automation@users.noreply.github.com>
+Date:   Tue Apr 2 10:06:06 2024 -0400
+
+    Merge pull request #122 from awslabs/dev
+    
+    Merge Updated Workflows to main
+
+[33mcommit ff7332330cc2479dd97ffb3ec864dd934dcadb8b[m
+Author: Alex Shovlin <shovlia@amazon.com>
+Date:   Fri Mar 29 09:58:02 2024 -0400
+
+    chore: Update links in READMEs
+
+[33mcommit e0143f37809d819454e267f478ae9e6c31000a62[m
+Author: Phil Asmar <phil.asmar@gmail.com>
+Date:   Fri Mar 29 10:31:01 2024 -0400
+
+    chore: update release workflows to use a PAT
+
+[33mcommit faf2f2abf51d9f63f3aa754eb0e18ea6a4de742e[m
+Merge: 8e9d33e 5dd9b0f
+Author: Philippe El Asmar <53088140+philasmar@users.noreply.github.com>
+Date:   Tue Mar 26 17:03:22 2024 -0400
+
+    Merge pull request #119 from awslabs/dev
+    
+    Release 2024-03-26
+
+[33mcommit 5dd9b0fcda9612b23f10d0f748f7edae6e17d31d[m
+Merge: 2bf182d 9edb7ac
+Author: Philippe El Asmar <53088140+philasmar@users.noreply.github.com>
+Date:   Tue Mar 26 16:34:04 2024 -0400
+
+    Merge pull request #118 from awslabs/releases/next-release
+    
+    Release 2024-03-26
+
+[33mcommit 9edb7ac3e5f38bc708b218737a3c6760ffd029e4[m
+Author: aws-sdk-dotnet-automation <github-aws-sdk-dotnet-automation@amazon.com>
+Date:   Tue Mar 26 20:05:43 2024 +0000
+
+    Updated changelog
+
+[33mcommit 8e971d2160ccb99ec20052206dbf32bb148c081b[m[33m ([m[1;33mtag: [m[1;33mrelease_2024-03-26[m[33m)[m
+Author: aws-sdk-dotnet-automation <github-aws-sdk-dotnet-automation@amazon.com>
+Date:   Tue Mar 26 20:05:43 2024 +0000
+
+    Release 2024-03-26
+
+[33mcommit 8e9d33ed1c86f52688e1e93d61cc6cf5a1b4b7e9[m
+Merge: 9c05f1c 2bf182d
+Author: Philippe El Asmar <53088140+philasmar@users.noreply.github.com>
+Date:   Tue Mar 26 16:04:23 2024 -0400
+
+    Merge pull request #116 from awslabs/dev
+    
+    Merge Changes from Dev to Main
+
+[33mcommit 2bf182d24a8ec47f1d141b609ec2f45387b897a6[m
+Author: Philippe El Asmar <53088140+philasmar@users.noreply.github.com>
+Date:   Tue Mar 26 15:55:51 2024 -0400
+
+    chore: update README as part of release prep (#117)
+
+[33mcommit c48c281baacb66d24485b9b1ef9b13ea9adc30bf[m
+Merge: b0391cc 4ac8e56
+Author: Philippe El Asmar <53088140+philasmar@users.noreply.github.com>
+Date:   Tue Mar 26 14:43:42 2024 -0400
+
+    Merge pull request #112 from awslabs/asmarp/automated-versioning
+    
+    ci: add support for automated versioning and changelog creation
+
+[33mcommit b0391cc83d9d8e07acbb71547db3920cb3f8a78f[m
+Author: Malhar Khimsaria <96malhar@gmail.com>
+Date:   Tue Mar 26 09:54:09 2024 -0700
+
+    fix: Correctly deserialize outer envelope when processing messages relayed through EventBridge (#114)
+
+[33mcommit 4ac8e56afa0dcd328ba7b0c4b9da70a6e3dc92b5[m
+Author: Philippe El Asmar <53088140+philasmar@users.noreply.github.com>
+Date:   Tue Mar 26 13:28:24 2024 +0000
+
+    add ability to override the version of all projects
+
+[33mcommit df81e3c027eeca6aaedf92687846853dd845f2a5[m
+Author: Phil Asmar <phil.asmar@gmail.com>
+Date:   Fri Mar 22 13:35:35 2024 -0400
+
+    ci: add support for automated versioning and changelog creation
+
+[33mcommit 9c05f1c577d94a83afdf020e0cb41a698efba063[m
+Merge: fc8e967 165bf38
+Author: Philippe El Asmar <53088140+philasmar@users.noreply.github.com>
+Date:   Wed Mar 20 13:22:18 2024 -0400
+
+    Merge pull request #111 from awslabs/dev
+    
+    Merge dev to main for next beta release
+
+[33mcommit 165bf38437eec988491caa0799b79bb3771a0a1e[m
+Author: Philippe El Asmar <phil.asmar@gmail.com>
+Date:   Wed Mar 20 12:49:45 2024 -0400
+
+    Update version and add changelog
+
+[33mcommit f3b59d93d7d55c9ab59fa657e6150d5c478b496a[m
+Author: Philippe El Asmar <53088140+philasmar@users.noreply.github.com>
+Date:   Wed Mar 20 12:32:09 2024 -0400
+
+    feat: add backoff logic to the SQS Poller (#107)
+
+[33mcommit 684446058f57491e4f45530023f5a83d76a94481[m
+Author: Phil Asmar <phil.asmar@gmail.com>
+Date:   Fri Oct 27 12:18:38 2023 -0400
+
+    chore: add SourceLink to project files
+
+[33mcommit a2ade2d91bb394a8df450c192b150191322ce67c[m
+Author: Phil Asmar <phil.asmar@gmail.com>
+Date:   Thu Mar 14 09:27:07 2024 -0400
+
+    fix: fix the API reference not rendering
+
+[33mcommit fc8e967b50c6f05fafee9a1dcac999dcd3ccdf89[m
+Merge: 0bfd33c eedb6d4
+Author: Alex Shovlin <shovlia@amazon.com>
+Date:   Fri Mar 8 13:03:41 2024 -0600
+
+    Merge dev to main for 0.2.0-beta post-release work
+
+[33mcommit eedb6d45baee955fcc7f768c4ee4c594599e7242[m
+Author: Alex Shovlin <shovlia@amazon.com>
+Date:   Fri Mar 8 12:04:50 2024 -0500
+
+    Update CHANGELOG.md for 0.2.0-beta
+
+[33mcommit e81d6ca07d3c4b4961ec799282662e28798e9588[m
+Author: Phil Asmar <phil.asmar@gmail.com>
+Date:   Thu Feb 29 10:13:44 2024 -0500
+
+    chore: remove GitHub pages docs in favor of developer guide
+
+[33mcommit 0bfd33c33f6bc321bee1bbbec5cfdb2e1857745b[m
+Merge: 2ec157f bd75923
+Author: Alex Shovlin <shovlia@amazon.com>
+Date:   Fri Mar 8 08:57:40 2024 -0600
+
+    Merge dev to main to release 0.2.0-beta
+
+[33mcommit bd7592349012524883cf4442a1fbdab78894458c[m
+Author: Alex Shovlin <shovlia@amazon.com>
+Date:   Fri Mar 8 08:38:41 2024 -0600
+
+    Update AWS.Messaging version for 0.2.0-beta (#103)
+
+[33mcommit 6441f856265d7c0b4e7c4fd558a0bd5795c2b65f[m
+Author: Alex Shovlin <shovlia@amazon.com>
+Date:   Fri Mar 1 13:13:50 2024 -0600
+
+    docs: Improve documentation and examples around IMessagePublisher (#100)
+
+[33mcommit 3104ffc18194f4f35ff47da147733155eed3ab13[m
+Author: Alex Shovlin <shovlia@amazon.com>
+Date:   Fri Mar 1 10:46:48 2024 -0600
+
+    feat: Refine list of fatal exceptions when polling SQS (#99)
+    
+    BREAKING CHANGE: Replaces IsSQSExceptionFatal with a more generic IsExceptionFatal to let users categorize non-SQS exceptions too.
+
+[33mcommit 9b383764e25107deeeb4dbc12a8fc3a471d616ec[m
+Author: Phil Asmar <phil.asmar@gmail.com>
+Date:   Tue Feb 27 10:03:26 2024 -0500
+
+    chore: follow design patterns for publishers
+
+[33mcommit 1aa4506e2ad3bac2d6bdc990b31cc3e0b560a700[m
+Author: Philippe El Asmar <53088140+philasmar@users.noreply.github.com>
+Date:   Thu Feb 15 15:34:00 2024 -0500
+
+    chore: add validation to the ECS Task Metadata (#96)
+    
+    chore: add validation to the ECS Task Metadata
+
+[33mcommit a23683147219a71633e779ba1c9b632d8767fd4c[m
+Author: Alex Shovlin <shovlia@amazon.com>
+Date:   Thu Feb 15 13:40:17 2024 -0600
+
+    feat: Add support for specifying the message destination and AWS service client when publishing a specific message. (#93)
+
+[33mcommit 8749668a279aab4097fc1a8fa214fafb4f4ed857[m
+Author: Philippe El Asmar <53088140+philasmar@users.noreply.github.com>
+Date:   Thu Feb 15 13:47:54 2024 -0500
+
+    feat: add ability for users to enable data message logging (#95)
+    
+    * feat: add ability for users to enable data message logging
+
+[33mcommit 74fe3bb498a1a7d29b772b6a4d843a9fa36df5d6[m
+Author: Alex Shovlin <shovlia@amazon.com>
+Date:   Mon Feb 5 14:49:19 2024 -0500
+
+    ci: Fix escaping of payload for Lambda that selects test running account
+
+[33mcommit 227e47ea60ca08633dea743ae1f39b663e0fef29[m
+Author: Phil Asmar <phil.asmar@gmail.com>
+Date:   Thu Dec 21 10:57:24 2023 -0500
+
+    chore: make lambda integ tests synchronous
+
+[33mcommit 9cc54cbbadb2af03ba1808ca8879aa466efc050a[m
+Author: Alex Shovlin <shovlia@amazon.com>
+Date:   Tue Jan 16 15:49:56 2024 -0600
+
+    test: Add initial performance benchmark application (#63)
+
+[33mcommit 432a1fbd032cda532e588980ccafd9b3b13ec95e[m
+Author: Alex Shovlin <shovlia@amazon.com>
+Date:   Fri Dec 15 12:34:09 2023 -0600
+
+    chore: Add GitHub issue templates (#85)
+
+[33mcommit d324d7ae7f4e025de61f35103a9b3ee79f4eb3d3[m
+Author: Malhar Khimsaria <96malhar@gmail.com>
+Date:   Fri Dec 8 15:44:28 2023 -0800
+
+    fix: Update broken link in README
+
+[33mcommit 2ec157f7099c091aaf07cb89059f574e3abcca26[m
+Merge: 2bacb92 467f0a2
+Author: Philippe El Asmar <53088140+philasmar@users.noreply.github.com>
+Date:   Fri Dec 8 17:37:24 2023 -0500
+
+    Merge pull request #87 from awslabs/dev
+    
+    chore: skip Lambda tests due to intermittent issues in release pipeline
+
+[33mcommit 467f0a22f4b2f3af8f48fa55e574baa93cc1913d[m
+Author: Phil Asmar <phil.asmar@gmail.com>
+Date:   Fri Dec 8 17:34:35 2023 -0500
+
+    chore: skip Lambda tests due to intermittent issues in release pipeline
+
+[33mcommit 2bacb92d5853a534814d92345e7221d8a855f1c5[m
+Merge: 235a907 0610e0c
+Author: Philippe El Asmar <53088140+philasmar@users.noreply.github.com>
+Date:   Fri Dec 8 15:20:23 2023 -0500
+
+    Merge pull request #83 from awslabs/dev
+    
+    Release 0.1.0-beta
+
+[33mcommit 0610e0cfa44d680b760ebab64bae84a9596938a8[m
+Author: Alex Shovlin <shovlia@amazon.com>
+Date:   Fri Dec 8 12:01:21 2023 -0600
+
+    chore: Add additional metadata to csprojs for NuGet packages (#84)
+
+[33mcommit 0c6eb246e0a88d55c42af5ff29f7d852303f35a2[m
+Author: Philippe El Asmar <53088140+philasmar@users.noreply.github.com>
+Date:   Fri Dec 8 12:54:12 2023 -0500
+
+    chore: release 0.1.0-beta prep (#82)
+
+[33mcommit 598dabd92b0baa29b6c9cad68c08c35657811945[m
+Author: Philippe El Asmar <53088140+philasmar@users.noreply.github.com>
+Date:   Thu Dec 7 21:18:54 2023 -0500
+
+    docs: create a documentation and API reference site (#81)
+    
+    docs: create a documentation and API reference site
+
+[33mcommit f2a95d701079dddd1f13df09f7846e4b7e1656fe[m
+Author: Malhar Khimsaria <96malhar@gmail.com>
+Date:   Tue Dec 5 14:41:00 2023 -0800
+
+    Update Microsoft.Extensions.* package versions to 6.0.*
+
+[33mcommit 32607667c13cb830f0c6c35d82727ee40e71ed7e[m
+Author: Malhar Khimsaria <96malhar@gmail.com>
+Date:   Tue Dec 5 13:35:20 2023 -0800
+
+    chore: Add additional unit tests and update project dependencies
+
+[33mcommit 4ba9aa5ecd5fa2c0ac9bbc0a72f9d0cb49d089ec[m
+Author: Malhar Khimsaria <96malhar@gmail.com>
+Date:   Mon Dec 4 11:45:09 2023 -0800
+
+    docs: Update REAMDE by specifying the default values in SQSMessagePollerOptions
+
+[33mcommit 41035f3674b40207fbcf82d0344ff4ca87d8bbce[m
+Author: Alex Shovlin <shovlia@amazon.com>
+Date:   Fri Dec 1 11:06:33 2023 -0600
+
+    docs: Update README.md for current feature set (#76)
+
+[33mcommit d02f89188da92d21fc20c3b1f9e45fe4f75355bd[m
+Author: Malhar Khimsaria <96malhar@gmail.com>
+Date:   Mon Nov 27 17:22:44 2023 -0800
+
+    chore: Add beta suffix to the package version numbers
+
+[33mcommit c1db17f4f8e9ef9688c11f3d498dd7eeb2711005[m
+Author: Alex Shovlin <shovlia@amazon.com>
+Date:   Tue Nov 28 12:06:55 2023 -0600
+
+    test: Harden Lambda FIFO integration tests. (#78)
+
+[33mcommit 22bd73486b3a3602d2c5e574383f3e7879d8a198[m
+Author: Alex Shovlin <shovlia@amazon.com>
+Date:   Mon Nov 27 14:54:30 2023 -0600
+
+    test: Add integration tests to exercise the Lambda subscriptions  (#71)
+
+[33mcommit 235a907c1de86cec9b332b75e5235d05bc4c50d6[m
+Merge: 2b69afb 4724c9f
+Author: Philippe El Asmar <53088140+philasmar@users.noreply.github.com>
+Date:   Fri Nov 17 17:47:33 2023 -0500
+
+    Merge pull request #75 from awslabs/dev
+    
+    Release 0.1.0
+
+[33mcommit 4724c9f6e076dfa4768e47cdfec2c74ebb398733[m
+Author: Phil Asmar <phil.asmar@gmail.com>
+Date:   Fri Nov 17 16:47:40 2023 -0500
+
+    chore: add strong naming, version and changelog
+
+[33mcommit 7a38d826e8b9ac5dea8f0a731679b7d7bff88696[m
+Author: Alex Shovlin <shovlia@amazon.com>
+Date:   Thu Nov 16 11:55:33 2023 -0600
+
+    feat: Add OpenTelemetry Instrumentation Provider (#68)
+    
+    Add OpenTelemetry Instrumentation Provider, and MessageEnvelope.Metadata is now serialized and uses JsonElements explicitly
+
+[33mcommit 3ac714cf09eb4b3b40f74a775b91e7abbf99562b[m
+Author: Phil Asmar <phil.asmar@gmail.com>
+Date:   Wed Nov 15 12:45:56 2023 -0500
+
+    ci: add SNK file to the repo for strong name signing
+
+[33mcommit 8bbd7797effb43abd5f700321479c6cdf8e04b30[m
+Author: Malhar Khimsaria <96malhar@gmail.com>
+Date:   Tue Nov 14 16:48:40 2023 -0800
+
+    fix: Remove 'Dns.GetHostName' from the message source resolution chain and set '/aws/messaging' as the fallback source
+
+[33mcommit 88e46a22de1f06325e344bc22d72763162fb0d6b[m
+Author: Malhar Khimsaria <96malhar@gmail.com>
+Date:   Fri Nov 10 13:18:13 2023 -0800
+
+    chore: Enable code scanning via Semgrep
+
+[33mcommit 3322f01f0b21b71c8396303e25c8976534ce79fe[m
+Author: Norm Johanson <normj@amazon.com>
+Date:   Fri Nov 10 10:33:22 2023 -0800
+
+    Make sure all logging calls use Pascal casing and add the analyzer warning as an error to enforce consistency in the future. (#69)
+
+[33mcommit 2b69afb89a45c2663aba717be8bd72bd74c76e4b[m
+Author: Malhar Khimsaria <96malhar@gmail.com>
+Date:   Thu Nov 2 12:55:52 2023 -0700
+
+    feat: Add support for FIFO handling of messages
+
+[33mcommit 770cf84f59054c25c3fdf49f50f1dc5e91a46ee5[m
+Author: madhub <b.madhu@outlook.com>
+Date:   Thu Oct 26 20:49:18 2023 +0530
+
+    Added fatal checker configuration option in SQSMessagePollerOptions  (#62)
+
+[33mcommit d74bafefc871a21e330857e68484dd178d640e47[m
+Author: Phil Asmar <phil.asmar@gmail.com>
+Date:   Wed Oct 18 09:33:32 2023 -0400
+
+    feat: Instrument AWS.Message to create traces
+
+[33mcommit 33645500b54f34a250d3052dc71c7ae4a69f5959[m
+Author: Malhar Khimsaria <96malhar@gmail.com>
+Date:   Thu Oct 19 23:33:41 2023 -0700
+
+    chore: Throw an exception when a message group ID is not specified while publishing to FIFO queues/topics
+
+[33mcommit 0d7033d10f168ba00b821ea3a22b59a58c810a51[m
+Author: Alex Shovlin <shovlia@amazon.com>
+Date:   Sat Sep 30 16:21:12 2023 -0400
+
+    chore: Use same message identifiers across sample applications so they work together
+
+[33mcommit ddc7aa84a82aca7df98d9efd8c51e8fe95ea4316[m
+Author: Alex Shovlin <shovlia@amazon.com>
+Date:   Fri Sep 29 11:26:59 2023 -0400
+
+    fix: Only log trace messages for the case where SQSMessagePoller fails to extend a message's visibility timeout because it was recently deleted
+
+[33mcommit 4c42e0f98daf3b3abdca3acd4a847699b456af08[m
+Author: Norm Johanson <normj@amazon.com>
+Date:   Mon Jun 26 00:04:17 2023 -0700
+
+    Add telemetry design doc and core service level telemetry interfaces (#51)
+    
+    * Add telemetry design doc and core service level telemetry interfaces
+
+[33mcommit f56066abbf4bc8b26c42d7e46288a30c067d3a2f[m
+Author: Malhar Khimsaria <kmalhar@amazon.com>
+Date:   Thu May 25 17:03:38 2023 -0700
+
+    chore: Register message handlers as scoped dependencies in the service collection
+
+[33mcommit 7dfa4c63ee7e108dd68f07df3925f085c5514131[m
+Author: Norm Johanson <normj@amazon.com>
+Date:   Sun May 21 23:45:21 2023 -0700
+
+    Add support for .NET Lambda functions subscribers to MPF (#48)
+    
+    Add support for Lambda functions being the subscriber
+
+[33mcommit 2cd7370fff1be8cfead8cde1fa36a35f58554014[m
+Author: Philippe El Asmar <53088140+philasmar@users.noreply.github.com>
+Date:   Fri May 12 10:38:47 2023 -0400
+
+    feat: add ability to read configuration from appsettings.json
+
+[33mcommit ea6056605fcaba38f403ca4aec89fdc5be4f4108[m
+Author: Philippe El Asmar <53088140+philasmar@users.noreply.github.com>
+Date:   Wed May 10 10:31:44 2023 -0400
+
+    feat: add ability to configure message source or compute it as a fallback
+
+[33mcommit aa3a81ac1ec37afce85635db5d986721ccc363dd[m
+Author: Alex Shovlin <shovlia@amazon.com>
+Date:   Thu May 11 09:16:38 2023 -0500
+
+    Update SQSPoller's visibility timeout handling to only extend the expiration for messages that are within the configured threshold
+
+[33mcommit 6ac77f37bd4d83881e337c298b3776237cf45fc7[m
+Author: Alex Shovlin <shovlia@amazon.com>
+Date:   Wed Apr 26 12:31:55 2023 -0400
+
+    docs: Add design for how the SQS poller will handle message visibility timeout for in flight messages
+
+[33mcommit 27e6f67313edd4e8dfb42ab1bd4fc699d7514d44[m
+Author: Philippe El Asmar <53088140+philasmar@users.noreply.github.com>
+Date:   Wed May 3 14:40:12 2023 -0400
+
+    chore: add more complicated integ tests
+
+[33mcommit 216c1f55b9848e80f780670435954ac308b5eab9[m
+Author: Philippe El Asmar <53088140+philasmar@users.noreply.github.com>
+Date:   Mon Apr 24 11:36:02 2023 -0400
+
+    fix: extending message visibility for more than 10 entries does not fail
+
+[33mcommit c8212c3f3cee81278612371c1203f200f12be5f8[m
+Author: Alex Shovlin <shovlia@amazon.com>
+Date:   Thu Apr 20 20:32:02 2023 -0400
+
+    fix: Ensure ActiveMessageCount is updated in a thread safe manner
+
+[33mcommit 7b65e5fc5bb4aac515b6fc93f621dbc0bb5c0310[m
+Author: Stuart Lang <stuart.b.lang@gmail.com>
+Date:   Thu Apr 20 23:59:41 2023 +0100
+
+    Minor improvements (#33)
+    
+    Logging and documentation cleanup
+
+[33mcommit 99e1caffa7d5ef27682165bfd239010b153d70bc[m
+Merge: 0ff8c40 082e9f1
+Author: Philippe El Asmar <53088140+philasmar@users.noreply.github.com>
+Date:   Wed Apr 19 15:08:14 2023 -0400
+
+    Merge pull request #32 from awslabs/dev
+    
+    Initial Merge to Main
+
+[33mcommit 082e9f1eefdd4f189ce9155ff80de75839e46a5b[m
+Author: Philippe El Asmar <53088140+philasmar@users.noreply.github.com>
+Date:   Wed Apr 19 14:25:56 2023 -0400
+
+    chore: add preview disclaimer in readme
+
+[33mcommit 3f41d38715d31001f9b0c3ce93255cc835a5d6cb[m
+Author: Philippe El Asmar <53088140+philasmar@users.noreply.github.com>
+Date:   Tue Apr 18 11:09:21 2023 -0400
+
+    chore: add happy path integration tests
+
+[33mcommit 75e6ea4e67abdf7901f91f52b2b6fadc4b53ee55[m
+Author: Philippe El Asmar <53088140+philasmar@users.noreply.github.com>
+Date:   Mon Apr 17 11:07:34 2023 -0400
+
+    reply to PR comments
+
+[33mcommit 1864161e7103a708da43b6f3526c6ee0ed3df4f6[m
+Author: Philippe El Asmar <53088140+philasmar@users.noreply.github.com>
+Date:   Mon Apr 10 15:34:26 2023 -0400
+
+    docs: add Readme file
+
+[33mcommit 26799f8a450885f796e54691d360ad22efee7c3e[m
+Author: Alex Shovlin <shovlia@amazon.com>
+Date:   Fri Mar 31 19:25:31 2023 -0400
+
+    Adds the initial DefaultMessageManager implementation
+
+[33mcommit a15e361dc097d4bd591527e77f003aa682ff61bc[m
+Author: Malhar Khimsaria <kmalhar@amazon.com>
+Date:   Wed Apr 12 13:53:57 2023 -0700
+
+    chore: modify SDK User-Agent header for metrics tracking
+
+[33mcommit 8d46321f9442c1d9d285736e42f16263b7f72fd5[m
+Author: Philippe El Asmar <53088140+philasmar@users.noreply.github.com>
+Date:   Tue Apr 11 10:19:12 2023 -0400
+
+    ci: add AWS CI workflow to run integration tests on AWS
+
+[33mcommit 0d96c88da8958ef755dcefe0863199155d07b148[m
+Author: Malhar Khimsaria <kmalhar@amazon.com>
+Date:   Thu Mar 30 02:39:07 2023 -0700
+
+    feat: Add ability to set custom serialization callbacks
+
+[33mcommit 71cec2de724fc6e2e95be2067bab119e2f5e03ef[m
+Author: Malhar Khimsaria <kmalhar@amazon.com>
+Date:   Sun Apr 2 23:21:59 2023 -0700
+
+    feat: Add support for EventBridge global endpoints
+
+[33mcommit c9a89f3d4582095bdd0bccb086cca4307a70ec57[m
+Author: Alex Shovlin <shovlia@amazon.com>
+Date:   Tue Mar 28 15:36:09 2023 -0400
+
+    Add initial HandlerInvoker implementation to identify and invoke the appropriate message handler for a given message
+
+[33mcommit 1b0e38340d09ddad3942f44ed884c5d8118e3cb3[m
+Author: Norm Johanson <normj@amazon.com>
+Date:   Wed Mar 29 09:52:39 2023 -0700
+
+    Set EventBridge detail-type when publishing methods. (#21)
+
+[33mcommit fad2a6b785a8f40a29253acb036a42b2dc83c2cb[m
+Author: Malhar Khimsaria <kmalhar@amazon.com>
+Date:   Mon Mar 27 12:15:45 2023 -0700
+
+    feat: Handle EventBridge message envelope
+
+[33mcommit 3c8fbb9c7d1f399a835d797771cdc4bfccab7b42[m
+Author: Malhar Khimsaria <kmalhar@amazon.com>
+Date:   Wed Mar 22 20:11:09 2023 -0700
+
+    feat: Add ability to customize publish request
+
+[33mcommit 450bdbb827edc73e16234a61dad35df3b3338c91[m
+Author: Alex Shovlin <shovlia@amazon.com>
+Date:   Wed Mar 8 16:06:22 2023 -0500
+
+    Add initial SQSMessagePoller implementation
+
+[33mcommit 34217f7252a133355cf1c545853e541adedb0a55[m
+Author: Malhar Khimsaria <kmalhar@amazon.com>
+Date:   Fri Mar 17 02:32:41 2023 -0700
+
+    Add additional SNS metadata
+
+[33mcommit dead68d2cca3703db7881c2bea647416d3d0d6e1[m
+Author: Malhar Khimsaria <kmalhar@amazon.com>
+Date:   Mon Mar 13 14:06:26 2023 -0700
+
+    feat: Handle SNS message envelope
+
+[33mcommit dfa872c87dee087bcabbac488c7f778deb989458[m
+Author: Malhar Khimsaria <kmalhar@amazon.com>
+Date:   Fri Feb 17 12:51:32 2023 -0800
+
+    feat: Add default envelope serializer used by the framework
+
+[33mcommit ea46b2f2b31588adb2a6577226053619c9acd803[m
+Author: Alex Shovlin <shovlia@amazon.com>
+Date:   Mon Feb 20 15:55:30 2023 -0500
+
+    Add MaxNumberOfConcurrentMessages to the SQS poller configuration, and add more polling-related services to the DI container when configured
+
+[33mcommit ad2f68545637a7204cdb14357eb3a4e4c980b71a[m
+Author: Philippe El Asmar <53088140+philasmar@users.noreply.github.com>
+Date:   Mon Feb 20 10:31:10 2023 -0500
+
+    feat: add an implementation for an EventBridge publisher
+
+[33mcommit a81c5c47c9918b338b68fc998cbf7edc01a1e523[m
+Author: Philippe El Asmar <53088140+philasmar@users.noreply.github.com>
+Date:   Fri Feb 17 10:42:32 2023 -0500
+
+    feat: add an implementation for an SNS publisher
+
+[33mcommit 1eaa98a9fbf9c2c5ff4c983cc4450539d75843f8[m
+Author: Philippe El Asmar <53088140+philasmar@users.noreply.github.com>
+Date:   Thu Feb 16 13:05:05 2023 -0500
+
+    feat: add an implementation for an SQS publisher
+
+[33mcommit 23027a3af03c391a7a1f57041fbc901e6573b8df[m
+Author: Alex Shovlin <shovlia@amazon.com>
+Date:   Tue Feb 14 13:20:51 2023 -0500
+
+    Add MessagePumpService, which starts an IMessagePoller instance for each IMessagePollerConfiguration
+
+[33mcommit 8f754dfb353a7324b4dd46bee263cb7175f1d4e5[m
+Author: Malhar Khimsaria <kmalhar@amazon.com>
+Date:   Mon Feb 13 12:44:22 2023 -0800
+
+    feat: Add default message serializer used by the framework
+
+[33mcommit d2682a333ee306f2ad8a2ff96338032d68d77921[m
+Author: Philippe El Asmar <53088140+philasmar@users.noreply.github.com>
+Date:   Fri Feb 10 11:09:44 2023 -0500
+
+    feat: add subscriber to message bus
+
+[33mcommit 0c4d5240240493daca7375933e9d185f7018cb2a[m
+Author: Philippe El Asmar <53088140+philasmar@users.noreply.github.com>
+Date:   Thu Feb 9 12:53:30 2023 -0500
+
+    feat: add message bus and sample app
+
+[33mcommit d26d9872a45553c12af678cd88591352ba9c43a6[m
+Author: Malhar Khimsaria <kmalhar@amazon.com>
+Date:   Wed Feb 8 17:37:11 2023 -0800
+
+    chore: Add interfaces to support serialization utilities
+
+[33mcommit 05f3c76dd1bd40c65ae5acb237f34ed7a2ff22e5[m
+Author: Philippe El Asmar <phil.asmar@gmail.com>
+Date:   Wed Feb 8 11:06:21 2023 -0500
+
+    chore: add publisher interfaces and POCOs
+
+[33mcommit 1cc66b5a949c19caa18e8454df268cad536079a3[m
+Merge: 89d23f3 c53a238
+Author: Norm Johanson <normj@amazon.com>
+Date:   Fri Feb 3 09:29:32 2023 -0800
+
+    Merge pull request #6 from aws/normj/add-subscriber-interfaces
+    
+    Add IMessageHandler.cs and subscriber mapping.
+
+[33mcommit c53a2383a18f5122be97d7520fbc899848a8bd65[m
+Author: Norm Johanson <normj@amazon.com>
+Date:   Wed Feb 1 23:44:27 2023 -0800
+
+    Add IMessageHandler.cs and subscriber mapping.
+
+[33mcommit 89d23f3493f39edc10dba48ece0e3f60ba81642a[m
+Merge: a4d116f 9448473
+Author: Norm Johanson <normj@amazon.com>
+Date:   Wed Feb 1 11:59:06 2023 -0800
+
+    Merge pull request #4 from aws/normj/add-core-pump-interfaces
+    
+    Add core message pump interfaces
+
+[33mcommit 94484733e63b2fd5435eec1ac1516b1c5d74af4a[m
+Author: Norm Johanson <normj@amazon.com>
+Date:   Tue Jan 31 15:05:43 2023 -0800
+
+    Add core message pump interfaces
+
+[33mcommit a4d116f7597f2a963ea17d9a7bd7b2065c3d0821[m
+Author: Malhar Khimsaria <kmalhar@amazon.com>
+Date:   Wed Jan 25 21:19:18 2023 -0800
+
+    feat: Add MessageEnvelope class that adheres to the CloudEvents specification
+
+[33mcommit fe1cb80a5f1a9ada4b930131c23296c7080e106e[m
+Author: Philippe El Asmar <53088140+philasmar@users.noreply.github.com>
+Date:   Wed Jan 25 15:47:10 2023 -0500
+
+    ci: add build/unit test github workflow
+
+[33mcommit 9566cdf3b1c93f88b29679700638ee53aefbd063[m
+Author: Philippe El Asmar <53088140+philasmar@users.noreply.github.com>
+Date:   Wed Jan 25 11:47:07 2023 -0500
+
+    chore: create initial project skeleton
+
+[33mcommit 0ff8c4058b37796ac573af701f0070d5791d8cfc[m
+Author: Amazon GitHub Automation <54958958+amazon-auto@users.noreply.github.com>
+Date:   Tue Sep 13 06:41:58 2022 -0700
+
+    Initial commit

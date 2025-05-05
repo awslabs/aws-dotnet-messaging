@@ -19,23 +19,16 @@ public class PublisherController : ControllerBase
     /// </summary>
     private readonly IMessagePublisher _messagePublisher;
 
-    /// <summary>
-    /// SQS-specific publisher to use when you need to set SQS-specific options,
-    /// such as when sending to a FIFO queue so that you can set the message group ID.
-    /// </summary>
-    private readonly ISQSPublisher _sqsPublisher;
+    // /// <summary>
+    // /// SQS-specific publisher to use when you need to set SQS-specific options,
+    // /// such as when sending to a FIFO queue so that you can set the message group ID.
+    // /// </summary>
+    // private readonly ISQSPublisher _sqsPublisher;
 
-    /// <summary>
-    /// SNS-specific publisher to use when you need to set SNS-specific options,
-    /// such as when publishing to a FIFO topic so that you can set the message group ID.
-    /// </summary>
-    private readonly ISNSPublisher _snsPublisher;
 
-    public PublisherController(IMessagePublisher messagePublisher, ISQSPublisher sqsPubliser, ISNSPublisher snsPublisher)
+    public PublisherController(IMessagePublisher messagePublisher)
     {
         _messagePublisher = messagePublisher;
-        _sqsPublisher = sqsPubliser;
-        _snsPublisher = snsPublisher;
     }
 
     [HttpPost("chatmessage", Name = "Chat Message")]
@@ -92,47 +85,26 @@ public class PublisherController : ControllerBase
         return Ok();
     }
 
-    [HttpPost("transactioninfo", Name = "Transaction Info")]
-    public async Task<IActionResult> PublishTransaction([FromBody] TransactionInfo transactionInfo)
-    {
-        if (transactionInfo == null)
-        {
-            return BadRequest("A transaction info was not used.");
-        }
-        if (string.IsNullOrEmpty(transactionInfo.TransactionId))
-        {
-            return BadRequest("The TransactionId cannot be null or empty.");
-        }
+    // [HttpPost("transactioninfo", Name = "Transaction Info")]
+    // public async Task<IActionResult> PublishTransaction([FromBody] TransactionInfo transactionInfo)
+    // {
+    //     if (transactionInfo == null)
+    //     {
+    //         return BadRequest("A transaction info was not used.");
+    //     }
+    //     if (string.IsNullOrEmpty(transactionInfo.TransactionId))
+    //     {
+    //         return BadRequest("The TransactionId cannot be null or empty.");
+    //     }
+    //
+    //     // TransactionInfo messages are mapped to a FIFO queue, so use the
+    //     // SQS-specific publisher which allows setting the message group ID.
+    //     await _sqsPublisher.SendAsync(transactionInfo, new SQSOptions
+    //     {
+    //         MessageGroupId = "group-123"
+    //     });
+    //
+    //     return Ok();
+    // }
 
-        // TransactionInfo messages are mapped to a FIFO queue, so use the
-        // SQS-specific publisher which allows setting the message group ID.
-        await _sqsPublisher.SendAsync(transactionInfo, new SQSOptions
-        {
-            MessageGroupId = "group-123"
-        });
-
-        return Ok();
-    }
-
-    [HttpPost("bidinfo", Name = "Bid Info")]
-    public async Task<IActionResult> PublishBid([FromBody] BidInfo bidInfo)
-    {
-        if (bidInfo == null)
-        {
-            return BadRequest("A bid info was not used.");
-        }
-        if (string.IsNullOrEmpty(bidInfo.BidId))
-        {
-            return BadRequest("The BidId cannot be null or empty.");
-        }
-
-        // BidInfo messages are mapped to a FIFO SNS topic, so use the
-        // SNS-specific publisher which allows setting the message group ID.
-        await _snsPublisher.PublishAsync(bidInfo, new SNSOptions
-        {
-            MessageGroupId = "group-123"
-        });
-
-        return Ok();
-    }
 }

@@ -3,6 +3,7 @@
 
 using System.Text.Json;
 using AWS.Messaging.Telemetry.OpenTelemetry;
+using OpenTelemetry.Exporter;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using PublisherAPI.Models;
@@ -18,25 +19,8 @@ builder.Services.AddAWSMessageBus(bus =>
     // bus.LoadConfigurationFromSettings(builder.Configuration);
 
     // Standard SQS Queue
-    var mpfQueueUrl = builder.Configuration["AWS:Resources:MPFQueueUrl"];
+    var mpfQueueUrl = "https://sqs.us-west-2.amazonaws.com/147997163238/MPF";
     bus.AddSQSPublisher<ChatMessage>(mpfQueueUrl, "chatMessage");
-
-    // FIFO SQS Queue  
-    var mpfFifoQueueUrl = builder.Configuration["AWS:Resources:MPFFIFOQueueUrl"];
-    bus.AddSQSPublisher<TransactionInfo>(mpfFifoQueueUrl, "transactionInfo");
-
-    // Standard SNS Topic
-    var mpfTopicArn = builder.Configuration["AWS:Resources:MPFTopicArn"];
-    bus.AddSNSPublisher<OrderInfo>(mpfTopicArn, "orderInfo");
-
-    // FIFO SNS Topic
-    var mpfFifoTopicArn = builder.Configuration["AWS:Resources:MPFFIFOTopicArn"];
-    bus.AddSNSPublisher<BidInfo>(mpfFifoTopicArn, "bidInfo");
-
-    // EventBridge Event Bus
-    var mpfEventBusArn = builder.Configuration["AWS:Resources:MPFEventBusArn"];
-    bus.AddEventBridgePublisher<FoodItem>(mpfEventBusArn, "foodItem");
-
 
     bus.ConfigureSerializationOptions(options =>
     {
@@ -56,16 +40,18 @@ builder.Services.AddOpenTelemetry()
     .ConfigureResource(resource => resource.AddService("PublisherAPI"))
     .WithTracing(tracing => tracing
         .AddAWSMessagingInstrumentation()
-        .AddConsoleExporter());
+        .AddAWSInstrumentation()
+        .AddXRayTraceId()
+        .AddOtlpExporter(options =>
+        {
+            options.Endpoint = new Uri("http://34.219.59.119:4318/v1/traces");
+            options.Protocol = OtlpExportProtocol.HttpProtobuf;
+        }));
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 
