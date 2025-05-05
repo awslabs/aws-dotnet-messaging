@@ -28,14 +28,14 @@ public class DefaultTelemetryFactory : ITelemetryFactory
     public bool IsTelemetryEnabled => _telemetryRecorders.Any();
 
     /// <inheritdoc/>
-    public ITelemetryTrace Trace(string traceName)
+    public ITelemetryTrace Trace(string traceName, ActivityKind activityKind = ActivityKind.Producer)
     {
         traceName = PrefixTraceName(traceName);
 
         var traces = new ITelemetryTrace[_telemetryRecorders.Count];
         for (var i = 0; i < _telemetryRecorders.Count; i++)
         {
-            traces[i] = _telemetryRecorders[i].Trace(traceName);
+            traces[i] = _telemetryRecorders[i].Trace(traceName, activityKind);
         }
 
         return new CompositeTelemetryTrace(traces);
@@ -55,5 +55,5 @@ public class DefaultTelemetryFactory : ITelemetryFactory
         return new CompositeTelemetryTrace(traces);
     }
 
-    private string PrefixTraceName(string traceName) => TraceNamePrefix + traceName;
+    private static string PrefixTraceName(string traceName) => TraceNamePrefix + traceName;
 }

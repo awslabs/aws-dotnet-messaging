@@ -47,7 +47,7 @@ internal class DefaultLambdaMessaging : ILambdaMessaging
     /// <inheritdoc/>
     public async Task ProcessLambdaEventAsync(SQSEvent sqsEvent, ILambdaContext context)
     {
-        using (var trace = _telemetryFactory.Trace("Processing Lambda event from AWS SQS"))
+        using (var trace = _telemetryFactory.Trace("Processing Lambda event from AWS SQS", ActivityKind.Consumer))
         {
             try
             {
@@ -80,7 +80,7 @@ internal class DefaultLambdaMessaging : ILambdaMessaging
     /// <inheritdoc/>
     public async Task<SQSBatchResponse> ProcessLambdaEventWithBatchResponseAsync(SQSEvent sqsEvent, ILambdaContext context)
     {
-        using (var trace = _telemetryFactory.Trace("Processing Lambda event with batch response from AWS SQS"))
+        using (var trace = _telemetryFactory.Trace("Processing Lambda event with batch response from AWS SQS", ActivityKind.Consumer))
         {
             try
             {
@@ -145,6 +145,7 @@ internal class DefaultLambdaMessaging : ILambdaMessaging
 
         // TODO: Figure out the dnsSuffix from AWSSDK.Core's partition metadata
         var queueUrl = $"https://sqs.{arn.Region}.amazonaws.com/{arn.AccountId}/{arn.Resource}";
+
         return queueUrl;
     }
 }

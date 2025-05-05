@@ -18,14 +18,14 @@ public interface ILambdaMessaging
     /// Use this method when your SQS event source mapping is not configured to use <see href="https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html#services-sqs-batchfailurereporting">partial batch responses.</see>
     /// </summary>
     /// <param name="sqsEvent">The <see cref="SQSEvent"/> object that contains the underlying SQS messages that will be processed.</param>
-    /// <param name="lambdaContext">The ILambdaContext for the function invocation.</param>
-    Task ProcessLambdaEventAsync(SQSEvent sqsEvent, ILambdaContext lambdaContext);
+    /// <param name="context">The ILambdaContext for the function invocation.</param>
+    Task ProcessLambdaEventAsync(SQSEvent sqsEvent, ILambdaContext context);
 
     /// <summary>
     /// Initiates processing of SQS messages to the Lambda function. All messages that are failed to process will be included as part of <see cref="SQSBatchResponse"/>.
     /// Use this method when your SQS event source mapping is configured to use <see href="https://docs.aws.amazon.com/lambda/latest/dg/with-sqs.html#services-sqs-batchfailurereporting">partial batch responses.</see>
     /// </summary>
     /// <param name="sqsEvent">The <see cref="SQSEvent"/> object that contains the underlying SQS messages that will be processed.</param>
-    /// <param name="lambdaContext">The ILambdaContext for the function invocation.</param>
-    Task<SQSBatchResponse> ProcessLambdaEventWithBatchResponseAsync(SQSEvent sqsEvent, ILambdaContext lambdaContext);
+    /// <param name="context">The ILambdaContext for the function invocation.</param>
+    Task<SQSBatchResponse> ProcessLambdaEventWithBatchResponseAsync(SQSEvent sqsEvent, ILambdaContext context);
 }

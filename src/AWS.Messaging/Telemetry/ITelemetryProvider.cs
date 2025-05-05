@@ -12,8 +12,9 @@ public interface ITelemetryProvider
     /// Start a trace represented by the returned <see cref="ITelemetryTrace"/>. The trace will end when the <see cref="ITelemetryTrace"/> is disposed.
     /// </summary>
     /// <param name="traceName"></param>
+    /// <param name="activityKind"></param>
     /// <returns></returns>
-    ITelemetryTrace Trace(string traceName);
+    ITelemetryTrace Trace(string traceName, ActivityKind activityKind = ActivityKind.Producer);
 
     /// <summary>
     /// Start a trace represented by the returned <see cref="ITelemetryTrace"/>. The trace will end when the <see cref="ITelemetryTrace"/> is disposed.

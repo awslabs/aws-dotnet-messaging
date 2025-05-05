@@ -7,6 +7,8 @@ using AWS.Messaging.Configuration;
 using AWS.Messaging.Serialization;
 using AWS.Messaging.Services;
 using AWS.Messaging.Services.Backoff;
+using AWS.Messaging.Telemetry;
+
 using Microsoft.Extensions.Logging;
 
 namespace AWS.Messaging.SQS;
@@ -23,6 +25,8 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
     private readonly IEnvelopeSerializer _envelopeSerializer;
     private readonly IBackoffHandler _backoffHandler;
     private readonly PollingControlToken _pollingControlToken;
+    private readonly ITelemetryFactory _telemetryFactory;
+
     private readonly bool _isFifoEndpoint;
 
     /// <summary>
@@ -51,6 +55,7 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
     /// <param name="envelopeSerializer">Serializer used to deserialize the SQS messages</param>
     /// <param name="backoffHandler">Backoff handler for performing back-offs if exceptions are thrown when polling SQS.</param>
     /// <param name="pollingControlToken">Control token to start and stop the poller.</param>
+    /// <param name="telemetryFactory">Factory for telemetry data.</param>
     public SQSMessagePoller(
         ILogger<SQSMessagePoller> logger,
         IMessageManagerFactory messageManagerFactory,
@@ -58,7 +63,8 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
         SQSMessagePollerConfiguration configuration,
         IEnvelopeSerializer envelopeSerializer,
         IBackoffHandler backoffHandler,
-        PollingControlToken pollingControlToken)
+        PollingControlToken pollingControlToken,
+        ITelemetryFactory telemetryFactory)
     {
         _logger = logger;
         _sqsClient = awsClientProvider.GetServiceClient<IAmazonSQS>();
@@ -66,6 +72,7 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
         _envelopeSerializer = envelopeSerializer;
         _backoffHandler = backoffHandler;
         _pollingControlToken = pollingControlToken;
+        _telemetryFactory = telemetryFactory;
         _isFifoEndpoint = configuration.SubscriberEndpoint.EndsWith(".fifo");
 
         _messageManager = messageManagerFactory.CreateMessageManager(this, _configuration.ToMessageManagerConfiguration());
@@ -120,40 +127,59 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
                 MessageAttributeNames = new List<string> { "All" }
             };
 
-            List<Message>? receivedMessages =
-                await _backoffHandler.BackoffAsync<List<Message>?>(async () =>
+            using (var trace = _telemetryFactory.Trace("Pulling messages from queue.", ActivityKind.Server))
+            {
+                List<Message>? receivedMessages =
+                    await _backoffHandler.BackoffAsync<List<Message>?>(async () =>
+                    {
+                        _logger.LogTrace("Retrieving up to {NumberOfMessagesToRead} messages from {QueueUrl}",
+                            receiveMessageRequest.MaxNumberOfMessages, receiveMessageRequest.QueueUrl);
+                        ReceiveMessageResponse receiveMessageResponse;
+                        try
+                        {
+                            receiveMessageResponse = await _sqsClient.ReceiveMessageAsync(receiveMessageRequest, token);
+                        }
+                        catch (TaskCanceledException)
+                        {
+                            _logger.LogTrace("Cancellation requested while receiving messages, probably due to shutdown. Returning empty list of messages");
+                            return new List<Message>();
+                        }
+
+                        _logger.LogTrace("Retrieved {MessagesCount} messages from {QueueUrl} via request ID {RequestId}",
+                            receiveMessageResponse.Messages?.Count ?? 0, receiveMessageRequest.QueueUrl, receiveMessageResponse.ResponseMetadata.RequestId);
+
+                        return receiveMessageResponse.Messages;
+                    },
+                    _configuration,
+                    token);
+
+                if (receivedMessages is null)
+                    continue;
+
+                var messageEnvelopResults = new List<ConvertToEnvelopeResult>();
+                foreach (var message in receivedMessages)
                 {
-                    _logger.LogTrace("Retrieving up to {NumberOfMessagesToRead} messages from {QueueUrl}",
-                        receiveMessageRequest.MaxNumberOfMessages, receiveMessageRequest.QueueUrl);
-                    ReceiveMessageResponse receiveMessageResponse;
                     try
                     {
-                        receiveMessageResponse = await _sqsClient.ReceiveMessageAsync(receiveMessageRequest, token);
+                        var messageEnvelopeResult = await _envelopeSerializer.ConvertToEnvelopeAsync(message);
+                        messageEnvelopResults.Add(messageEnvelopeResult);
                     }
-                    catch (TaskCanceledException)
+                    catch (AWSMessagingException)
                     {
-                        _logger.LogTrace("Cancellation requested while receiving messages, probably due to shutdown. Returning empty list of messages");
-                        return new List<Message>();
+                        // Swallow exceptions thrown by the framework, and rely on the thrower to log
                     }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "An unknown exception occurred while polling {SubscriberEndpoint}", _configuration.SubscriberEndpoint);
+                    }
+                }
 
-                    _logger.LogTrace("Retrieved {MessagesCount} messages from {QueueUrl} via request ID {RequestId}",
-                        receiveMessageResponse.Messages?.Count ?? 0, receiveMessageRequest.QueueUrl, receiveMessageResponse.ResponseMetadata.RequestId);
-
-                    return receiveMessageResponse.Messages;
-                },
-                _configuration,
-                token);
-
-            if (receivedMessages is null)
-                continue;
-
-            var messageEnvelopResults = new List<ConvertToEnvelopeResult>();
-            foreach (var message in receivedMessages)
-            {
                 try
                 {
-                    var messageEnvelopeResult = await _envelopeSerializer.ConvertToEnvelopeAsync(message);
-                    messageEnvelopResults.Add(messageEnvelopeResult);
+                    if (_isFifoEndpoint)
+                        ProcessInFifoMode(messageEnvelopResults, token);
+                    else
+                        ProcessInStandardMode(messageEnvelopResults, token);
                 }
                 catch (AWSMessagingException)
                 {
@@ -161,24 +187,10 @@ internal class SQSMessagePoller : IMessagePoller, ISQSMessageCommunication
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "An unknown exception occurred while polling {SubscriberEndpoint}", _configuration.SubscriberEndpoint);
-                }
-            }
+                    trace.AddException(ex);
 
-            try
-            {
-                if (_isFifoEndpoint)
-                    ProcessInFifoMode(messageEnvelopResults, token);
-                else
-                    ProcessInStandardMode(messageEnvelopResults, token);
-            }
-            catch (AWSMessagingException)
-            {
-                // Swallow exceptions thrown by the framework, and rely on the thrower to log
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "An unknown exception occurred while processing messages from {SubscriberEndpoint}", _configuration.SubscriberEndpoint);
+                    _logger.LogError(ex, "An unknown exception occurred while processing messages from {SubscriberEndpoint}", _configuration.SubscriberEndpoint);
+                }
             }
         }
     }

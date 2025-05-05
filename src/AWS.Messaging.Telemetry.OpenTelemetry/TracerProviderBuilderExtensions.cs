@@ -15,11 +15,13 @@ public static class TracerProviderBuilderExtensions
     /// Enables AWS Messaging Instrumentation for OpenTelemetry
     /// </summary>
     /// <param name="builder"><see cref="TracerProviderBuilder"/> being configured.</param>
+    /// <param name="configure">Configures telemetry provider options.</param>
     /// <returns>The instance of <see cref="TracerProviderBuilder"/> to chain the calls.</returns>
-    public static TracerProviderBuilder AddAWSMessagingInstrumentation(this TracerProviderBuilder builder)
+    public static TracerProviderBuilder AddAWSMessagingInstrumentation(this TracerProviderBuilder builder, Action<OpenTelemetryProviderOptions>? configure = null)
     {
         builder.ConfigureServices(services =>
         {
+            services.Configure(configure ?? ((_) => { }));
             services.AddSingleton<ITelemetryProvider, OpenTelemetryProvider>();
         });
 
