@@ -108,7 +108,7 @@ public class MessagePublisherTests
         {
             MessageId = "MessageId"
         });
-        telemetryFactory.Setup(x => x.Trace(It.IsAny<string>())).Returns(telemetryTrace.Object);
+        telemetryFactory.Setup(x => x.Trace(It.IsAny<string>(), It.IsAny<ActivityKind>())).Returns(telemetryTrace.Object);
         telemetryTrace.Setup(x => x.AddMetadata(It.IsAny<string>(), It.IsAny<string>()));
 
         var messagePublisher = new MessageRoutingPublisher(
@@ -123,7 +123,8 @@ public class MessagePublisherTests
         telemetryFactory.Verify(x =>
                 x.Trace(
                     It.Is<string>(request =>
-                        request.Equals("Routing message to AWS service"))),
+                        request.Equals("Routing message to AWS service")),
+                    It.Is<ActivityKind>(kind => kind == ActivityKind.Producer)),
             Times.Exactly(1));
 
         telemetryTrace.Verify(x =>
@@ -144,7 +145,7 @@ public class MessagePublisherTests
         var telemetryTrace = new Mock<ITelemetryTrace>();
 
         _sqsClient.Setup(x => x.SendMessageAsync(It.IsAny<SendMessageRequest>(), It.IsAny<CancellationToken>())).ThrowsAsync(new Exception("Telemetry exception"));
-        telemetryFactory.Setup(x => x.Trace(It.IsAny<string>())).Returns(telemetryTrace.Object);
+        telemetryFactory.Setup(x => x.Trace(It.IsAny<string>(), It.IsAny<ActivityKind>())).Returns(telemetryTrace.Object);
         telemetryTrace.Setup(x => x.AddMetadata(It.IsAny<string>(), It.IsAny<string>()));
 
         var messagePublisher = new MessageRoutingPublisher(
@@ -175,7 +176,7 @@ public class MessagePublisherTests
             MessageId = "MessageId"
         });
 
-        telemetryFactory.Setup(x => x.Trace(It.IsAny<string>())).Returns(telemetryTrace.Object);
+        telemetryFactory.Setup(x => x.Trace(It.IsAny<string>(), It.IsAny<ActivityKind>())).Returns(telemetryTrace.Object);
         telemetryTrace.Setup(x => x.AddMetadata(It.IsAny<string>(), It.IsAny<string>()));
 
         var messagePublisher = new SQSPublisher(
@@ -191,7 +192,9 @@ public class MessagePublisherTests
         telemetryFactory.Verify(x =>
                 x.Trace(
                     It.Is<string>(request =>
-                        request.Equals("Publish to AWS SQS"))),
+                        request.Equals("Publish to AWS SQS")),
+                    It.Is<ActivityKind>(kind =>
+                        kind == ActivityKind.Producer)),
             Times.Exactly(1));
 
         telemetryTrace.Verify(x =>
@@ -241,7 +244,7 @@ public class MessagePublisherTests
         var telemetryTrace = new Mock<ITelemetryTrace>();
 
         _sqsClient.Setup(x => x.SendMessageAsync(It.IsAny<SendMessageRequest>(), It.IsAny<CancellationToken>())).ThrowsAsync(new Exception("Telemetry exception"));
-        telemetryFactory.Setup(x => x.Trace(It.IsAny<string>())).Returns(telemetryTrace.Object);
+        telemetryFactory.Setup(x => x.Trace(It.IsAny<string>(), It.IsAny<ActivityKind>())).Returns(telemetryTrace.Object);
         telemetryTrace.Setup(x => x.AddMetadata(It.IsAny<string>(), It.IsAny<string>()));
 
         var messagePublisher = new SQSPublisher(
@@ -494,7 +497,7 @@ public class MessagePublisherTests
             MessageId = "MessageId"
         });
 
-        telemetryFactory.Setup(x => x.Trace(It.IsAny<string>())).Returns(telemetryTrace.Object);
+        telemetryFactory.Setup(x => x.Trace(It.IsAny<string>(), It.IsAny<ActivityKind>())).Returns(telemetryTrace.Object);
         telemetryTrace.Setup(x => x.AddMetadata(It.IsAny<string>(), It.IsAny<string>()));
 
         var messagePublisher = new SNSPublisher(
@@ -510,7 +513,9 @@ public class MessagePublisherTests
         telemetryFactory.Verify(x =>
                 x.Trace(
                     It.Is<string>(request =>
-                        request.Equals("Publish to AWS SNS"))),
+                        request.Equals("Publish to AWS SNS")),
+                    It.Is<ActivityKind>(kind =>
+                        kind == ActivityKind.Producer)),
             Times.Exactly(1));
 
         telemetryTrace.Verify(x =>
@@ -559,7 +564,7 @@ public class MessagePublisherTests
         var telemetryTrace = new Mock<ITelemetryTrace>();
 
         _snsClient.Setup(x => x.PublishAsync(It.IsAny<PublishRequest>(), It.IsAny<CancellationToken>())).ThrowsAsync(new Exception("Telemetry exception"));
-        telemetryFactory.Setup(x => x.Trace(It.IsAny<string>())).Returns(telemetryTrace.Object);
+        telemetryFactory.Setup(x => x.Trace(It.IsAny<string>(), It.IsAny<ActivityKind>())).Returns(telemetryTrace.Object);
         telemetryTrace.Setup(x => x.AddMetadata(It.IsAny<string>(), It.IsAny<string>()));
 
         var messagePublisher = new SNSPublisher(
@@ -786,7 +791,7 @@ public class MessagePublisherTests
         var telemetryFactory = new Mock<ITelemetryFactory>();
         var telemetryTrace = new Mock<ITelemetryTrace>();
 
-        telemetryFactory.Setup(x => x.Trace(It.IsAny<string>())).Returns(telemetryTrace.Object);
+        telemetryFactory.Setup(x => x.Trace(It.IsAny<string>(), It.IsAny<ActivityKind>())).Returns(telemetryTrace.Object);
         telemetryTrace.Setup(x => x.AddMetadata(It.IsAny<string>(), It.IsAny<string>()));
 
         var messagePublisher = new EventBridgePublisher(
@@ -812,7 +817,9 @@ public class MessagePublisherTests
         telemetryFactory.Verify(x =>
                 x.Trace(
                     It.Is<string>(request =>
-                        request.Equals("Publish to AWS EventBridge"))),
+                        request.Equals("Publish to AWS EventBridge")),
+                    It.Is<ActivityKind>(kind =>
+                        kind == ActivityKind.Producer)),
             Times.Exactly(1));
 
         telemetryTrace.Verify(x =>
@@ -861,7 +868,7 @@ public class MessagePublisherTests
         var telemetryTrace = new Mock<ITelemetryTrace>();
 
         _eventBridgeClient.Setup(x => x.PutEventsAsync(It.IsAny<PutEventsRequest>(), It.IsAny<CancellationToken>())).ThrowsAsync(new Exception("Telemetry exception"));
-        telemetryFactory.Setup(x => x.Trace(It.IsAny<string>())).Returns(telemetryTrace.Object);
+        telemetryFactory.Setup(x => x.Trace(It.IsAny<string>(), It.IsAny<ActivityKind>())).Returns(telemetryTrace.Object);
         telemetryTrace.Setup(x => x.AddMetadata(It.IsAny<string>(), It.IsAny<string>()));
 
         var messagePublisher = new EventBridgePublisher(
