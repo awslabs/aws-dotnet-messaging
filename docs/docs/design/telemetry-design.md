@@ -9,38 +9,38 @@ exceeds an SLA, the user needs to be able see where the bottlenecks are for mess
 
 * Telemetry is an opt-in optional feature
 * No performance cost if telemetry disabled
-* Multiple telemetry providers supported with an extensible API to add more
+* Leverages AWS auto-instrumentation for optimal integration with AWS services
 
+## AWS Auto-Instrumentation
 
-## ITelemetryFactory
+The AWS Message Processing Framework for .NET leverages AWS's built-in auto-instrumentation capabilities for tracing. This provides seamless integration with AWS X-Ray and OpenTelemetry without requiring any custom implementation.
 
-The core service interface used by the library is `ITelemetryFactory`. This library will be injected in critical points throughout the library. Users that want to add
-their telemetry data can also inject `ITelemetryFactory` into their `IMessageHandler`.
+### Configuration
 
-`ITelemetryFactory` provides the abstraction on top of any registered provider to pass along the start telemetry trace calls into the registered providers. This allows the library to not care
-which trace providers are registered or even if a trace provider is registered. The default implementation for this interface will look for all registered providers
-and pass along the call to the provider.
+To enable tracing in your application:
 
+1. Add the required NuGet packages:
+```xml
+<PackageReference Include="OpenTelemetry" Version="1.2.0-rc1" />
+<PackageReference Include="OpenTelemetry.Extensions.Hosting" Version="1.0.0-rc8" />
+<PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.0.0-rc8" />
+<PackageReference Include="OpenTelemetry.Contrib.Extensions.AWSXRay" Version="1.1.0" />
+<PackageReference Include="OpenTelemetry.Contrib.Instrumentation.AWS" Version="1.0.1" />
+```
 
+2. Configure OpenTelemetry with AWS X-Ray in your application:
 ```csharp
-namespace AWS.Messaging.Telemetry;
-
-/// <summary>
-/// Service interface the AWS.Messaging library uses to start telemetry traces.
-/// </summary>
-public interface ITelemetryFactory
+builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
 {
-    /// <summary>
-    /// Boolean indicating if telemetry is enabled.
-    /// </summary>
-    bool IsTelemetryEnabled { get; }
+    tracerProviderBuilder
+        .AddAspNetCoreInstrumentation()
+        .AddXRayTraceId()
+        .AddHttpClientInstrumentation()
+        .AddAWSInstrumentation()
+        .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("YourServiceName"));
+});
 
-    /// <summary>
-    /// Start a trace represented by the returned ITelemetryTrace. The trace will end when the ITelemetryTrace is disposed.
-    /// </summary>
-    /// <param name="traceName">The name of the trace.</param>
-    /// <returns>The state of the trace.</returns>
-    ITelemetryTrace Trace(string traceName);
+// Set AWS X-Ray propagator for trace context
 
     /// <summary>
     /// Start a trace represented by the returned ITelemetryTrace. The trace will end when the ITelemetryTrace is disposed.

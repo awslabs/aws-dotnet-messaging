@@ -2,61 +2,49 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Text.Json;
-using AWS.Messaging.Telemetry.OpenTelemetry;
+using OpenTelemetry;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using PublisherAPI.Models;
+using OpenTelemetry.Contrib.Extensions.AWSXRay.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-
 builder.Services.AddControllers();
+
+// Configure OpenTelemetry with AWS X-Ray
+builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
+{
+    tracerProviderBuilder
+        .AddAspNetCoreInstrumentation()
+        .AddXRayTraceId()
+        .AddAWSInstrumentation()
+        .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("PublisherAPI"))
+        .AddOtlpExporter();
+});
+
+// Set AWS X-Ray propagator for trace context
+OpenTelemetry.Sdk.SetDefaultTextMapPropagator(new AWSXRayPropagator());
+
+// Configure AWS Message Bus with single SQS publisher
 builder.Services.AddAWSMessageBus(bus =>
 {
-    // To load the configuration from appsettings.json instead of the code below, uncomment this and remove the following lines.
-    // bus.LoadConfigurationFromSettings(builder.Configuration);
-
-    // Standard SQS Queue
-    var mpfQueueUrl = builder.Configuration["AWS:Resources:MPFQueueUrl"];
-    bus.AddSQSPublisher<ChatMessage>(mpfQueueUrl, "chatMessage");
-
-    // FIFO SQS Queue  
-    var mpfFifoQueueUrl = builder.Configuration["AWS:Resources:MPFFIFOQueueUrl"];
-    bus.AddSQSPublisher<TransactionInfo>(mpfFifoQueueUrl, "transactionInfo");
-
-    // Standard SNS Topic
-    var mpfTopicArn = builder.Configuration["AWS:Resources:MPFTopicArn"];
-    bus.AddSNSPublisher<OrderInfo>(mpfTopicArn, "orderInfo");
-
-    // FIFO SNS Topic
-    var mpfFifoTopicArn = builder.Configuration["AWS:Resources:MPFFIFOTopicArn"];
-    bus.AddSNSPublisher<BidInfo>(mpfFifoTopicArn, "bidInfo");
-
-    // EventBridge Event Bus
-    var mpfEventBusArn = builder.Configuration["AWS:Resources:MPFEventBusArn"];
-    bus.AddEventBridgePublisher<FoodItem>(mpfEventBusArn, "foodItem");
-
+    // Load configuration from appsettings.json
+    bus.LoadConfigurationFromSettings(builder.Configuration);
 
     bus.ConfigureSerializationOptions(options =>
     {
         options.SystemTextJsonOptions = new JsonSerializerOptions
         {
-            PropertyNamingPolicy= JsonNamingPolicy.CamelCase,
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
         };
     });
-
-    // Logging data messages is disabled by default to protect sensitive user data. If you want this enabled, uncomment the line below.
-    // bus.EnableMessageContentLogging();
 });
+
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddOpenTelemetry()
-    .ConfigureResource(resource => resource.AddService("PublisherAPI"))
-    .WithTracing(tracing => tracing
-        .AddAWSMessagingInstrumentation()
-        .AddConsoleExporter());
 
 var app = builder.Build();
 

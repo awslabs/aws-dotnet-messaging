@@ -1,50 +1,58 @@
 ﻿# AWS Message Processing Framework Publisher API Sample
 
-This sample application demonstrates how to use the AWS Message Processing Framework for .NET to publish messages to different AWS messaging services (SQS, SNS, and EventBridge).
+This sample application demonstrates how to use the AWS Message Processing Framework for .NET to publish messages to an SQS queue, with AWS X-Ray tracing enabled.
 
 ## Overview
 
 This sample demonstrates:
-- Publishing messages to SQS queues (standard and FIFO)
-- Publishing messages to SNS topics (standard and FIFO)
-- Publishing messages to EventBridge
-- Configuration-based setup using .NET Aspire
-- Handling service-specific message options
+- Publishing messages to an SQS queue
+- AWS X-Ray integration for distributed tracing
+- OpenTelemetry configuration with AWS auto-instrumentation
 
 ## Prerequisites
 
 - .NET 8.0 or later
-- Follow the setup instructions in the AppHost README to ensure all AWS resources and .NET Aspire components are properly configured
+- AWS account with SQS queue configured
+- AWS X-Ray permissions
 
-
-## Project Structure
+## Project Structure
 
 ```
 PublisherAPI/
 ├── Controllers/
-│   └── PublisherController.cs   # API endpoints for publishing
+│   └── PublisherController.cs   # API endpoint for publishing
 ├── Models/
-│   ├── ChatMessage.cs          # Standard queue message
-│   ├── TransactionInfo.cs      # FIFO queue message
-│   ├── OrderInfo.cs            # Standard topic message
-│   ├── BidInfo.cs             # FIFO topic message
-│   └── FoodItem.cs            # EventBridge message
-├── Program.cs                  # Application entry point
-└── appsettings.json           # Application configuration
-
+│   └── ChatMessage.cs          # Message model
+├── Program.cs                  # Application entry point and configuration
+└── appsettings.json           # Application settings
 ```
 
+## Configuration
+
+Update the `appsettings.json` with your SQS queue URL:
+
+```json
+{
+    "AWS.Messaging": {
+        "SQSPublishers": [
+            {
+                "MessageType": "PublisherAPI.Models.ChatMessage",
+                "QueueUrl": "YOUR_SQS_QUEUE_URL",
+                "MessageTypeIdentifier": "chatMessage"
+            }
+        ]
+    }
+}
+```
 
 ## Testing
 
-The API includes Swagger UI for testing. When running the Aspire AppHost, access it at: https://localhost:7204/swagger (the port may be different in Aspire)
+The API includes Swagger UI for testing. When running locally, access it at: https://localhost:7204/swagger
 
+### Example API Request
 
-### Example API Requests
-
-#### Send Chat Message (Standard SQS):
-```
-POST /Publisher/chatmessage
+```http
+POST /Publisher/chat
 Content-Type: application/json
 
 {
@@ -52,43 +60,6 @@ Content-Type: application/json
 }
 ```
 
-#### Send Transaction (FIFO SQS):
-```
-POST /Publisher/transactioninfo
-Content-Type: application/json
+## Tracing
 
-{
-    "transactionId": "123"
-}
-```
-#### Send Order (Standard SNS):
-```
-POST /Publisher/order
-Content-Type: application/json
-
-{
-    "orderId": "456",
-    "userId": "user123"
-}
-```
-#### Send Bid (FIFO SNS):
-```
-POST /Publisher/bidinfo
-Content-Type: application/json
-
-{
-    "bidId": "789"
-}
-
-```
-
-#### Send Food Item (EventBridge):
-```
-POST /Publisher/fooditem
-Content-Type: application/json
-
-{
-    "id": 1,
-    "name": "Pizza"
-}
-```
+The application is configured with AWS X-Ray tracing through OpenTelemetry. Traces will automatically appear in your AWS X-Ray console, showing the flow of messages from the API through SQS.

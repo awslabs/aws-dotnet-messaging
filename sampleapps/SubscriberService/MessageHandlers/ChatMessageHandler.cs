@@ -1,29 +1,61 @@
 // Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+using Amazon.DynamoDBv2;
+using Amazon.DynamoDBv2.Model;
 using AWS.Messaging;
+using Microsoft.Extensions.Configuration;
 using SubscriberService.Models;
 
 namespace SubscriberService.MessageHandlers;
 
 public class ChatMessageHandler : IMessageHandler<ChatMessage>
 {
-    public Task<MessageProcessStatus> HandleAsync(MessageEnvelope<ChatMessage> messageEnvelope, CancellationToken token = default)
+    private readonly IAmazonDynamoDB _dynamoDb;
+    private readonly string _tableName;
+    private readonly ILogger<ChatMessageHandler> _logger;
+
+    public ChatMessageHandler(
+        IAmazonDynamoDB dynamoDb,
+        IConfiguration configuration,
+        ILogger<ChatMessageHandler> logger)
     {
-        if (messageEnvelope == null)
+        _dynamoDb = dynamoDb;
+        _tableName = configuration["DYNAMODB_TABLE_NAME"] 
+            ?? throw new InvalidOperationException("DYNAMODB_TABLE_NAME configuration is required");
+        _logger = logger;
+    }
+
+    public async Task<MessageProcessStatus> HandleAsync(MessageEnvelope<ChatMessage> messageEnvelope, CancellationToken token = default)
+    {
+        if (messageEnvelope?.Message == null)
         {
-            return Task.FromResult(MessageProcessStatus.Failed());
+            return MessageProcessStatus.Failed();
         }
 
-        if (messageEnvelope.Message == null)
+        try
         {
-            return Task.FromResult(MessageProcessStatus.Failed());
+            var message = messageEnvelope.Message;
+            _logger.LogInformation("Processing message: {MessageDescription}", message.MessageDescription);
+
+            await _dynamoDb.PutItemAsync(new PutItemRequest
+            {
+                TableName = _tableName,
+                Item = new Dictionary<string, AttributeValue>
+                {
+                    ["id"] = new AttributeValue { S = Guid.NewGuid().ToString() },
+                    ["messageDescription"] = new AttributeValue { S = message.MessageDescription },
+                    ["timestamp"] = new AttributeValue { S = DateTime.UtcNow.ToString("o") }
+                }
+            }, token);
+
+            _logger.LogInformation("Successfully stored message in DynamoDB");
+            return MessageProcessStatus.Success();
         }
-
-        var message = messageEnvelope.Message;
-
-        Console.WriteLine($"Message Description: {message.MessageDescription}");
-
-        return Task.FromResult(MessageProcessStatus.Success());
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to store message in DynamoDB");
+            return MessageProcessStatus.Failed();
+        }
     }
 }

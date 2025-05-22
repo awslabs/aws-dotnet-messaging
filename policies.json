@@ -1,0 +1,9 @@
+{
+    "policies": {
+        "Certificates": {
+            "Install": [
+            	"aspnetcore-localhost-https.crt"
+            ]
+        }
+    }
+}
