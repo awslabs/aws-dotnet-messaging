@@ -2,11 +2,13 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Text.Json;
-using AWS.Messaging.Telemetry.OpenTelemetry;
+using OpenTelemetry;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using PublisherAPI.Controllers;
 using PublisherAPI.Models;
+using OpenTelemetry.Extensions.AWS.Trace;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -36,17 +38,26 @@ builder.Services.AddAWSMessageBus(bus =>
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
 builder.Services.AddOpenTelemetry()
     .ConfigureResource(resource => resource.AddService("PublisherAPI"))
     .WithTracing(tracing => tracing
-        .AddAWSMessagingInstrumentation()
-        .AddAWSInstrumentation()
         .AddXRayTraceId()
+        .AddAWSInstrumentation()
+        .AddAspNetCoreInstrumentation()
+        //.AddHttpClientInstrumentation()
+        //.AddConsoleExporter()
+
         .AddOtlpExporter(options =>
         {
-            options.Endpoint = new Uri("http://34.219.59.119:4318/v1/traces");
+            options.Endpoint = new Uri("http://52.12.96.156:4318/v1/traces");
             options.Protocol = OtlpExportProtocol.HttpProtobuf;
-        }));
+        })
+        );
+
+
+Sdk.SetDefaultTextMapPropagator(new AWSXRayPropagator());
+
 
 var app = builder.Build();
 

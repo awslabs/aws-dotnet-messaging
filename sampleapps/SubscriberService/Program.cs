@@ -3,18 +3,19 @@
 
 using System.Text.Json;
 using AWS.Messaging.Configuration;
-using AWS.Messaging.Telemetry.OpenTelemetry;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using OpenTelemetry.Contrib.Extensions.AWSXRay.Trace;
+using OpenTelemetry;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using SubscriberService.MessageHandlers;
 using SubscriberService.Models;
 
-await Host.CreateDefaultBuilder(args)
+var app = Host.CreateDefaultBuilder(args)
     .ConfigureLogging(logging =>
     {
         logging.ClearProviders();
@@ -64,18 +65,23 @@ await Host.CreateDefaultBuilder(args)
 
             // Logging data messages is disabled by default to protect sensitive user data. If you want this enabled, uncomment the line below.
             // builder.EnableMessageContentLogging();
-        })
-        .AddOpenTelemetry()
-            .ConfigureResource(resource => resource.AddService("SubscriberService"))
-            .WithTracing(tracing => tracing
-                .AddAWSMessagingInstrumentation()
+        });
+        services.AddOpenTelemetry()
+                .WithTracing(tracing => tracing
+                .AddSource(nameof(ChatMessageHandler))
+                .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("Subscriber"))
                 .AddAWSInstrumentation()
                 .AddXRayTraceId()
                 .AddOtlpExporter(options =>
                 {
-                    options.Endpoint = new Uri("http://34.219.59.119:4318/v1/traces");
+                    options.Endpoint = new Uri("http://52.12.96.156:4318/v1/traces");
                     options.Protocol = OtlpExportProtocol.HttpProtobuf;
                 }));
+
     })
-    .Build()
-    .RunAsync();
+    .Build();
+
+Sdk.SetDefaultTextMapPropagator(new AWSXRayPropagator());
+
+await app.RunAsync();
+
