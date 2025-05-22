@@ -10,16 +10,18 @@ export class MessagingStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // Create ECR repositories
-    const publisherRepo = new ecr.Repository(this, 'PublisherRepo', {
-      repositoryName: 'messaging-demo-publisher',
-      removalPolicy: cdk.RemovalPolicy.DESTROY
-    });
+    // Get existing ECR repositories
+    const publisherRepo = ecr.Repository.fromRepositoryName(
+      this,
+      'PublisherRepo',
+      'messaging-demo-publisher'
+    );
 
-    const subscriberRepo = new ecr.Repository(this, 'SubscriberRepo', {
-      repositoryName: 'messaging-demo-subscriber',
-      removalPolicy: cdk.RemovalPolicy.DESTROY
-    });
+    const subscriberRepo = ecr.Repository.fromRepositoryName(
+      this,
+      'SubscriberRepo',
+      'messaging-demo-subscriber'
+    );
 
     // Create SQS Queue
     const queue = new sqs.Queue(this, 'MessagingQueue', {
@@ -91,7 +93,9 @@ export class MessagingStack extends cdk.Stack {
         }
       },
       instanceConfiguration: {
-        instanceRoleArn: publisherRole.roleArn
+        instanceRoleArn: publisherRole.roleArn,
+        cpu: '1 vCPU',
+        memory: '2 GB'
       }
     });
 
@@ -129,15 +133,16 @@ export class MessagingStack extends cdk.Stack {
         }
       },
       instanceConfiguration: {
-        instanceRoleArn: subscriberRole.roleArn
+        instanceRoleArn: subscriberRole.roleArn,
+        cpu: '1 vCPU',
+        memory: '2 GB'
       }
     });
 
-    // Output the queue URL, table name, and ECR repository URIs
+    // Output the queue URL, table name, and service URLs
     new cdk.CfnOutput(this, 'QueueUrl', { value: queue.queueUrl });
     new cdk.CfnOutput(this, 'TableName', { value: table.tableName });
     new cdk.CfnOutput(this, 'PublisherUrl', { value: publisherService.attrServiceUrl });
-    new cdk.CfnOutput(this, 'PublisherRepoUri', { value: publisherRepo.repositoryUri });
-    new cdk.CfnOutput(this, 'SubscriberRepoUri', { value: subscriberRepo.repositoryUri });
+    new cdk.CfnOutput(this, 'SubscriberUrl', { value: subscriberService.attrServiceUrl });
   }
 }
