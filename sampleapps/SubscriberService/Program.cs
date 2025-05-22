@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
 using System.Text.Json;
-using Amazon.DynamoDBv2;
 using AWS.Messaging.Configuration;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,12 +20,22 @@ await Host.CreateDefaultBuilder(args)
         logging.ClearProviders();
         logging.AddConsole().SetMinimumLevel(LogLevel.Debug);
     })
-    .ConfigureAppConfiguration(configuration =>
-    {
-        configuration.AddJsonFile("appsettings.json");
-    })
     .ConfigureServices((context, services) =>
     {
+
+        var queueUrl = Environment.GetEnvironmentVariable("AWS_SQS_QUEUE_URL")
+        ?? throw new InvalidOperationException("AWS_SQS_QUEUE_URL environment variable is required");
+
+        // Register the AWS Message Processing Framework for .NET
+        services.AddAWSMessageBus(builder =>
+        {
+            // Register an SQS Queue that the framework will poll for messages
+            builder.AddSQSPoller(queueUrl);
+
+            // Register all IMessageHandler implementations with the message type they should process. 
+            // Here messages that match our ChatMessage .NET type will be handled by our ChatMessageHandler
+            builder.AddMessageHandler<ChatMessageHandler, ChatMessage>();
+        });
         // Configure OpenTelemetry with AWS X-Ray
         services.AddOpenTelemetryTracing(tracerProviderBuilder =>
         {
@@ -34,14 +43,16 @@ await Host.CreateDefaultBuilder(args)
                 .AddXRayTraceId()
                 .AddAWSInstrumentation()
                 .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("SubscriberService"))
-                .AddOtlpExporter();
+                .AddOtlpExporter(opts =>
+                {
+                    var endpoint = Environment.GetEnvironmentVariable("OTLP_ENDPOINT") 
+                        ?? throw new InvalidOperationException("OTLP_ENDPOINT environment variable is required");
+                    opts.Endpoint = new Uri(endpoint);
+                });
         });
 
         // Set AWS X-Ray propagator for trace context
         OpenTelemetry.Sdk.SetDefaultTextMapPropagator(new AWSXRayPropagator());
-
-        // Add AWS DynamoDB client
-        services.AddAWSService<IAmazonDynamoDB>();
 
         // Configure AWS Message Bus using configuration
         services.AddAWSMessageBus(builder =>

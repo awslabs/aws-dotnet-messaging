@@ -7,6 +7,7 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using PublisherAPI.Models;
 using OpenTelemetry.Contrib.Extensions.AWSXRay.Trace;
+using AWS.Messaging.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -17,11 +18,15 @@ builder.Services.AddControllers();
 builder.Services.AddOpenTelemetryTracing(tracerProviderBuilder =>
 {
     tracerProviderBuilder
-        .AddAspNetCoreInstrumentation()
         .AddXRayTraceId()
         .AddAWSInstrumentation()
         .SetResourceBuilder(ResourceBuilder.CreateDefault().AddService("PublisherAPI"))
-        .AddOtlpExporter();
+        .AddOtlpExporter(opts =>
+        {
+            var endpoint = Environment.GetEnvironmentVariable("OTLP_ENDPOINT") 
+                ?? throw new InvalidOperationException("OTLP_ENDPOINT environment variable is required");
+            opts.Endpoint = new Uri(endpoint);
+        });
 });
 
 // Set AWS X-Ray propagator for trace context
@@ -30,8 +35,10 @@ OpenTelemetry.Sdk.SetDefaultTextMapPropagator(new AWSXRayPropagator());
 // Configure AWS Message Bus with single SQS publisher
 builder.Services.AddAWSMessageBus(bus =>
 {
-    // Load configuration from appsettings.json
-    bus.LoadConfigurationFromSettings(builder.Configuration);
+    var queueUrl = Environment.GetEnvironmentVariable("AWS_SQS_QUEUE_URL")
+        ?? throw new InvalidOperationException("AWS_SQS_QUEUE_URL environment variable is required");
+
+    bus.AddSQSPublisher<ChatMessage>(queueUrl);
 
     bus.ConfigureSerializationOptions(options =>
     {
@@ -61,4 +68,5 @@ app.UseAuthorization();
 
 app.MapControllers();
 
+app.Run();
 app.Run();

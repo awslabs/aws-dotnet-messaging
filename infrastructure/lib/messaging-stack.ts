@@ -85,10 +85,6 @@ export class MessagingStack extends cdk.Stack {
               {
                 name: 'OTLP_ENDPOINT',
                 value: 'http://your-collector-endpoint:4317'
-              },
-              {
-                name: 'OTEL_RESOURCE_ATTRIBUTES',
-                value: 'service.name=PublisherAPI'
               }
             ]
           }
@@ -127,10 +123,6 @@ export class MessagingStack extends cdk.Stack {
               {
                 name: 'OTLP_ENDPOINT',
                 value: 'http://your-collector-endpoint:4317'
-              },
-              {
-                name: 'OTEL_RESOURCE_ATTRIBUTES',
-                value: 'service.name=SubscriberService'
               }
             ]
           }
