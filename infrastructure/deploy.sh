@@ -10,18 +10,16 @@ REGION=$(aws configure get region)
 
 echo "Using AWS Account: $ACCOUNT_ID in region: $REGION"
 
-# Build and deploy CDK stack to create resources
-echo "Building and deploying CDK stack..."
-npm run build
-cdk deploy --require-approval never
+# Set repository names
+PUBLISHER_REPO_NAME="messaging-demo-publisher"
+SUBSCRIBER_REPO_NAME="messaging-demo-subscriber"
+PUBLISHER_REPO="$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$PUBLISHER_REPO_NAME"
+SUBSCRIBER_REPO="$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$SUBSCRIBER_REPO_NAME"
 
-# Get ECR repository URIs from stack outputs
-echo "Getting ECR repository URIs..."
-PUBLISHER_REPO=$(aws cloudformation describe-stacks --stack-name MessagingStack --query 'Stacks[0].Outputs[?OutputKey==`PublisherRepoUri`].OutputValue' --output text)
-SUBSCRIBER_REPO=$(aws cloudformation describe-stacks --stack-name MessagingStack --query 'Stacks[0].Outputs[?OutputKey==`SubscriberRepoUri`].OutputValue' --output text)
-
-echo "Publisher Repository: $PUBLISHER_REPO"
-echo "Subscriber Repository: $SUBSCRIBER_REPO"
+# Create ECR repositories if they don't exist
+echo "Creating ECR repositories if they don't exist..."
+aws ecr create-repository --repository-name $PUBLISHER_REPO_NAME --region $REGION || true
+aws ecr create-repository --repository-name $SUBSCRIBER_REPO_NAME --region $REGION || true
 
 # Login to ECR
 echo "Logging into ECR..."
@@ -42,10 +40,14 @@ docker push $SUBSCRIBER_REPO:latest
 # Return to infrastructure directory
 cd ../../infrastructure
 
+# Build and deploy CDK stack to create resources
+echo "Building and deploying CDK stack..."
+npm run build
+cdk deploy --require-approval never
+
 echo "Deployment complete!"
 echo "Publisher API will be available at:"
 aws cloudformation describe-stacks --stack-name MessagingStack --query 'Stacks[0].Outputs[?OutputKey==`PublisherUrl`].OutputValue' --output text
 
-echo "Waiting for App Runner services to update..."
-echo "You can check the status in the AWS Console:"
+echo "You can check the App Runner service status in the AWS Console:"
 echo "https://$REGION.console.aws.amazon.com/apprunner/home?region=$REGION#/services"

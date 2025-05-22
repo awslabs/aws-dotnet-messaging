@@ -10,18 +10,16 @@ $REGION = (aws configure get region)
 
 Write-Host "Using AWS Account: $ACCOUNT_ID in region: $REGION"
 
-# Build and deploy CDK stack to create resources
-Write-Host "Building and deploying CDK stack..."
-npm run build
-cdk deploy --require-approval never
+# Set repository names
+$PUBLISHER_REPO_NAME = "messaging-demo-publisher"
+$SUBSCRIBER_REPO_NAME = "messaging-demo-subscriber"
+$PUBLISHER_REPO = "$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$PUBLISHER_REPO_NAME"
+$SUBSCRIBER_REPO = "$ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com/$SUBSCRIBER_REPO_NAME"
 
-# Get ECR repository URIs from stack outputs
-Write-Host "Getting ECR repository URIs..."
-$PUBLISHER_REPO = $(aws cloudformation describe-stacks --stack-name MessagingStack --query 'Stacks[0].Outputs[?OutputKey==`PublisherRepoUri`].OutputValue' --output text)
-$SUBSCRIBER_REPO = $(aws cloudformation describe-stacks --stack-name MessagingStack --query 'Stacks[0].Outputs[?OutputKey==`SubscriberRepoUri`].OutputValue' --output text)
-
-Write-Host "Publisher Repository: $PUBLISHER_REPO"
-Write-Host "Subscriber Repository: $SUBSCRIBER_REPO"
+# Create ECR repositories if they don't exist
+Write-Host "Creating ECR repositories if they don't exist..."
+try { aws ecr create-repository --repository-name $PUBLISHER_REPO_NAME --region $REGION } catch { }
+try { aws ecr create-repository --repository-name $SUBSCRIBER_REPO_NAME --region $REGION } catch { }
 
 # Login to ECR
 Write-Host "Logging into ECR..."
@@ -44,10 +42,14 @@ docker push "${SUBSCRIBER_REPO}:latest"
 # Return to infrastructure directory
 Set-Location -Path $PSScriptRoot
 
+# Build and deploy CDK stack to create resources
+Write-Host "Building and deploying CDK stack..."
+npm run build
+cdk deploy --require-approval never
+
 Write-Host "Deployment complete!"
 Write-Host "Publisher API will be available at:"
 aws cloudformation describe-stacks --stack-name MessagingStack --query 'Stacks[0].Outputs[?OutputKey==`PublisherUrl`].OutputValue' --output text
 
-Write-Host "Waiting for App Runner services to update..."
-Write-Host "You can check the status in the AWS Console:"
+Write-Host "You can check the App Runner service status in the AWS Console:"
 Write-Host "https://$REGION.console.aws.amazon.com/apprunner/home?region=$REGION#/services"
