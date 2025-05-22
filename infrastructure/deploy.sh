@@ -8,14 +8,20 @@ cd "$(dirname "$0")"
 ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 REGION=$(aws configure get region)
 
+echo "Using AWS Account: $ACCOUNT_ID in region: $REGION"
+
 # Build and deploy CDK stack to create resources
-echo "Deploying CDK stack..."
+echo "Building and deploying CDK stack..."
 npm run build
 cdk deploy --require-approval never
 
 # Get ECR repository URIs from stack outputs
+echo "Getting ECR repository URIs..."
 PUBLISHER_REPO=$(aws cloudformation describe-stacks --stack-name MessagingStack --query 'Stacks[0].Outputs[?OutputKey==`PublisherRepoUri`].OutputValue' --output text)
 SUBSCRIBER_REPO=$(aws cloudformation describe-stacks --stack-name MessagingStack --query 'Stacks[0].Outputs[?OutputKey==`SubscriberRepoUri`].OutputValue' --output text)
+
+echo "Publisher Repository: $PUBLISHER_REPO"
+echo "Subscriber Repository: $SUBSCRIBER_REPO"
 
 # Login to ECR
 echo "Logging into ECR..."
@@ -39,3 +45,7 @@ cd ../../infrastructure
 echo "Deployment complete!"
 echo "Publisher API will be available at:"
 aws cloudformation describe-stacks --stack-name MessagingStack --query 'Stacks[0].Outputs[?OutputKey==`PublisherUrl`].OutputValue' --output text
+
+echo "Waiting for App Runner services to update..."
+echo "You can check the status in the AWS Console:"
+echo "https://$REGION.console.aws.amazon.com/apprunner/home?region=$REGION#/services"
