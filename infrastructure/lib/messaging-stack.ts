@@ -36,9 +36,17 @@ export class MessagingStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY
     });
 
+    // Create ECR access role for App Runner
+    const ecrAccessRole = new iam.Role(this, 'AppRunnerECRAccessRole', {
+      assumedBy: new iam.ServicePrincipal('build.apprunner.amazonaws.com'),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSAppRunnerServicePolicyForECRAccess')
+      ]
+    });
+
     // Create IAM role for Publisher API
     const publisherRole = new iam.Role(this, 'PublisherRole', {
-      assumedBy: new iam.ServicePrincipal('build.apprunner.amazonaws.com'),
+      assumedBy: new iam.ServicePrincipal('tasks.apprunner.amazonaws.com'),
     });
 
     // Grant SQS permissions to Publisher
@@ -46,7 +54,7 @@ export class MessagingStack extends cdk.Stack {
 
     // Create IAM role for Subscriber Service
     const subscriberRole = new iam.Role(this, 'SubscriberRole', {
-      assumedBy: new iam.ServicePrincipal('build.apprunner.amazonaws.com'),
+      assumedBy: new iam.ServicePrincipal('tasks.apprunner.amazonaws.com'),
     });
 
     // Grant SQS and DynamoDB permissions to Subscriber
@@ -57,6 +65,9 @@ export class MessagingStack extends cdk.Stack {
     const publisherService = new apprunner.CfnService(this, 'PublisherService', {
       sourceConfiguration: {
         autoDeploymentsEnabled: true,
+        authenticationConfiguration: {
+          accessRoleArn: ecrAccessRole.roleArn
+        },
         imageRepository: {
           imageIdentifier: `${publisherRepo.repositoryUri}:latest`,
           imageRepositoryType: 'ECR',
@@ -73,7 +84,7 @@ export class MessagingStack extends cdk.Stack {
               },
               {
                 name: 'OTLP_ENDPOINT',
-                value: 'http://52.12.96.156:4317'
+                value: 'http://your-collector-endpoint:4317'
               },
               {
                 name: 'OTEL_RESOURCE_ATTRIBUTES',
@@ -92,6 +103,9 @@ export class MessagingStack extends cdk.Stack {
     const subscriberService = new apprunner.CfnService(this, 'SubscriberService', {
       sourceConfiguration: {
         autoDeploymentsEnabled: true,
+        authenticationConfiguration: {
+          accessRoleArn: ecrAccessRole.roleArn
+        },
         imageRepository: {
           imageIdentifier: `${subscriberRepo.repositoryUri}:latest`,
           imageRepositoryType: 'ECR',
@@ -112,7 +126,7 @@ export class MessagingStack extends cdk.Stack {
               },
               {
                 name: 'OTLP_ENDPOINT',
-                value: 'http://52.12.96.156:4317'
+                value: 'http://your-collector-endpoint:4317'
               },
               {
                 name: 'OTEL_RESOURCE_ATTRIBUTES',

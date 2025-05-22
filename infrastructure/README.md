@@ -41,8 +41,15 @@ cdk bootstrap
 ```
 
 3. Deploy the infrastructure and services:
+
+For Linux/macOS:
 ```bash
 ./deploy.sh
+```
+
+For Windows PowerShell:
+```powershell
+.\deploy.ps1
 ```
 
 The deploy script will:
@@ -56,16 +63,24 @@ After deployment, you can test the services:
 
 1. Get the Publisher API URL:
 ```bash
+# Linux/macOS
 aws cloudformation describe-stacks --stack-name MessagingStack \
   --query 'Stacks[0].Outputs[?OutputKey==`PublisherUrl`].OutputValue' \
   --output text
+
+# Windows PowerShell
+aws cloudformation describe-stacks --stack-name MessagingStack --query 'Stacks[0].Outputs[?OutputKey==``PublisherUrl``].OutputValue' --output text
 ```
 
 2. Send a test message:
 ```bash
+# Linux/macOS
 curl -X POST "https://<publisher-url>/Publisher/chat" \
   -H "Content-Type: application/json" \
   -d '{"messageDescription":"Test message"}'
+
+# Windows PowerShell
+Invoke-RestMethod -Uri "https://<publisher-url>/Publisher/chat" -Method Post -Headers @{"Content-Type"="application/json"} -Body '{"messageDescription":"Test message"}'
 ```
 
 3. The message will be:
