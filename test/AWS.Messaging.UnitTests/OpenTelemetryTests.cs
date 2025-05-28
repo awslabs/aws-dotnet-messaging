@@ -185,8 +185,8 @@ public class OpenTelemetryTests
     }
 
     /// <summary>
-    /// Verifies that the handler trace has the correct parent when included
-    /// in the message envelope
+    /// Verifies that the handler trace has the correct link to the trace context
+    /// included in the message envelope
     /// </summary>
     [Fact]
     public async Task OpenTelemetry_Handler_ParentFromEnvelope()
@@ -212,14 +212,20 @@ public class OpenTelemetryTests
             .ConfigureResource(resource => resource.AddService("unittest"))
             .AddInMemoryExporter(activities).Build())
         {
-
             await _handler.InvokeAsync(envelope, _subscriberMapping);
         }
 
         Assert.Single(activities);
-        Assert.Equal("AWS.Messaging: Processing message", activities[0].OperationName);
+        var activity = activities[0];
+        Assert.Equal("AWS.Messaging: Processing message", activity.OperationName);
 
-        // The MPF activity's parent should be the one specified in envelope.Metadata above
-        Assert.Equal("00-d2d8865217873923d2d74cf680a30ac3-d63e320582f9ff94-01", activities[0].ParentId);
+        // Verify the activity is a root activity (no parent)
+        Assert.Null(activity.ParentId);
+
+        // Verify the activity has exactly one link to the trace context from the envelope
+        Assert.Single(activity.Links);
+        var link = activity.Links.Single();
+        Assert.Equal("d2d8865217873923d2d74cf680a30ac3", link.Context.TraceId.ToString());
+        Assert.Equal("d63e320582f9ff94", link.Context.SpanId.ToString());
     }
 }
