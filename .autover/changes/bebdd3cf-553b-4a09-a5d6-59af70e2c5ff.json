@@ -1,0 +1,11 @@
+{
+  "Projects": [
+    {
+      "Name": "AWS.Messaging.Telemetry.OpenTelemetry",
+      "Type": "Patch",
+      "ChangelogMessages": [
+        "Updated consumer processing logic to use Links for connecting to publisher instead of parent-child relationship"
+      ]
+    }
+  ]
+}
