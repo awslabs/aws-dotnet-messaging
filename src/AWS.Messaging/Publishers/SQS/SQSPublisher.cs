@@ -71,6 +71,8 @@ internal class SQSPublisher : ISQSPublisher
             try
             {
                 trace.AddMetadata(TelemetryKeys.ObjectType, typeof(T).FullName!);
+                trace.AddMetadata(TelemetryKeys.AWSRemoteService, "SQS");
+                trace.AddMetadata(TelemetryKeys.AWSRemoteOperation, "SendMessage");
 
                 _logger.LogDebug("Publishing the message of type '{MessageType}' using the {PublisherType}.", typeof(T), nameof(SQSPublisher));
 

@@ -15,6 +15,10 @@ public static class TelemetryKeys
     /// </summary>
     public static string AWSMessagingAssemblyVersion = Assembly.GetExecutingAssembly().GetName().Version?.ToString() ?? string.Empty;
 
+    // AWS semantic conventions
+    internal const string AWSRemoteService = "aws.remote.service";
+    internal const string AWSRemoteOperation = "aws.remote.operation";
+
     internal const string QueueUrl = "aws.messaging.sqs.queueurl";
     internal const string SqsMessageId = "aws.messaging.sqs.messageId";
     internal const string TopicUrl = "aws.messaging.sns.topicUrl";

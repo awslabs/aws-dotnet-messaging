@@ -70,6 +70,8 @@ internal class SNSPublisher : IMessagePublisher, ISNSPublisher
             try
             {
                 trace.AddMetadata(TelemetryKeys.ObjectType, typeof(T).FullName!);
+                trace.AddMetadata(TelemetryKeys.AWSRemoteService, "SNS");
+                trace.AddMetadata(TelemetryKeys.AWSRemoteOperation, "Publish");
 
                 _logger.LogDebug("Publishing the message of type '{MessageType}' using the {PublisherType}.", typeof(T), nameof(SNSPublisher));
 

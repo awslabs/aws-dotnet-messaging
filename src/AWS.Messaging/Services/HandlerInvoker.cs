@@ -49,9 +49,26 @@ public class HandlerInvoker : IHandlerInvoker
                 trace.AddMetadata(TelemetryKeys.MessageId, messageEnvelope.Id);
                 trace.AddMetadata(TelemetryKeys.MessageType, messageEnvelope.MessageTypeIdentifier);
                 trace.AddMetadata(TelemetryKeys.HandlerType, subscriberMapping.HandlerType.FullName!);
-                if (!string.IsNullOrEmpty(messageEnvelope.SQSMetadata?.MessageID))
+
+                // Add AWS semantic conventions based on message source
+                if (messageEnvelope.SQSMetadata != null)
                 {
-                    trace.AddMetadata(TelemetryKeys.SqsMessageId, messageEnvelope.SQSMetadata.MessageID);
+                    trace.AddMetadata(TelemetryKeys.AWSRemoteService, "SQS");
+                    trace.AddMetadata(TelemetryKeys.AWSRemoteOperation, "ReceiveMessage");
+                    if (!string.IsNullOrEmpty(messageEnvelope.SQSMetadata.MessageID))
+                    {
+                        trace.AddMetadata(TelemetryKeys.SqsMessageId, messageEnvelope.SQSMetadata.MessageID);
+                    }
+                }
+                else if (messageEnvelope.SNSMetadata != null)
+                {
+                    trace.AddMetadata(TelemetryKeys.AWSRemoteService, "SNS");
+                    trace.AddMetadata(TelemetryKeys.AWSRemoteOperation, "Receive");
+                }
+                else if (messageEnvelope.EventBridgeMetadata != null)
+                {
+                    trace.AddMetadata(TelemetryKeys.AWSRemoteService, "EventBridge");
+                    trace.AddMetadata(TelemetryKeys.AWSRemoteOperation, "PutEvents");
                 }
 
                 using (var scope = _serviceProvider.CreateScope())
