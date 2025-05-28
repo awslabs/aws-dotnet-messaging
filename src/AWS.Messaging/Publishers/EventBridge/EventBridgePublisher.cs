@@ -67,8 +67,6 @@ internal class EventBridgePublisher : IMessagePublisher, IEventBridgePublisher
             try
             {
                 trace.AddMetadata(TelemetryKeys.ObjectType, typeof(T).FullName!);
-                trace.AddMetadata(TelemetryKeys.AWSRemoteService, "EventBridge");
-                trace.AddMetadata(TelemetryKeys.AWSRemoteOperation, "PutEvents");
 
                 _logger.LogDebug("Publishing the message of type '{MessageType}' using the {PublisherType}.", typeof(T), nameof(EventBridgePublisher));
 
