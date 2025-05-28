@@ -44,7 +44,7 @@ public class Startup
 ```
 
 ### AWS X-Ray Linked Spans Configuration
-1. If you are using AWS X-Ray for OTEL, make sure you configure your OTEL setup to use OTLP for Cloudwatch. This is needed in order to view linked spans in the AWS X-Ray console. https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-OTLPSimplesetup.html 
+1. If you are using OTEL with X-Ray, make sure you configure your OTEL setup to use OTLP for Cloudwatch. This is needed in order to view linked spans in the AWS X-Ray console. https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch-OTLPSimplesetup.html 
 
 # Useful Links
 * [AWS Message Processing Framework for .NET Design Document](../../docs/docs/design/message-processing-framework-design.md)
