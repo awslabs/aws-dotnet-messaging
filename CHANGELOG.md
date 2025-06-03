@@ -1,3 +1,8 @@
+## Release 2025-06-03
+
+### AWS.Messaging.Telemetry.OpenTelemetry (0.23.0)
+* Updated consumer processing logic to use Links for connecting to publisher instead of parent-child relationship
+
 ## Release 2025-05-05
 
 ### AWS.Messaging (1.0.0)
