@@ -34,7 +34,7 @@ public class OpenTelemetryProvider : ITelemetryProvider
         }
 
         activity = _activitySource.StartActivity(traceName, ActivityKind.Producer, parentContext: default, links: links);
-        
+
         return new OpenTelemetryTrace(activity, parentActivity);
     }
 
@@ -44,23 +44,43 @@ public class OpenTelemetryProvider : ITelemetryProvider
         var propogatedContext = Propagators.DefaultTextMapPropagator.Extract(default, envelope, ExtractTraceContextFromEnvelope);
         Baggage.Current = propogatedContext.Baggage;
 
-        var activity = _activitySource.StartActivity(traceName, ActivityKind.Consumer, parentContext: propogatedContext.ActivityContext);
+        // Create links list for both propagated context and current activity
+        var links = new List<ActivityLink>();
+        if (propogatedContext.ActivityContext.IsValid())
+        {
+            links.Add(new ActivityLink(propogatedContext.ActivityContext));
+        }
+
+        // Create a new root activity with link to producer
+        var activity = _activitySource.StartActivity(
+            traceName,
+            ActivityKind.Consumer,
+            default(ActivityContext),
+            null,
+            links);
+
         if (activity != null)
         {
+            activity.SetStatus(ActivityStatusCode.Ok);
             return new OpenTelemetryTrace(activity);
         }
 
-        // If we initially failed to create an activity, attempt to force creation with 
-        // a link to the current activity, see https://opentelemetry.io/docs/instrumentation/net/manual/#creating-new-root-activities
+        // If we initially failed to create an activity, attempt to force creation
         var parentActivity = Activity.Current;
         Activity.Current = null;
-        ActivityLink[]? links = null;
+
+        // Add link to parent activity if it exists
         if (parentActivity != null)
         {
-            links = new[] { new ActivityLink(parentActivity.Context) };
+            links.Add(new ActivityLink(parentActivity.Context));
         }
 
-        activity = _activitySource.StartActivity(traceName, ActivityKind.Consumer, parentContext: propogatedContext.ActivityContext, links: links);
+        activity = _activitySource.StartActivity(
+            traceName,
+            ActivityKind.Consumer,
+            default(ActivityContext),
+            null,
+            links);
 
         return new OpenTelemetryTrace(activity, parentActivity);
     }
