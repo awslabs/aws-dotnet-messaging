@@ -78,8 +78,11 @@ public class SQSMessagePollerTests
     public async Task SQSMessagePoller_PollingControlRestarted_PollsSQS()
     {
         var client = new Mock<IAmazonSQS>();
+        var messageReceived = new TaskCompletionSource<bool>();
         client.Setup(x => x.ReceiveMessageAsync(It.IsAny<ReceiveMessageRequest>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new ReceiveMessageResponse(), TimeSpan.FromMilliseconds(50));
+            .ReturnsAsync(new ReceiveMessageResponse(), TimeSpan.FromMilliseconds(50))
+            .Callback(() => messageReceived.TrySetResult(true));
+
         var pollingControlToken = new PollingControlToken
         {
             PollingWaitTime = TimeSpan.FromMilliseconds(25)
@@ -90,12 +93,24 @@ public class SQSMessagePollerTests
         var pump = BuildMessagePumpService(client, options => { options.WaitTimeSeconds = 1; }, pollingControlToken: pollingControlToken);
         var task = pump.StartAsync(source.Token);
 
+        // Verify no messages are received while polling is stopped
         client.Verify(x => x.ReceiveMessageAsync(It.IsAny<ReceiveMessageRequest>(), It.IsAny<CancellationToken>()), Times.Never);
 
+        // Start polling and wait for a message to be received
         pollingControlToken.StartPolling();
+        
+        // Wait for a message to be received with a timeout
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        try 
+        {
+            await messageReceived.Task.WaitAsync(cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            Assert.Fail("Timed out waiting for message to be received after polling was restarted");
+        }
 
-        SpinWait.SpinUntil(() => false, pollingControlToken.PollingWaitTime * 5);
-
+        // Verify that messages were received
         client.Verify(x => x.ReceiveMessageAsync(It.IsAny<ReceiveMessageRequest>(), It.IsAny<CancellationToken>()), Times.AtLeastOnce());
 
         source.Cancel();
